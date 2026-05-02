@@ -496,13 +496,13 @@ def handle_submission():
         return
 
     if st.session_state.attempt < 4:
-        st.session_state.feedback_kind = "error"
+        st.session_state.feedback_kind = "warning"
         rest = 4 - st.session_state.attempt
         st.session_state.feedback_text = f"Noch nicht richtig. {task['correction']} Du hast noch {rest} Versuch(e)."
         st.session_state.attempt += 1
         return
 
-    st.session_state.feedback_kind = "error"
+    st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = "Noch nicht richtig. Die Aufgabe wird jetzt aufgeloest."
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
@@ -522,19 +522,18 @@ st.subheader("Aufgabe")
 st.write(st.session_state.task["prompt"])
 st.caption("Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein.")
 
-with st.form("answer_form"):
-    st.text_input(
-        "Deine Eingabe",
-        key="answer_input",
-        placeholder="Zum Beispiel 6 * 0.08 * 0.12 * 10",
-        disabled=st.session_state.task_finished,
-    )
-    submitted = st.form_submit_button(
-        f"Pruefen (Versuch {st.session_state.attempt}/4)",
-        disabled=st.session_state.task_finished,
-    )
+st.text_input(
+    "Deine Eingabe",
+    key="answer_input",
+    placeholder="Zum Beispiel 6 * 0.08 * 0.12 * 10",
+    disabled=st.session_state.task_finished,
+    on_change=handle_submission,
+)
 
-if submitted:
+if st.button(
+    f"Pruefen (Versuch {st.session_state.attempt}/4)",
+    disabled=st.session_state.task_finished,
+):
     handle_submission()
 
 if st.session_state.feedback_text:
