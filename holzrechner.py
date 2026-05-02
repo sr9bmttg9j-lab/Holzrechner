@@ -448,12 +448,13 @@ def create_next_task():
     st.session_state.task = task
     st.session_state.level = level
     st.session_state.attempt = 1
-    st.session_state.answer_input = ""
     st.session_state.feedback_kind = None
     st.session_state.feedback_text = ""
     st.session_state.result_text = ""
     st.session_state.solution_visible = False
     st.session_state.task_finished = False
+    st.session_state.answer_input = ""
+    st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-2:]
 
@@ -462,6 +463,11 @@ def init_state():
     if "task_number" not in st.session_state:
         st.session_state.task_number = 1
         st.session_state.recent_task_types = []
+        st.session_state.pending_next_task = False
+        create_next_task()
+        return
+
+    if st.session_state.get("pending_next_task"):
         create_next_task()
 
 
@@ -549,5 +555,5 @@ if st.session_state.solution_visible:
 if st.session_state.task_finished:
     if st.button("Naechste Aufgabe"):
         st.session_state.task_number += 1
-        create_next_task()
+        st.session_state.pending_next_task = True
         st.rerun()
