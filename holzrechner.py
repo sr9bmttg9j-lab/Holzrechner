@@ -623,6 +623,9 @@ def generate_hint(task, answer_value, is_correct):
         "Wenn die Antwort richtig ist, bestätige das knapp, benenne den richtigen Rechenansatz und gib einen kurzen Merksatz für ähnliche Aufgaben. "
         "Wenn die Antwort falsch ist, erkläre knapp, an welcher Stelle der Denkweg wahrscheinlich abgebogen ist, "
         "welche Zwischenrechnung als Nächstes sinnvoll wäre und worauf bei der Einheit geachtet werden muss. "
+        "Prüfe dabei ausdrücklich auf typische Fehler wie Zahlendreher, falschen Preiswert, falsche Einheit, "
+        "mal statt geteilt, geteilt statt mal, falsche Reihenfolge im Rechenweg oder eine passende Formel mit der falschen Eingabezahl. "
+        "Wenn so ein Muster wahrscheinlich ist, benenne es ausdrücklich. "
         "Gib nicht die komplette Musterlösung Wort für Wort aus. "
         f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
@@ -646,7 +649,7 @@ def generate_hint(task, answer_value, is_correct):
 
         client = OpenAI(api_key=api_key)
         response = client.responses.create(
-            model="gpt-5-nano",
+            model="gpt-5-mini",
             input=prompt,
             max_output_tokens=160,
         )
