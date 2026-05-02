@@ -800,18 +800,20 @@ st.subheader("Aufgabe")
 st.write(st.session_state.task["prompt"])
 st.caption("Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein.")
 
-st.text_input(
-    "Deine Eingabe",
-    key="answer_input",
-    placeholder="Zum Beispiel 6 * 0,08 * 0,12 * 10",
-    disabled=st.session_state.task_finished,
-    on_change=handle_submission,
-)
+with st.form("answer_form", clear_on_submit=False):
+    st.text_input(
+        "Deine Eingabe",
+        key="answer_input",
+        placeholder="Zum Beispiel 6 * 0,08 * 0,12 * 10",
+        disabled=st.session_state.task_finished,
+    )
+    submitted = st.form_submit_button(
+        "Bestätigen",
+        disabled=st.session_state.task_finished,
+        type="primary",
+    )
 
-if st.button(
-    "Prüfen",
-    disabled=st.session_state.task_finished,
-):
+if submitted:
     handle_submission()
 
 if st.session_state.feedback_text:
@@ -836,7 +838,7 @@ if st.session_state.solution_visible:
     st.code(st.session_state.task["solution"])
 
 if st.session_state.task_finished:
-    if st.button("Nächste Aufgabe"):
+    if st.button("Nächste Aufgabe", type="primary"):
         st.session_state.task_number += 1
         st.session_state.pending_next_task = True
         st.rerun()
