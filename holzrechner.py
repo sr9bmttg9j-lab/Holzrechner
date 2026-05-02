@@ -729,7 +729,7 @@ def handle_submission():
 
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
-        st.session_state.feedback_text = "Richtig."
+        st.session_state.feedback_text = ""
         st.session_state.hint_text = generate_hint(task, answer_value, True)
         st.session_state.points_awarded = points_for_success(st.session_state.level, st.session_state.attempt)
         st.session_state.score += st.session_state.points_awarded
@@ -740,20 +740,54 @@ def handle_submission():
     if st.session_state.attempt < 4:
         st.session_state.feedback_kind = "warning"
         rest = 4 - st.session_state.attempt
-        st.session_state.feedback_text = f"Noch nicht richtig. {task['correction']} Du hast noch {rest} Versuch(e)."
-        st.session_state.hint_text = generate_hint(task, answer_value, False)
+        st.session_state.feedback_text = ""
+        st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Du hast noch {rest} Versuch(e)."
         st.session_state.attempt += 1
         return
 
     st.session_state.feedback_kind = "warning"
-    st.session_state.feedback_text = "Noch nicht richtig. Die Aufgabe wird jetzt aufgelöst."
-    st.session_state.hint_text = generate_hint(task, answer_value, False)
+    st.session_state.feedback_text = ""
+    st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Die Aufgabe wird jetzt aufgelöst."
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
 init_state()
+
+st.markdown(
+    """
+    <style>
+        [data-testid="InputInstructions"] {
+            display: none;
+        }
+
+        .stTextInput input {
+            border: 1px solid #22c55e;
+        }
+
+        .stTextInput input:focus {
+            border: 1px solid #16a34a;
+            box-shadow: 0 0 0 1px #16a34a;
+        }
+
+        div.stButton > button[kind="primary"],
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"] {
+            background-color: #16a34a;
+            border-color: #16a34a;
+            color: white;
+        }
+
+        div.stButton > button[kind="primary"]:hover,
+        div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+            background-color: #15803d;
+            border-color: #15803d;
+            color: white;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
 
 st.title("Holzrechner")
 st.write(
@@ -798,7 +832,10 @@ if st.session_state.result_text:
     st.write(st.session_state.result_text)
 
 if st.session_state.hint_text:
-    st.info(f"Hinweis: {st.session_state.hint_text}")
+    if st.session_state.feedback_kind == "success":
+        st.success(f"Hinweis: {st.session_state.hint_text}")
+    else:
+        st.warning(f"Hinweis: {st.session_state.hint_text}")
 
 if st.session_state.points_awarded:
     st.success(f"Punkte für diese Aufgabe: {st.session_state.points_awarded}")
