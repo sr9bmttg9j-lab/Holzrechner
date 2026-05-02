@@ -54,7 +54,6 @@ RUNNING_METER_PRICES_BY_LEVEL = {
     2: [Decimal("5.35"), Decimal("6.85"), Decimal("8.40"), Decimal("10.25"), Decimal("13.75")],
     3: [Decimal("5.95"), Decimal("7.40"), Decimal("9.35"), Decimal("11.80"), Decimal("14.60")],
 }
-POINTS_BY_LEVEL = {1: 10, 2: 20, 3: 30}
 
 UNIT_LABELS = {
     "m3": "Kubikmeter",
@@ -150,10 +149,6 @@ def generate_beam_product():
 def generate_panel_product():
     choices = [p for p in PRODUCTS if p["kind"] == "panel"]
     return random.choice(choices)
-
-
-def points_for_success(level, attempt):
-    return max(POINTS_BY_LEVEL[level] - ((attempt - 1) * 2), 4)
 
 
 def task_volume_beam(level):
@@ -691,7 +686,6 @@ def create_next_task():
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
-    st.session_state.points_awarded = 0
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
@@ -702,7 +696,6 @@ def init_state():
         st.session_state.task_number = 1
         st.session_state.recent_task_types = []
         st.session_state.pending_next_task = False
-        st.session_state.score = 0
         create_next_task()
         return
 
@@ -730,9 +723,7 @@ def handle_submission():
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = generate_hint(task, answer_value, True)
-        st.session_state.points_awarded = points_for_success(st.session_state.level, st.session_state.attempt)
-        st.session_state.score += st.session_state.points_awarded
+        st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
         st.session_state.solution_visible = True
         st.session_state.task_finished = True
         return
@@ -795,10 +786,9 @@ st.write(
     "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
 
-col1, col2, col3 = st.columns(3)
+col1, col2 = st.columns(2)
 col1.metric("Aufgabe", st.session_state.task_number)
 col2.metric("Schwierigkeit", st.session_state.level)
-col3.metric("Punkte", st.session_state.score)
 
 st.subheader("Aufgabe")
 st.write(st.session_state.task["prompt"])
@@ -836,9 +826,6 @@ if st.session_state.hint_text:
         st.success(f"Hinweis: {st.session_state.hint_text}")
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
-
-if st.session_state.points_awarded:
-    st.success(f"Punkte für diese Aufgabe: {st.session_state.points_awarded}")
 
 if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
