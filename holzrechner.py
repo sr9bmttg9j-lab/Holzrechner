@@ -2,6 +2,9 @@ import ast
 import random
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
+import streamlit as st
+
+
 PRODUCTS = [
     {"name": "KVH", "kind": "beam"},
     {"name": "BSH", "kind": "beam"},
@@ -141,11 +144,10 @@ def task_volume_beam(level):
     result = length_m * width_m * height_m * Decimal(count)
 
     prompt = (
-        "Aufgabe:\n"
-        f"Ein Posten {product['name']} besteht aus {count} Stueck mit je {format_m(length_m)} m Laenge, "
-        f"{format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Hoehe.\n"
-        "Wie viele Kubikmeter sind das insgesamt?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        "Ein Posten "
+        f"{product['name']} besteht aus {count} Stueck mit je {format_m(length_m)} m Laenge, "
+        f"{format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Hoehe.\n\n"
+        "Wie viele Kubikmeter sind das insgesamt?"
     )
 
     solution = (
@@ -176,11 +178,9 @@ def task_price_per_running_meter(level):
     result = width_m * height_m * m3_price
 
     prompt = (
-        "Aufgabe:\n"
         f"Ein Kubikmeter {product['name']} kostet {format_decimal(m3_price, 0)} Euro.\n"
-        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n"
-        "Wie teuer ist 1 laufender Meter?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
+        "Wie teuer ist 1 laufender Meter?"
     )
 
     cross_section = width_m * height_m
@@ -213,11 +213,9 @@ def task_price_per_square_meter(level):
     result = thickness_m * m3_price
 
     prompt = (
-        "Aufgabe:\n"
         f"Eine {product['name']} ist {format_cm(thickness_m)} cm dick.\n"
-        f"Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n"
-        "Wie teuer ist 1 Quadratmeter dieser Platte?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\n"
+        "Wie teuer ist 1 Quadratmeter dieser Platte?"
     )
 
     solution = (
@@ -253,16 +251,14 @@ def task_square_meters_from_volume(level):
     result = square_meters
 
     prompt = (
-        "Aufgabe:\n"
         f"Du hast {format_decimal(total_volume, 3)} m3 {product['name']}.\n"
-        f"Die Platte ist {format_cm(thickness_m)} cm dick.\n"
-        "Wie viele Quadratmeter sind das?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Die Platte ist {format_cm(thickness_m)} cm dick.\n\n"
+        "Wie viele Quadratmeter sind das?"
     )
 
     solution = (
         "Rechenweg:\n"
-        f"1. Formel: m2 = m3 / Dicke\n"
+        "1. Formel: m2 = m3 / Dicke\n"
         f"2. m2 = {format_decimal(total_volume, 3)} / {format_decimal(thickness_m, 3)} = "
         f"{format_decimal(result, 0)} m2"
     )
@@ -274,7 +270,7 @@ def task_square_meters_from_volume(level):
         "display_places": 0,
         "round_for_check": False,
         "task_type": "square_meters_from_volume",
-        "correction": "Denk an die Grundformel m2 = m3 / Dicke. Die Zusatzangaben im Text brauchst du dafuer nicht.",
+        "correction": "Denk an die Grundformel m2 = m3 / Dicke.",
         "solution": solution,
     }
 
@@ -286,16 +282,14 @@ def task_total_price_from_volume(level):
     result = total_volume * m3_price
 
     prompt = (
-        "Aufgabe:\n"
         f"Ein Posten {product['name']} hat insgesamt {format_decimal(total_volume, 3)} m3.\n"
-        f"Der Preis betraegt {format_decimal(m3_price, 0)} Euro pro m3.\n"
-        "Wie hoch ist der Gesamtpreis?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Der Preis betraegt {format_decimal(m3_price, 0)} Euro pro m3.\n\n"
+        "Wie hoch ist der Gesamtpreis?"
     )
 
     solution = (
         "Rechenweg:\n"
-        f"1. Gesamtpreis = Volumen x Preis pro m3\n"
+        "1. Gesamtpreis = Volumen x Preis pro m3\n"
         f"2. Gesamtpreis = {format_decimal(total_volume, 3)} x {format_decimal(m3_price, 0)} = "
         f"{format_decimal(result, 2)} Euro"
     )
@@ -307,7 +301,7 @@ def task_total_price_from_volume(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "total_price_from_volume",
-        "correction": "Fuer den Gesamtpreis reicht Volumen x Preis pro m3. Die zusaetzlichen Angaben dienen hier nur zur Einordnung.",
+        "correction": "Fuer den Gesamtpreis reicht Volumen x Preis pro m3.",
         "solution": solution,
     }
 
@@ -325,11 +319,9 @@ def task_running_meters_from_volume(level):
     total_volume = width_m * height_m * running_meters
 
     prompt = (
-        "Aufgabe:\n"
         f"Du hast insgesamt {format_decimal(total_volume, 3)} m3 {product['name']}.\n"
-        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n"
-        "Wie viele laufende Meter sind das?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
+        "Wie viele laufende Meter sind das?"
     )
 
     cross_section = width_m * height_m
@@ -337,7 +329,7 @@ def task_running_meters_from_volume(level):
         "Rechenweg:\n"
         f"1. Querschnitt in m2 = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
         f"{format_decimal(cross_section, 4)} m2\n"
-        f"2. Formel: Laufmeter = m3 / Querschnitt\n"
+        "2. Formel: Laufmeter = m3 / Querschnitt\n"
         f"3. Laufmeter = {format_decimal(total_volume, 3)} / {format_decimal(cross_section, 4)} = "
         f"{format_decimal(running_meters, 0)}"
     )
@@ -361,7 +353,12 @@ def task_db_sale_price(level):
     height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
-    db_percent = Decimal(random.choice([25, 30, 35]) if level == 1 else random.choice([27, 30, 33, 35]) if level == 2 else random.choice([28, 31, 34, 37]))
+    if level == 1:
+        db_percent = Decimal(random.choice([25, 30, 35]))
+    elif level == 2:
+        db_percent = Decimal(random.choice([27, 30, 33, 35]))
+    else:
+        db_percent = Decimal(random.choice([28, 31, 34, 37]))
 
     total_volume = length_m * width_m * height_m * Decimal(count)
     total_ek = total_volume * ek_price_m3
@@ -369,12 +366,10 @@ def task_db_sale_price(level):
     result = total_ek / divisor
 
     prompt = (
-        "Aufgabe:\n"
         f"Ein Kubikmeter {product['name']} kostet im EK {format_decimal(ek_price_m3, 0)} Euro. "
         f"Du hast {count} Stueck im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. "
-        f"Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n"
-        "Wie hoch ist der gesamte VK fuer diesen Posten?\n"
-        "Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein."
+        f"Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\n"
+        "Wie hoch ist der gesamte VK fuer diesen Posten?"
     )
 
     solution = (
@@ -446,69 +441,113 @@ def choose_task(level, recent_task_types):
     return random.choice(candidates)
 
 
-def main():
-    print("Holzrechner")
-    print("Dieser Holzrechner stellt dir wechselnde Rechenaufgaben.")
-    print()
-
-    task_number = 1
-    recent_task_types = []
-    while True:
-        level = pick_level(task_number)
-        print(f"Aufgabe {task_number} | Schwierigkeitsstufe {level}")
-        task = choose_task(level, recent_task_types)(level)
-        recent_task_types.append(task["task_type"])
-        recent_task_types = recent_task_types[-2:]
-        print(task["prompt"])
-
-        solved = False
-        max_attempts = 4
-        attempt = 1
-
-        while attempt <= max_attempts:
-            answer_text = input(f"Dein Rechenweg (Versuch {attempt}/{max_attempts}): ").strip()
-
-            if answer_text.lower() in {"q", "quit", "exit", "ende"}:
-                print()
-                print("Programm beendet.")
-                return
-
-            try:
-                answer_value = evaluate_expression(answer_text)
-            except (InvalidOperation, SyntaxError, ZeroDivisionError):
-                print()
-                print("Die Eingabe konnte nicht als Rechenweg erkannt werden.")
-                print("Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :")
-                print()
-                continue
-
-            print()
-            if values_match(answer_value, task["expected"], task["round_for_check"]):
-                print("Richtig.")
-                print(f"Dein Ergebnis aus dem Rechenweg: {format_value_for_task(answer_value, task)} {task['unit']}")
-                print(task["solution"])
-                solved = True
-                break
-
-            print("Noch nicht richtig.")
-            print(f"Dein Ergebnis aus dem Rechenweg: {format_value_for_task(answer_value, task)} {task['unit']}")
-
-            if attempt < max_attempts:
-                print(task["correction"])
-                print(f"Du hast noch {max_attempts - attempt} Versuch(e) fuer diese Aufgabe.")
-                print()
-                attempt += 1
-                continue
-
-            print(f"Richtige Loesung: {format_expected(task)} {task['unit']}")
-            print(task["solution"])
-            break
-
-        print()
-        print("Naechste Aufgabe:")
-        print()
-        task_number += 1
+def create_next_task():
+    task_number = st.session_state.task_number
+    level = pick_level(task_number)
+    task = choose_task(level, st.session_state.recent_task_types)(level)
+    st.session_state.task = task
+    st.session_state.level = level
+    st.session_state.attempt = 1
+    st.session_state.answer_input = ""
+    st.session_state.feedback_kind = None
+    st.session_state.feedback_text = ""
+    st.session_state.result_text = ""
+    st.session_state.solution_visible = False
+    st.session_state.task_finished = False
+    st.session_state.recent_task_types.append(task["task_type"])
+    st.session_state.recent_task_types = st.session_state.recent_task_types[-2:]
 
 
-if __name__ == "__main__":
-    main()
+def init_state():
+    if "task_number" not in st.session_state:
+        st.session_state.task_number = 1
+        st.session_state.recent_task_types = []
+        create_next_task()
+
+
+def handle_submission():
+    answer_text = st.session_state.answer_input.strip()
+    if not answer_text:
+        st.session_state.feedback_kind = "warning"
+        st.session_state.feedback_text = "Bitte gib einen Rechenweg oder ein Ergebnis ein."
+        return
+
+    try:
+        answer_value = evaluate_expression(answer_text)
+    except (InvalidOperation, SyntaxError, ZeroDivisionError):
+        st.session_state.feedback_kind = "error"
+        st.session_state.feedback_text = "Die Eingabe konnte nicht als Rechenweg erkannt werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :"
+        return
+
+    task = st.session_state.task
+    st.session_state.result_text = f"Dein Ergebnis: {format_value_for_task(answer_value, task)} {task['unit']}"
+
+    if values_match(answer_value, task["expected"], task["round_for_check"]):
+        st.session_state.feedback_kind = "success"
+        st.session_state.feedback_text = "Richtig."
+        st.session_state.solution_visible = True
+        st.session_state.task_finished = True
+        return
+
+    if st.session_state.attempt < 4:
+        st.session_state.feedback_kind = "error"
+        rest = 4 - st.session_state.attempt
+        st.session_state.feedback_text = f"Noch nicht richtig. {task['correction']} Du hast noch {rest} Versuch(e)."
+        st.session_state.attempt += 1
+        return
+
+    st.session_state.feedback_kind = "error"
+    st.session_state.feedback_text = "Noch nicht richtig. Die Aufgabe wird jetzt aufgeloest."
+    st.session_state.solution_visible = True
+    st.session_state.task_finished = True
+
+
+st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
+init_state()
+
+st.title("Holzrechner")
+st.write("Wechselnde Rechenaufgaben fuer Kubikmeter, Quadratmeter, Laufmeter, Preise und DB.")
+
+col1, col2 = st.columns(2)
+col1.metric("Aufgabe", st.session_state.task_number)
+col2.metric("Schwierigkeit", st.session_state.level)
+
+st.subheader("Aufgabe")
+st.write(st.session_state.task["prompt"])
+st.caption("Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein.")
+
+with st.form("answer_form"):
+    st.text_input(
+        "Deine Eingabe",
+        key="answer_input",
+        placeholder="Zum Beispiel 6 * 0.08 * 0.12 * 10",
+        disabled=st.session_state.task_finished,
+    )
+    submitted = st.form_submit_button(
+        f"Pruefen (Versuch {st.session_state.attempt}/4)",
+        disabled=st.session_state.task_finished,
+    )
+
+if submitted:
+    handle_submission()
+
+if st.session_state.feedback_text:
+    if st.session_state.feedback_kind == "success":
+        st.success(st.session_state.feedback_text)
+    elif st.session_state.feedback_kind == "warning":
+        st.warning(st.session_state.feedback_text)
+    else:
+        st.error(st.session_state.feedback_text)
+
+if st.session_state.result_text:
+    st.write(st.session_state.result_text)
+
+if st.session_state.solution_visible:
+    st.info(f"Richtige Loesung: {format_expected(st.session_state.task)} {st.session_state.task['unit']}")
+    st.code(st.session_state.task["solution"])
+
+if st.session_state.task_finished:
+    if st.button("Naechste Aufgabe"):
+        st.session_state.task_number += 1
+        create_next_task()
+        st.rerun()
