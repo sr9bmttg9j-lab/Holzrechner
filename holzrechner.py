@@ -50,6 +50,13 @@ TOTAL_VOLUMES_BY_LEVEL = {
     3: [Decimal("0.945"), Decimal("1.155"), Decimal("1.485"), Decimal("1.890"), Decimal("2.310"), Decimal("2.625")],
 }
 
+UNIT_LABELS = {
+    "m3": "Kubikmeter",
+    "m2": "Quadratmeter",
+    "lfm": "Laufmeter",
+    "EUR": "Euro",
+}
+
 
 def q(value_str):
     return Decimal(value_str)
@@ -66,6 +73,10 @@ def format_m(value):
 
 def format_cm(value):
     return format_decimal(value * 100, 1).rstrip("0").rstrip(".")
+
+
+def unit_label(unit):
+    return UNIT_LABELS.get(unit, unit)
 
 
 def current_level(task_number):
@@ -145,17 +156,17 @@ def task_volume_beam(level):
 
     prompt = (
         "Ein Posten "
-        f"{product['name']} besteht aus {count} Stueck mit je {format_m(length_m)} m Laenge, "
-        f"{format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Hoehe.\n\n"
+        f"{product['name']} besteht aus {count} Stück mit je {format_m(length_m)} m Länge, "
+        f"{format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe.\n\n"
         "Wie viele Kubikmeter sind das insgesamt?"
     )
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen pro Stueck = {format_m(length_m)} x {format_decimal(width_m, 2)} x "
-        f"{format_decimal(height_m, 2)} = {format_decimal(length_m * width_m * height_m, 3)} m3\n"
+        f"1. Volumen pro Stück = {format_m(length_m)} x {format_decimal(width_m, 2)} x "
+        f"{format_decimal(height_m, 2)} = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter\n"
         f"2. Gesamtvolumen = {format_decimal(length_m * width_m * height_m, 3)} x {count} = "
-        f"{format_decimal(result, 3)} m3"
+        f"{format_decimal(result, 3)} Kubikmeter"
     )
 
     return {
@@ -165,7 +176,7 @@ def task_volume_beam(level):
         "display_places": 3,
         "round_for_check": False,
         "task_type": "volume_beam",
-        "correction": "Achte darauf, zuerst das Volumen pro Stueck aus Laenge x Breite x Hoehe zu berechnen und danach mit der Stueckzahl zu multiplizieren.",
+        "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Höhe zu berechnen und danach mit der Stückzahl zu multiplizieren.",
         "solution": solution,
     }
 
@@ -179,17 +190,17 @@ def task_price_per_running_meter(level):
 
     prompt = (
         f"Ein Kubikmeter {product['name']} kostet {format_decimal(m3_price, 0)} Euro.\n"
-        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
+        f"Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
         "Wie teuer ist 1 laufender Meter?"
     )
 
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in m2 = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
-        f"{format_decimal(cross_section, 4)} m2\n"
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
+        f"{format_decimal(cross_section, 4)} Quadratmeter\n"
         f"2. Volumen von 1 Laufmeter = {format_decimal(cross_section, 4)} x 1 = "
-        f"{format_decimal(cross_section, 4)} m3\n"
+        f"{format_decimal(cross_section, 4)} Kubikmeter\n"
         f"3. Preis je Laufmeter = {format_decimal(cross_section, 4)} x {format_decimal(m3_price, 0)} = "
         f"{format_decimal(result, 2)} Euro"
     )
@@ -201,7 +212,7 @@ def task_price_per_running_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "price_per_running_meter",
-        "correction": "Pruefe, ob du erst den Querschnitt in m2 gebildet und daraus das Volumen von 1 Laufmeter bestimmt hast.",
+        "correction": "Prüfe, ob du erst den Querschnitt in Quadratmetern gebildet und daraus das Volumen von 1 Laufmeter bestimmt hast.",
         "solution": solution,
     }
 
@@ -220,9 +231,9 @@ def task_price_per_square_meter(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen von 1 m2 Platte = 1 x {format_decimal(thickness_m, 3)} = "
-        f"{format_decimal(thickness_m, 3)} m3\n"
-        f"2. Preis je m2 = {format_decimal(thickness_m, 3)} x {format_decimal(m3_price, 0)} = "
+        f"1. Volumen von 1 Quadratmeter Platte = 1 x {format_decimal(thickness_m, 3)} = "
+        f"{format_decimal(thickness_m, 3)} Kubikmeter\n"
+        f"2. Preis je Quadratmeter = {format_decimal(thickness_m, 3)} x {format_decimal(m3_price, 0)} = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -233,7 +244,7 @@ def task_price_per_square_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "price_per_square_meter",
-        "correction": "Hier brauchst du nur die Dicke der Platte. Ein Quadratmeter mal Dicke ergibt das Volumen, und dieses Volumen wird mit dem m3-Preis multipliziert.",
+        "correction": "Hier brauchst du nur die Dicke der Platte. Ein Quadratmeter mal Dicke ergibt das Volumen, und dieses Volumen wird mit dem Kubikmeterpreis multipliziert.",
         "solution": solution,
     }
 
@@ -251,16 +262,16 @@ def task_square_meters_from_volume(level):
     result = square_meters
 
     prompt = (
-        f"Du hast {format_decimal(total_volume, 3)} m3 {product['name']}.\n"
+        f"Du hast {format_decimal(total_volume, 3)} Kubikmeter {product['name']}.\n"
         f"Die Platte ist {format_cm(thickness_m)} cm dick.\n\n"
         "Wie viele Quadratmeter sind das?"
     )
 
     solution = (
         "Rechenweg:\n"
-        "1. Formel: m2 = m3 / Dicke\n"
-        f"2. m2 = {format_decimal(total_volume, 3)} / {format_decimal(thickness_m, 3)} = "
-        f"{format_decimal(result, 0)} m2"
+        "1. Formel: Quadratmeter = Kubikmeter / Dicke\n"
+        f"2. Quadratmeter = {format_decimal(total_volume, 3)} / {format_decimal(thickness_m, 3)} = "
+        f"{format_decimal(result, 0)} Quadratmeter"
     )
 
     return {
@@ -270,7 +281,7 @@ def task_square_meters_from_volume(level):
         "display_places": 0,
         "round_for_check": False,
         "task_type": "square_meters_from_volume",
-        "correction": "Denk an die Grundformel m2 = m3 / Dicke.",
+        "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
         "solution": solution,
     }
 
@@ -282,14 +293,14 @@ def task_total_price_from_volume(level):
     result = total_volume * m3_price
 
     prompt = (
-        f"Ein Posten {product['name']} hat insgesamt {format_decimal(total_volume, 3)} m3.\n"
-        f"Der Preis betraegt {format_decimal(m3_price, 0)} Euro pro m3.\n\n"
+        f"Ein Posten {product['name']} hat insgesamt {format_decimal(total_volume, 3)} Kubikmeter.\n"
+        f"Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\n"
         "Wie hoch ist der Gesamtpreis?"
     )
 
     solution = (
         "Rechenweg:\n"
-        "1. Gesamtpreis = Volumen x Preis pro m3\n"
+        "1. Gesamtpreis = Volumen x Preis pro Kubikmeter\n"
         f"2. Gesamtpreis = {format_decimal(total_volume, 3)} x {format_decimal(m3_price, 0)} = "
         f"{format_decimal(result, 2)} Euro"
     )
@@ -301,7 +312,7 @@ def task_total_price_from_volume(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "total_price_from_volume",
-        "correction": "Fuer den Gesamtpreis reicht Volumen x Preis pro m3.",
+        "correction": "Für den Gesamtpreis reicht Volumen x Preis pro Kubikmeter.",
         "solution": solution,
     }
 
@@ -319,19 +330,19 @@ def task_running_meters_from_volume(level):
     total_volume = width_m * height_m * running_meters
 
     prompt = (
-        f"Du hast insgesamt {format_decimal(total_volume, 3)} m3 {product['name']}.\n"
-        f"Der Querschnitt betraegt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
+        f"Du hast insgesamt {format_decimal(total_volume, 3)} Kubikmeter {product['name']}.\n"
+        f"Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\n"
         "Wie viele laufende Meter sind das?"
     )
 
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in m2 = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
-        f"{format_decimal(cross_section, 4)} m2\n"
-        "2. Formel: Laufmeter = m3 / Querschnitt\n"
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
+        f"{format_decimal(cross_section, 4)} Quadratmeter\n"
+        "2. Formel: Laufmeter = Kubikmeter / Querschnitt\n"
         f"3. Laufmeter = {format_decimal(total_volume, 3)} / {format_decimal(cross_section, 4)} = "
-        f"{format_decimal(running_meters, 0)}"
+        f"{format_decimal(running_meters, 0)} Laufmeter"
     )
 
     return {
@@ -341,7 +352,7 @@ def task_running_meters_from_volume(level):
         "display_places": 0,
         "round_for_check": False,
         "task_type": "running_meters_from_volume",
-        "correction": "Bilde zuerst den Querschnitt in m2 und teile dann das Gesamtvolumen durch diesen Querschnitt.",
+        "correction": "Bilde zuerst den Querschnitt in Quadratmetern und teile dann das Gesamtvolumen durch diesen Querschnitt.",
         "solution": solution,
     }
 
@@ -367,15 +378,15 @@ def task_db_sale_price(level):
 
     prompt = (
         f"Ein Kubikmeter {product['name']} kostet im EK {format_decimal(ek_price_m3, 0)} Euro. "
-        f"Du hast {count} Stueck im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. "
+        f"Du hast {count} Stück im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. "
         f"Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\n"
-        "Wie hoch ist der gesamte VK fuer diesen Posten?"
+        "Wie hoch ist der gesamte VK für diesen Posten?"
     )
 
     solution = (
         "Rechenweg:\n"
         f"1. Gesamtvolumen = {format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x {count} = "
-        f"{format_decimal(total_volume, 3)} m3\n"
+        f"{format_decimal(total_volume, 3)} Kubikmeter\n"
         f"2. Gesamter EK = {format_decimal(total_volume, 3)} x {format_decimal(ek_price_m3, 0)} = "
         f"{format_decimal(total_ek, 2)} Euro\n"
         f"3. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} / {format_decimal(divisor, 2)} = "
@@ -389,7 +400,7 @@ def task_db_sale_price(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "db_sale_price",
-        "correction": "Rechne zuerst das Gesamtvolumen und daraus den gesamten EK. Fuer den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0.70 bei 30 % DB.",
+        "correction": "Rechne zuerst das Gesamtvolumen und daraus den gesamten EK. Für den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0.70 bei 30 % DB.",
         "solution": solution,
     }
 
@@ -425,6 +436,48 @@ def format_value_for_task(value, task):
     return format_decimal(value, task["display_places"])
 
 
+def fallback_hint(task, is_correct):
+    if is_correct:
+        return "Guter Ansatz. Geh den Rechenweg kurz noch einmal im Kopf durch, damit die Umrechnung fachlich sauber sitzt."
+    return task["correction"]
+
+
+def generate_hint(task, answer_value, is_correct):
+    prompt = (
+        "Du bist ein kurzer Lernassistent für die Holzbranche. "
+        "Gib auf Deutsch einen knappen Hinweis mit höchstens drei Sätzen. "
+        "Wenn die Antwort richtig ist, bestätige das knapp und nenne einen fachlichen Merksatz. "
+        "Wenn die Antwort falsch ist, gib einen hilfreichen Hinweis, aber nicht die komplette Musterlösung. "
+        f"Aufgabentyp: {task['task_type']}. "
+        f"Nutzerergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}. "
+        f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
+        f"Bewertung: {'richtig' if is_correct else 'falsch'}."
+    )
+
+    try:
+        from openai import OpenAI
+
+        api_key = None
+        if "OPENAI_API_KEY" in st.secrets:
+            api_key = st.secrets["OPENAI_API_KEY"]
+        elif "openai_api_key" in st.secrets:
+            api_key = st.secrets["openai_api_key"]
+
+        if not api_key:
+            return fallback_hint(task, is_correct)
+
+        client = OpenAI(api_key=api_key)
+        response = client.responses.create(
+            model="gpt-5-nano",
+            input=prompt,
+            max_output_tokens=90,
+        )
+        text = (response.output_text or "").strip()
+        return text if text else fallback_hint(task, is_correct)
+    except Exception:
+        return fallback_hint(task, is_correct)
+
+
 def choose_task(level, recent_task_types):
     candidates = TASKS_BY_LEVEL[level]
     if not recent_task_types:
@@ -454,6 +507,7 @@ def create_next_task():
     st.session_state.solution_visible = False
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
+    st.session_state.hint_text = ""
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-2:]
@@ -486,11 +540,12 @@ def handle_submission():
         return
 
     task = st.session_state.task
-    st.session_state.result_text = f"Dein Ergebnis: {format_value_for_task(answer_value, task)} {task['unit']}"
+    st.session_state.result_text = f"Dein Ergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}"
 
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = "Richtig."
+        st.session_state.hint_text = generate_hint(task, answer_value, True)
         st.session_state.solution_visible = True
         st.session_state.task_finished = True
         return
@@ -499,11 +554,13 @@ def handle_submission():
         st.session_state.feedback_kind = "warning"
         rest = 4 - st.session_state.attempt
         st.session_state.feedback_text = f"Noch nicht richtig. {task['correction']} Du hast noch {rest} Versuch(e)."
+        st.session_state.hint_text = generate_hint(task, answer_value, False)
         st.session_state.attempt += 1
         return
 
     st.session_state.feedback_kind = "warning"
-    st.session_state.feedback_text = "Noch nicht richtig. Die Aufgabe wird jetzt aufgeloest."
+    st.session_state.feedback_text = "Noch nicht richtig. Die Aufgabe wird jetzt aufgelöst."
+    st.session_state.hint_text = generate_hint(task, answer_value, False)
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
 
@@ -512,7 +569,7 @@ st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered"
 init_state()
 
 st.title("Holzrechner")
-st.write("Wechselnde Rechenaufgaben fuer Kubikmeter, Quadratmeter, Laufmeter, Preise und DB.")
+st.write("Ein Rechner für die Holzbranche, der Kubikmeter, Quadratmeter, Laufmeter, Preise und DB berechnen kann.")
 
 col1, col2 = st.columns(2)
 col1.metric("Aufgabe", st.session_state.task_number)
@@ -531,7 +588,7 @@ st.text_input(
 )
 
 if st.button(
-    f"Pruefen (Versuch {st.session_state.attempt}/4)",
+    "Prüfen",
     disabled=st.session_state.task_finished,
 ):
     handle_submission()
@@ -547,12 +604,15 @@ if st.session_state.feedback_text:
 if st.session_state.result_text:
     st.write(st.session_state.result_text)
 
+if st.session_state.hint_text:
+    st.info(f"Hinweis: {st.session_state.hint_text}")
+
 if st.session_state.solution_visible:
-    st.info(f"Richtige Loesung: {format_expected(st.session_state.task)} {st.session_state.task['unit']}")
+    st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
     st.code(st.session_state.task["solution"])
 
 if st.session_state.task_finished:
-    if st.button("Naechste Aufgabe"):
+    if st.button("Nächste Aufgabe"):
         st.session_state.task_number += 1
         st.session_state.pending_next_task = True
         st.rerun()
