@@ -610,20 +610,31 @@ def format_value_for_task(value, task):
 
 def fallback_hint(task, is_correct):
     if is_correct:
-        return "Guter Ansatz. Geh den Rechenweg kurz noch einmal im Kopf durch, damit die Umrechnung fachlich sauber sitzt."
-    return task["correction"]
+        return (
+            "Das passt fachlich. Geh den Rechenweg noch einmal kurz durch und prüfe, "
+            "welche Größe du zuerst umgerechnet hast und warum das Ergebnis in dieser Einheit stimmig ist."
+        )
+    return (
+        f"{task['correction']} Prüfe danach noch einmal, welche Eingangsgröße gegeben ist "
+        "und auf welche Zielgröße du tatsächlich kommen sollst."
+    )
 
 
 def generate_hint(task, answer_value, is_correct):
     prompt = (
-        "Du bist ein kurzer Lernassistent für die Holzbranche. "
-        "Gib auf Deutsch einen knappen Hinweis mit höchstens drei Sätzen. "
-        "Wenn die Antwort richtig ist, bestätige das knapp und nenne einen fachlichen Merksatz. "
-        "Wenn die Antwort falsch ist, gib einen hilfreichen Hinweis, aber nicht die komplette Musterlösung. "
+        "Du bist ein Lernassistent für die Holzbranche. "
+        "Gib auf Deutsch einen hilfreichen Hinweis mit drei bis fünf kurzen Sätzen. "
+        "Sprich klar, ruhig und fachlich. "
+        "Wenn die Antwort richtig ist, bestätige das knapp, benenne den richtigen Rechenansatz und gib einen kurzen Merksatz für ähnliche Aufgaben. "
+        "Wenn die Antwort falsch ist, erkläre knapp, an welcher Stelle der Denkweg wahrscheinlich abgebogen ist, "
+        "welche Zwischenrechnung als Nächstes sinnvoll wäre und worauf bei der Einheit geachtet werden muss. "
+        "Gib nicht die komplette Musterlösung Wort für Wort aus. "
+        f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
         f"Nutzerergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
-        f"Bewertung: {'richtig' if is_correct else 'falsch'}."
+        f"Bewertung: {'richtig' if is_correct else 'falsch'}. "
+        f"Lokaler Korrekturhinweis: {task['correction']}"
     )
 
     try:
@@ -642,7 +653,7 @@ def generate_hint(task, answer_value, is_correct):
         response = client.responses.create(
             model="gpt-5-nano",
             input=prompt,
-            max_output_tokens=90,
+            max_output_tokens=160,
         )
         text = (response.output_text or "").strip()
         return text if text else fallback_hint(task, is_correct)
