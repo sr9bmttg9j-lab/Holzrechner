@@ -62,6 +62,35 @@ UNIT_LABELS = {
     "EUR": "Euro",
 }
 
+ERROR_PATTERN_GUIDE = """
+1. Falsche Umrechnungslogik bei Dimensionen:
+- Verwechslung zwischen Laufmeter, Quadratmeter und Kubikmeter.
+- Richtungen wie m zu m2, m2 zu m3 oder der Rückweg werden falsch gedacht.
+
+2. Maße nicht vollständig berücksichtigt:
+- Breite, Höhe oder Dicke wird vergessen.
+- Klassiker sind lfm zu m2 ohne Breite oder m2 zu m3 ohne Dicke.
+
+3. Preisbasis falsch angewendet:
+- Ein Preis pro Quadratmeter, Laufmeter oder Kubikmeter wird mit der falschen Mengeneinheit verknüpft.
+
+4. Fehler bei Kommazahlen und Einheitensprüngen:
+- Millimeter, Zentimeter und Meter werden falsch umgesetzt.
+- Typische Muster sind Faktor 10, 100 oder 1000, zum Beispiel 0,18 statt 0,018.
+
+5. Verhältnis falsch interpretiert:
+- Es wird multipliziert, obwohl geteilt werden müsste, oder umgekehrt.
+
+6. Vorwärts- und Rückwärtsrechnung verwechselt:
+- Eine Richtung klappt, aber die Umkehrung wird falsch aufgebaut.
+
+7. Fehlende Struktur oder falsche Reihenfolge:
+- Umrechnung, Mengenrechnung und Preisrechnung werden vermischt.
+
+8. Kein Plausibilitätscheck:
+- Das Ergebnis wird nicht auf Größenordnung und fachliche Plausibilität geprüft.
+"""
+
 
 def q(value_str):
     return Decimal(value_str)
@@ -808,6 +837,23 @@ def format_value_for_step(value, step):
     return format_decimal(value, step["display_places"])
 
 
+def likely_error_focus(task):
+    focus = {
+        "volume_beam": "Achte besonders auf vollständige Maße, auf die Stückzahl und auf die Volumenlogik.",
+        "price_per_running_meter": "Achte besonders auf Querschnitt, Volumen von 1 Laufmeter und die richtige Preisbasis.",
+        "price_per_square_meter": "Achte besonders auf die Dicke der Platte und auf die Preisbasis pro Kubikmeter.",
+        "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
+        "total_price_from_volume": "Achte besonders darauf, ob Volumen und Preisbasis wirklich zur Zielgröße Gesamtpreis passen.",
+        "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter und auf den Querschnitt.",
+        "db_sale_price": "Achte besonders auf die Reihenfolge Gesamtvolumen, EK und danach VK mit DB.",
+        "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
+        "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
+        "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
+        "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
+    }
+    return focus.get(task["task_type"], "Achte besonders auf die passende Einheit, die Rechenrichtung und die Preisbasis.")
+
+
 def fallback_hint(task, is_correct):
     if is_correct:
         return (
@@ -830,14 +876,18 @@ def generate_hint(task, answer_value, is_correct):
         "welche Zwischenrechnung als Nächstes sinnvoll wäre und worauf bei der Einheit geachtet werden muss. "
         "Prüfe dabei ausdrücklich auf typische Fehler wie Zahlendreher, falschen Preiswert, falsche Einheit, "
         "mal statt geteilt, geteilt statt mal, falsche Reihenfolge im Rechenweg oder eine passende Formel mit der falschen Eingabezahl. "
-        "Wenn so ein Muster wahrscheinlich ist, benenne es ausdrücklich. "
+        "Wenn so ein Muster wahrscheinlich ist, benenne es ausdrücklich und ordne es einer passenden Fehlerkategorie zu. "
+        "Nutze dafür diese Fehlerkategorien aus der Ausbildungspraxis im Holzhandel: "
+        f"{ERROR_PATTERN_GUIDE} "
+        f"Aufgabenspezifischer Fokus: {likely_error_focus(task)} "
         "Gib nicht die komplette Musterlösung Wort für Wort aus. "
         f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
         f"Nutzerergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
         f"Bewertung: {'richtig' if is_correct else 'falsch'}. "
-        f"Lokaler Korrekturhinweis: {task['correction']}"
+        f"Lokaler Korrekturhinweis: {task['correction']} "
+        "Wenn die Antwort falsch ist, nenne zuerst kurz die wahrscheinlichste Fehlerquelle und erst danach den nächsten sinnvollen Rechenschritt."
     )
 
     try:
