@@ -650,40 +650,6 @@ def generate_hint(task, answer_value, is_correct):
         return fallback_hint(task, is_correct)
 
 
-def apply_custom_colors(background_color, text_color):
-    st.markdown(
-        f"""
-        <style>
-            .stApp,
-            [data-testid="stAppViewContainer"],
-            [data-testid="stHeader"] {{
-                background-color: {background_color};
-                color: {text_color};
-            }}
-
-            .stApp p,
-            .stApp label,
-            .stApp span,
-            .stApp li,
-            .stApp h1,
-            .stApp h2,
-            .stApp h3,
-            .stApp h4,
-            .stApp h5,
-            .stApp h6,
-            .stApp div {{
-                color: {text_color};
-            }}
-
-            [data-testid="stSidebar"] {{
-                background-color: {background_color};
-            }}
-        </style>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def choose_task(level, recent_task_types):
     candidates = TASKS_BY_LEVEL[level]
     if not recent_task_types:
@@ -777,13 +743,6 @@ def handle_submission():
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
 init_state()
-
-with st.sidebar:
-    st.subheader("Farben")
-    background_color = st.color_picker("Hintergrundfarbe", "#FFFFFF")
-    text_color = st.color_picker("Schriftfarbe", "#1F2937")
-
-apply_custom_colors(background_color, text_color)
 
 st.title("Holzrechner")
 st.write(
