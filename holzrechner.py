@@ -84,6 +84,17 @@ def unit_label(unit):
     return UNIT_LABELS.get(unit, unit)
 
 
+def make_guided_step(label, expected, unit, display_places, round_for_check, correction):
+    return {
+        "label": label,
+        "expected": expected,
+        "unit": unit,
+        "display_places": display_places,
+        "round_for_check": round_for_check,
+        "correction": correction,
+    }
+
+
 def current_level(task_number):
     if task_number >= 10:
         return 3
@@ -184,6 +195,24 @@ def task_volume_beam(level):
         "task_type": "volume_beam",
         "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Höhe zu berechnen und danach mit der Stückzahl zu multiplizieren.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Volumen pro Stück",
+                (length_m * width_m * height_m).normalize(),
+                "m3",
+                3,
+                False,
+                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
+            ),
+            make_guided_step(
+                "Gesamtvolumen",
+                result.normalize(),
+                "m3",
+                3,
+                False,
+                "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
+            ),
+        ],
     }
 
 
@@ -221,6 +250,24 @@ def task_price_per_running_meter(level):
         "task_type": "price_per_running_meter",
         "correction": "Prüfe, ob du erst den Querschnitt in Quadratmetern gebildet und daraus das Volumen von 1 Laufmeter bestimmt hast.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Querschnitt",
+                cross_section.normalize(),
+                "m2",
+                4,
+                False,
+                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+            ),
+            make_guided_step(
+                "Preis je Laufmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere danach den Querschnitt mit dem Preis pro Kubikmeter.",
+            ),
+        ],
     }
 
 
@@ -254,6 +301,24 @@ def task_price_per_square_meter(level):
         "task_type": "price_per_square_meter",
         "correction": "Hier brauchst du nur die Dicke der Platte. Ein Quadratmeter mal Dicke ergibt das Volumen, und dieses Volumen wird mit dem Kubikmeterpreis multipliziert.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Volumen von 1 Quadratmeter",
+                thickness_m.normalize(),
+                "m3",
+                3,
+                False,
+                "Ein Quadratmeter Platte mal Dicke ergibt das Volumen.",
+            ),
+            make_guided_step(
+                "Preis je Quadratmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere dieses Volumen mit dem Preis pro Kubikmeter.",
+            ),
+        ],
     }
 
 
@@ -292,6 +357,24 @@ def task_square_meters_from_volume(level):
         "task_type": "square_meters_from_volume",
         "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Dicke in Meter",
+                thickness_m.normalize(),
+                "m",
+                3,
+                False,
+                "Wandle die Dicke gedanklich sauber in Meter um.",
+            ),
+            make_guided_step(
+                "Quadratmeter",
+                result.normalize(),
+                "m2",
+                0,
+                False,
+                "Teile das Volumen durch die Dicke.",
+            ),
+        ],
     }
 
 
@@ -324,6 +407,16 @@ def task_total_price_from_volume(level):
         "task_type": "total_price_from_volume",
         "correction": "Für den Gesamtpreis reicht Volumen x Preis pro Kubikmeter.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Gesamtpreis",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Für den Gesamtpreis brauchst du nur Volumen x Preis pro Kubikmeter.",
+            ),
+        ],
     }
 
 
@@ -365,6 +458,24 @@ def task_running_meters_from_volume(level):
         "task_type": "running_meters_from_volume",
         "correction": "Bilde zuerst den Querschnitt in Quadratmetern und teile dann das Gesamtvolumen durch diesen Querschnitt.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Querschnitt",
+                cross_section.normalize(),
+                "m2",
+                4,
+                False,
+                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+            ),
+            make_guided_step(
+                "Laufmeter",
+                running_meters.normalize(),
+                "lfm",
+                0,
+                False,
+                "Teile danach das Gesamtvolumen durch den Querschnitt.",
+            ),
+        ],
     }
 
 
@@ -413,6 +524,32 @@ def task_db_sale_price(level):
         "task_type": "db_sale_price",
         "correction": "Rechne zuerst das Gesamtvolumen und daraus den gesamten EK. Für den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0,70 bei 30 % DB.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Gesamtvolumen",
+                total_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
+            ),
+            make_guided_step(
+                "Gesamter EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere das Gesamtvolumen mit dem EK pro Kubikmeter.",
+            ),
+            make_guided_step(
+                "Gesamter VK",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den gesamten EK durch 1 minus DB-Satz.",
+            ),
+        ],
     }
 
 
@@ -445,6 +582,24 @@ def task_volume_from_running_meters(level):
         "task_type": "volume_from_running_meters",
         "correction": "Bilde zuerst den Querschnitt in Quadratmetern und multipliziere diesen dann mit den Laufmetern.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Querschnitt",
+                (width_m * height_m).normalize(),
+                "m2",
+                4,
+                False,
+                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+            ),
+            make_guided_step(
+                "Gesamtvolumen",
+                result.normalize(),
+                "m3",
+                3,
+                False,
+                "Multipliziere danach den Querschnitt mit den Laufmetern.",
+            ),
+        ],
     }
 
 
@@ -476,6 +631,16 @@ def task_volume_from_total_price(level):
         "task_type": "volume_from_total_price",
         "correction": "Teile den Gesamtpreis durch den Preis pro Kubikmeter.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Kubikmeter",
+                total_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Teile den Gesamtpreis durch den Preis pro Kubikmeter.",
+            ),
+        ],
     }
 
 
@@ -509,6 +674,24 @@ def task_m3_price_from_running_meter(level):
         "task_type": "m3_price_from_running_meter",
         "correction": "Teile den Laufmeterpreis durch den Querschnitt in Quadratmetern, um auf den Kubikmeterpreis zu kommen.",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Querschnitt",
+                cross_section.normalize(),
+                "m2",
+                4,
+                False,
+                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+            ),
+            make_guided_step(
+                "Preis pro Kubikmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den Laufmeterpreis durch den Querschnitt.",
+            ),
+        ],
     }
 
 
@@ -548,6 +731,24 @@ def task_ek_from_vk_db(level):
         "task_type": "ek_from_vk_db",
         "correction": "Wenn der VK und der DB bekannt sind, rechnest du den EK mit VK x (1 - DB-Satz).",
         "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "DB-Faktor",
+                divisor.normalize(),
+                "Faktor",
+                2,
+                False,
+                "Ziehe den DB-Satz von 1 ab, also zum Beispiel 0,70 bei 30 % DB.",
+            ),
+            make_guided_step(
+                "Gesamter EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den VK mit dem DB-Faktor.",
+            ),
+        ],
     }
 
 
@@ -601,6 +802,10 @@ def format_expected(task):
 
 def format_value_for_task(value, task):
     return format_decimal(value, task["display_places"])
+
+
+def format_value_for_step(value, step):
+    return format_decimal(value, step["display_places"])
 
 
 def fallback_hint(task, is_correct):
@@ -689,9 +894,14 @@ def create_next_task():
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
+    st.session_state.guided_visible = False
+    st.session_state.guided_summary = ""
+    st.session_state.guided_step_feedback = []
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
+    for index, _step in enumerate(task.get("guided_steps", []), start=1):
+        st.session_state[f"guided_input_{index}"] = ""
 
 
 def init_state():
@@ -729,6 +939,9 @@ def handle_submission():
         st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
         st.session_state.solution_visible = True
         st.session_state.task_finished = True
+        st.session_state.guided_visible = False
+        st.session_state.guided_summary = ""
+        st.session_state.guided_step_feedback = []
         return
 
     if st.session_state.attempt < 4:
@@ -736,6 +949,9 @@ def handle_submission():
         rest = 4 - st.session_state.attempt
         st.session_state.feedback_text = ""
         st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Du hast noch {rest} Versuch(e)."
+        st.session_state.guided_visible = True
+        st.session_state.guided_summary = ""
+        st.session_state.guided_step_feedback = []
         st.session_state.attempt += 1
         return
 
@@ -744,6 +960,75 @@ def handle_submission():
     st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Die Aufgabe wird jetzt aufgelöst."
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
+    st.session_state.guided_visible = False
+
+
+def handle_guided_submission():
+    guided_steps = st.session_state.task.get("guided_steps", [])
+    feedback = []
+    all_correct = True
+    has_error = False
+
+    for index, step in enumerate(guided_steps, start=1):
+        raw_value = st.session_state.get(f"guided_input_{index}", "").strip()
+
+        if not raw_value:
+            all_correct = False
+            feedback.append(
+                {
+                    "kind": "warning",
+                    "text": f"{step['label']}: Bitte gib hier einen Rechenweg oder ein Ergebnis ein.",
+                }
+            )
+            continue
+
+        try:
+            answer_value = evaluate_expression(raw_value)
+        except (InvalidOperation, SyntaxError, ZeroDivisionError):
+            all_correct = False
+            has_error = True
+            feedback.append(
+                {
+                    "kind": "error",
+                    "text": f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :",
+                }
+            )
+            continue
+
+        if values_match(answer_value, step["expected"], step["round_for_check"]):
+            feedback.append(
+                {
+                    "kind": "success",
+                    "text": f"{step['label']}: passt. Ergebnis {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}.",
+                }
+            )
+            continue
+
+        all_correct = False
+        feedback.append(
+            {
+                "kind": "warning",
+                "text": (
+                    f"{step['label']}: noch nicht richtig. {step['correction']} "
+                    f"Richtig wären {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}."
+                ),
+            }
+        )
+
+    st.session_state.guided_step_feedback = feedback
+
+    if all_correct:
+        st.session_state.feedback_kind = "success"
+        st.session_state.feedback_text = ""
+        st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
+        st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
+        st.session_state.solution_visible = True
+        st.session_state.task_finished = True
+        return
+
+    st.session_state.feedback_kind = "error" if has_error else "warning"
+    st.session_state.feedback_text = ""
+    st.session_state.guided_summary = "Geh die Zwischenschritte noch einmal in Ruhe durch. Du kannst die Felder direkt hier weiterverwenden."
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -829,6 +1114,36 @@ if st.session_state.hint_text:
         st.success(f"Hinweis: {st.session_state.hint_text}")
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
+
+if st.session_state.guided_visible and not st.session_state.task_finished:
+    st.subheader("Geführte Zwischenschritte")
+    st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
+
+    with st.form("guided_steps_form", clear_on_submit=False):
+        for index, step in enumerate(st.session_state.task.get("guided_steps", []), start=1):
+            st.text_input(
+                f"{step['label']} in {unit_label(step['unit'])}",
+                key=f"guided_input_{index}",
+                placeholder="Zum Beispiel 0,96 * 350",
+            )
+        guided_submitted = st.form_submit_button("Zwischenschritte prüfen", type="primary")
+
+    if guided_submitted:
+        handle_guided_submission()
+
+    if st.session_state.guided_summary:
+        if st.session_state.feedback_kind == "success":
+            st.success(st.session_state.guided_summary)
+        else:
+            st.warning(st.session_state.guided_summary)
+
+    for item in st.session_state.guided_step_feedback:
+        if item["kind"] == "success":
+            st.success(item["text"])
+        elif item["kind"] == "error":
+            st.error(item["text"])
+        else:
+            st.warning(item["text"])
 
 if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
