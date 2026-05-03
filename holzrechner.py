@@ -278,7 +278,7 @@ def task_price_per_running_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "price_per_running_meter",
-        "correction": "Prüfe, ob du erst den Querschnitt in Quadratmetern gebildet und daraus das Volumen von 1 Laufmeter bestimmt hast.",
+        "correction": "Prüfe, ob du zuerst Breite x Höhe in Meter angesetzt und daraus das Volumen von 1 Laufmeter bestimmt hast.",
         "solution": solution,
         "guided_steps": [
             make_guided_step(
@@ -287,7 +287,7 @@ def task_price_per_running_meter(level):
                 "m2",
                 4,
                 False,
-                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+                "Rechne zuerst Breite x Höhe mit Meterwerten.",
             ),
             make_guided_step(
                 "Preis je Laufmeter",
@@ -479,7 +479,7 @@ def task_running_meters_from_volume(level):
         "display_places": 0,
         "round_for_check": False,
         "task_type": "running_meters_from_volume",
-        "correction": "Bilde zuerst den Querschnitt in Quadratmetern und teile dann das Gesamtvolumen durch diesen Querschnitt.",
+        "correction": "Rechne zuerst Breite x Höhe mit Meterwerten und teile dann das Gesamtvolumen durch dieses Ergebnis.",
         "solution": solution,
         "guided_steps": [
             make_guided_step(
@@ -488,7 +488,7 @@ def task_running_meters_from_volume(level):
                 "m2",
                 4,
                 False,
-                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+                "Rechne zuerst Breite x Höhe mit Meterwerten.",
                 "Formel: Breite x Höhe",
             ),
             make_guided_step(
@@ -608,7 +608,7 @@ def task_volume_from_running_meters(level):
         "display_places": 3,
         "round_for_check": False,
         "task_type": "volume_from_running_meters",
-        "correction": "Bilde zuerst den Querschnitt in Quadratmetern und multipliziere diesen dann mit den Laufmetern.",
+        "correction": "Rechne die Laufmeter direkt mit Breite und Höhe in Meter zu Kubikmeter um.",
         "solution": solution,
         "guided_steps": [
             make_guided_step(
@@ -693,7 +693,7 @@ def task_m3_price_from_running_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "m3_price_from_running_meter",
-        "correction": "Teile den Laufmeterpreis durch den Querschnitt in Quadratmetern, um auf den Kubikmeterpreis zu kommen.",
+        "correction": "Teile den Laufmeterpreis durch Breite x Höhe in Meter, um auf den Kubikmeterpreis zu kommen.",
         "solution": solution,
         "guided_steps": [
             make_guided_step(
@@ -702,7 +702,7 @@ def task_m3_price_from_running_meter(level):
                 "m2",
                 4,
                 False,
-                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+                "Rechne zuerst Breite x Höhe mit Meterwerten.",
                 "Formel: Breite x Höhe",
             ),
             make_guided_step(
