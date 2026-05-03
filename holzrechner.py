@@ -1003,26 +1003,52 @@ def generate_hint(task, answer_value, is_correct):
         return fallback_hint(task, is_correct)
 
 
-def fallback_solution_explanation(task):
+def solution_lines(task):
+    return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
+
+
+def parse_step_selection(text, max_steps):
+    numbers = []
+    for part in text.replace(";", ",").split(","):
+        stripped = part.strip()
+        if not stripped:
+            continue
+        if not stripped.isdigit():
+            raise ValueError
+        value = int(stripped)
+        if value < 1 or value > max_steps:
+            raise ValueError
+        if value not in numbers:
+            numbers.append(value)
+    if not numbers:
+        raise ValueError
+    return numbers
+
+
+def fallback_step_explanation(task, selected_steps):
+    lines = solution_lines(task)
+    selected_lines = [lines[index - 1] for index in selected_steps]
+    joined = " ".join(selected_lines)
     return (
-        f"Die Aufgabe wird hier Schritt für Schritt über die passende Einheit gelöst. "
-        f"Starte mit der gegebenen Größe, rechne sauber in {unit_label(task['unit'])} um "
-        f"und achte darauf, dass jede Zwischenrechnung die Einheit mitträgt. "
-        f"Der Muster-Rechenweg oben zeigt genau diese Reihenfolge."
+        f"Gemeint sind hier die Schritte {', '.join(str(step) for step in selected_steps)}. "
+        f"Schau besonders auf diese Rechnung: {joined} "
+        f"Dort wird die gegebene Größe sauber in {unit_label(task['unit'])} weitergeführt."
     )
 
 
-def generate_solution_explanation(task):
+def generate_step_explanation(task, selected_steps):
+    lines = solution_lines(task)
+    selected_lines = "\n".join(lines[index - 1] for index in selected_steps)
     prompt = (
         "Du bist ein Lernassistent für die Holzbranche. "
-        "Erkläre auf Deutsch den folgenden Muster-Rechenweg in drei bis fünf kurzen Sätzen. "
+        "Erkläre auf Deutsch nur die ausgewählten Schritte eines Muster-Rechenwegs. "
         "Sprich ruhig, konkret und fachlich. "
-        "Erkläre ausdrücklich, welche Einheit in jedem Schritt gedacht wird und warum der Rechenweg logisch zur Zielgröße führt. "
-        "Gehe sichtbar auf die konkreten Zahlen aus dieser Aufgabe ein und nenne sie auch in der Erklärung. "
-        "Gib keine neue alternative Lösung, sondern erläutere genau den vorhandenen Muster-Rechenweg. "
+        "Gehe ausdrücklich auf die konkreten Zahlen dieser Schritte ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
+        "Erkläre nur die ausgewählten Schritte und keine anderen. "
         f"Aufgabentext: {task['prompt']} "
         f"Zielgröße: {unit_label(task['unit'])}. "
-        f"Muster-Rechenweg: {task['solution']}"
+        f"Ausgewählte Schritt-Nummern: {', '.join(str(step) for step in selected_steps)}. "
+        f"Ausgewählte Schritte:\n{selected_lines}"
     )
 
     try:
@@ -1035,18 +1061,18 @@ def generate_solution_explanation(task):
             api_key = st.secrets["openai_api_key"]
 
         if not api_key:
-            return fallback_solution_explanation(task)
+            return fallback_step_explanation(task, selected_steps)
 
         client = OpenAI(api_key=api_key)
         response = client.responses.create(
             model="gpt-5-mini",
             input=prompt,
-            max_output_tokens=180,
+            max_output_tokens=220,
         )
         text = (response.output_text or "").strip()
-        return text if text else fallback_solution_explanation(task)
+        return text if text else fallback_step_explanation(task, selected_steps)
     except Exception:
-        return fallback_solution_explanation(task)
+        return fallback_step_explanation(task, selected_steps)
 
 
 def choose_task(level, recent_task_types):
@@ -1086,7 +1112,9 @@ def create_next_task():
     st.session_state.guided_step_index = 0
     st.session_state.guided_step_attempts = {}
     st.session_state.guided_completed = []
-    st.session_state.solution_explanation = ""
+    st.session_state.explanation_request = ""
+    st.session_state.explanation_text = ""
+    st.session_state.explanation_error = ""
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
@@ -1129,7 +1157,6 @@ def handle_submission():
         st.session_state.feedback_text = ""
         st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
         st.session_state.solution_visible = True
-        st.session_state.solution_explanation = generate_solution_explanation(task)
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
@@ -1150,7 +1177,6 @@ def handle_submission():
     st.session_state.feedback_text = ""
     st.session_state.hint_text = f"{task['correction']} Die Aufgabe wird jetzt aufgelöst."
     st.session_state.solution_visible = True
-    st.session_state.solution_explanation = generate_solution_explanation(task)
     st.session_state.task_finished = True
     st.session_state.guided_visible = False
 
@@ -1194,7 +1220,6 @@ def handle_guided_submission():
             st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
             st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
             st.session_state.solution_visible = True
-            st.session_state.solution_explanation = generate_solution_explanation(task)
             st.session_state.task_finished = True
             return
 
@@ -1212,6 +1237,19 @@ def handle_guided_submission():
     st.session_state.feedback_text = ""
     st.session_state.guided_summary = progressive_step_hint(task, step, answer_value, step_attempt)
     st.session_state.guided_step_feedback = []
+
+
+def handle_explanation_request():
+    request_text = st.session_state.explanation_request.strip()
+    try:
+        selected_steps = parse_step_selection(request_text, len(solution_lines(st.session_state.task)))
+    except ValueError:
+        st.session_state.explanation_error = "Bitte gib gültige Schritt-Nummern ein, zum Beispiel 1 oder 1,3."
+        st.session_state.explanation_text = ""
+        return
+
+    st.session_state.explanation_error = ""
+    st.session_state.explanation_text = generate_step_explanation(st.session_state.task, selected_steps)
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -1261,9 +1299,7 @@ st.write(
     "also zum Beispiel mit mal und geteilt."
 )
 
-st.metric("Aufgabe", st.session_state.task_number)
-
-st.subheader("Aufgabe")
+st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
 st.caption("Bitte gib deinen Rechenweg als Formel ein.")
 
@@ -1330,8 +1366,22 @@ if st.session_state.guided_visible and not st.session_state.task_finished:
 if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
     st.code(st.session_state.task["solution"])
-    if st.session_state.solution_explanation:
-        st.info(f"Erklärung: {st.session_state.solution_explanation}")
+    with st.form("solution_explanation_form", clear_on_submit=False):
+        st.text_input(
+            "Welche Schritt-Nummern möchtest du erklärt haben?",
+            key="explanation_request",
+            placeholder="Zum Beispiel 1 oder 1,3",
+        )
+        explanation_submitted = st.form_submit_button("Schritte erklären", type="primary")
+
+    if explanation_submitted:
+        handle_explanation_request()
+
+    if st.session_state.explanation_error:
+        st.warning(st.session_state.explanation_error)
+
+    if st.session_state.explanation_text:
+        st.info(f"Erklärung: {st.session_state.explanation_text}")
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
