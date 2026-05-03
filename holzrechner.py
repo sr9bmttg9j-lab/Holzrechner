@@ -1790,8 +1790,9 @@ def handle_guided_submission():
         if current_index == len(guided_steps) - 1:
             st.session_state.feedback_kind = "success"
             st.session_state.feedback_text = ""
-            st.session_state.hint_text = "Sehr gut gerechnet. Auf zur nächsten Aufgabe."
-            st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
+            st.session_state.hint_text = ""
+            st.session_state.guided_summary = "Alle Zwischenschritte passen. Schau dir den Rechenweg gerne noch einmal in Ruhe an."
+            st.session_state.guided_visible = True
             st.session_state.solution_visible = False
             st.session_state.task_finished = True
             st.session_state.explanation_text = ""
@@ -1911,26 +1912,29 @@ if st.session_state.hint_text and not st.session_state.solution_visible:
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
 
-if st.session_state.guided_visible and not st.session_state.task_finished:
+if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
     st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
 
     for completed_text in st.session_state.guided_completed:
         st.success(completed_text)
 
+    guided_steps = st.session_state.task.get("guided_steps", [])
     current_index = st.session_state.guided_step_index
-    current_step = st.session_state.task.get("guided_steps", [])[current_index]
 
-    with st.form("guided_steps_form", clear_on_submit=False):
-        st.text_input(
-            current_step["label"],
-            key=f"guided_input_{current_index + 1}",
-            placeholder="Zum Beispiel 0,96 * 350",
-        )
-        guided_submitted = st.form_submit_button("Schritt prüfen", type="primary")
+    if not st.session_state.task_finished and current_index < len(guided_steps):
+        current_step = guided_steps[current_index]
 
-    if guided_submitted:
-        handle_guided_submission()
+        with st.form("guided_steps_form", clear_on_submit=False):
+            st.text_input(
+                current_step["label"],
+                key=f"guided_input_{current_index + 1}",
+                placeholder="Zum Beispiel 0,96 * 350",
+            )
+            guided_submitted = st.form_submit_button("Schritt prüfen", type="primary")
+
+        if guided_submitted:
+            handle_guided_submission()
 
     if st.session_state.guided_summary:
         if st.session_state.feedback_kind == "success":
