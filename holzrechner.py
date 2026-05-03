@@ -1,8 +1,11 @@
 import ast
+import json
 import os
 import random
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
+from urllib import error as urllib_error
+from urllib import request as urllib_request
 
 import streamlit as st
 from dotenv import load_dotenv
@@ -192,6 +195,24 @@ def get_openai_api_key():
     return None
 
 
+def get_optional_openai_header(name):
+    try:
+        if name in st.secrets and st.secrets[name]:
+            value = str(st.secrets[name]).strip()
+            if value:
+                return value
+    except Exception:
+        pass
+
+    value = os.getenv(name)
+    if value:
+        value = value.strip()
+        if value:
+            return value
+
+    return None
+
+
 def sanitize_backend_error(text):
     if not text:
         return ""
@@ -202,7 +223,7 @@ def sanitize_backend_error(text):
 
 
 def backend_status_text(backend_name):
-    if backend_name == "api":
+    if backend_name in ("api", "api_rest"):
         return "OpenAI-Antwort aktiv"
     if backend_name == "fallback_no_key":
         return "Lokaler Fallback: Kein OpenAI-Key gefunden"
@@ -211,6 +232,63 @@ def backend_status_text(backend_name):
     if backend_name == "fallback_exception":
         return "Lokaler Fallback: OpenAI-Anfrage ist fehlgeschlagen"
     return ""
+
+
+def extract_responses_text(payload):
+    if payload.get("output_text"):
+        return str(payload["output_text"]).strip()
+
+    collected = []
+    for item in payload.get("output", []):
+        for content in item.get("content", []):
+            text = content.get("text")
+            if content.get("type") in ("output_text", "text") and text:
+                collected.append(str(text))
+
+    return "\n".join(collected).strip()
+
+
+def call_openai_responses_api(prompt, max_output_tokens):
+    api_key = get_openai_api_key()
+    if not api_key:
+        raise ValueError("OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung.")
+
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    organization = get_optional_openai_header("OPENAI_ORGANIZATION")
+    project = get_optional_openai_header("OPENAI_PROJECT")
+    if organization:
+        headers["OpenAI-Organization"] = organization
+    if project:
+        headers["OpenAI-Project"] = project
+
+    payload = {
+        "model": "gpt-5-mini",
+        "input": prompt,
+        "max_output_tokens": max_output_tokens,
+    }
+
+    request = urllib_request.Request(
+        "https://api.openai.com/v1/responses",
+        data=json.dumps(payload).encode("utf-8"),
+        headers=headers,
+        method="POST",
+    )
+
+    try:
+        with urllib_request.urlopen(request, timeout=45) as response:
+            body = response.read().decode("utf-8")
+    except urllib_error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        raise RuntimeError(f"HTTP {exc.code}: {error_body}") from exc
+    except urllib_error.URLError as exc:
+        raise RuntimeError(f"Netzwerkfehler: {exc.reason}") from exc
+
+    response_data = json.loads(body)
+    return extract_responses_text(response_data)
 
 
 def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
@@ -1345,23 +1423,14 @@ def generate_hint(task, answer_value, is_correct):
     )
 
     try:
-        from openai import OpenAI
-
-        api_key = get_openai_api_key()
-        if not api_key:
+        if not get_openai_api_key():
             st.session_state.hint_backend = "fallback_no_key"
             st.session_state.hint_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_hint(task, is_correct)
 
-        client = OpenAI(api_key=api_key)
-        response = client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
-            max_output_tokens=160,
-        )
-        text = (response.output_text or "").strip()
+        text = call_openai_responses_api(prompt, 160)
         if text:
-            st.session_state.hint_backend = "api"
+            st.session_state.hint_backend = "api_rest"
             st.session_state.hint_backend_error = ""
             return text
         st.session_state.hint_backend = "fallback_empty_response"
@@ -1473,23 +1542,14 @@ def generate_step_explanation(task, question_text):
     )
 
     try:
-        from openai import OpenAI
-
-        api_key = get_openai_api_key()
-        if not api_key:
+        if not get_openai_api_key():
             st.session_state.explanation_backend = "fallback_no_key"
             st.session_state.explanation_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_step_explanation(task, question_text)
 
-        client = OpenAI(api_key=api_key)
-        response = client.responses.create(
-            model="gpt-5-mini",
-            input=prompt,
-            max_output_tokens=320,
-        )
-        text = (response.output_text or "").strip()
+        text = call_openai_responses_api(prompt, 320)
         if text:
-            st.session_state.explanation_backend = "api"
+            st.session_state.explanation_backend = "api_rest"
             st.session_state.explanation_backend_error = ""
             return text
         st.session_state.explanation_backend = "fallback_empty_response"
@@ -1815,7 +1875,7 @@ if st.session_state.solution_visible:
         backend_text = backend_status_text(st.session_state.explanation_backend)
         backend_error = sanitize_backend_error(st.session_state.explanation_backend_error)
         if backend_text:
-            if st.session_state.explanation_backend == "api":
+            if st.session_state.explanation_backend in ("api", "api_rest"):
                 st.caption(f"Erklärungsquelle: {backend_text}")
             else:
                 details = f" - {backend_error}" if backend_error else ""
