@@ -424,6 +424,14 @@ def structural_package_count(width_m, height_m):
     return 20
 
 
+def db_percent_for_level(level):
+    if level == 1:
+        return Decimal(random.choice([23, 25, 30]))
+    if level == 2:
+        return Decimal(random.choice([23, 27, 30, 33]))
+    return Decimal(random.choice([23, 28, 31, 34, 37]))
+
+
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
@@ -899,12 +907,7 @@ def task_db_sale_price(level):
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
-    if level == 1:
-        db_percent = Decimal(random.choice([25, 30, 35]))
-    elif level == 2:
-        db_percent = Decimal(random.choice([27, 30, 33, 35]))
-    else:
-        db_percent = Decimal(random.choice([28, 31, 34, 37]))
+    db_percent = db_percent_for_level(level)
 
     total_volume = length_m * width_m * height_m * Decimal(count)
     total_ek = total_volume * ek_price_m3
@@ -1119,7 +1122,7 @@ def task_ek_from_vk_db(level):
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
-    db_percent = Decimal(random.choice([25, 30, 35]) if level == 1 else random.choice([27, 30, 33, 35]) if level == 2 else random.choice([28, 31, 34, 37]))
+    db_percent = db_percent_for_level(level)
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
 
     total_volume = length_m * width_m * height_m * Decimal(count)
@@ -1180,7 +1183,9 @@ def task_package_price(level):
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     package_count = structural_package_count(width_m, height_m)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
-    result = length_m * width_m * height_m * Decimal(package_count) * m3_price
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(package_count)
+    result = total_volume * m3_price
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -1190,12 +1195,12 @@ def task_package_price(level):
         ]
     )
 
-    total_volume = length_m * width_m * height_m * Decimal(package_count)
     solution = (
         "Rechenweg:\n"
-        "1. Formel: Paketpreis = Länge x Breite x Höhe x Stückzahl x Euro pro Kubikmeter\n"
-        f"2. Paketpreis = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {package_count} Stück x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(result, 2)} Euro\n"
-        f"3. Kontrollschritt: Das Paket hat insgesamt {format_decimal(total_volume, 3)} Kubikmeter."
+        "1. Formel: Volumen pro Stück = Länge x Breite x Höhe\n"
+        f"2. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter\n"
+        f"3. Paketvolumen = {format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = {format_decimal(total_volume, 3)} Kubikmeter\n"
+        f"4. Paketpreis = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(result, 2)} Euro"
     )
 
     return {
@@ -1205,17 +1210,26 @@ def task_package_price(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "package_price",
-        "correction": "Rechne zuerst das gesamte Paketvolumen aus Länge x Breite x Höhe x Stückzahl und multipliziere danach mit dem Preis pro Kubikmeter.",
+        "correction": "Starte mit dem Volumen eines einzelnen Stücks. Danach baust du daraus das Paketvolumen auf und erst anschließend den Preis.",
         "solution": solution,
         "guided_steps": [
+            make_guided_step(
+                "Volumen pro Stück",
+                piece_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Beginne mit dem Volumen eines einzelnen Stücks.",
+                "Länge, Breite und Höhe als Meterwerte einsetzen",
+            ),
             make_guided_step(
                 "Paketvolumen",
                 total_volume.normalize(),
                 "m3",
                 3,
                 False,
-                "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
-                "Formel: Länge x Breite x Höhe x Stückzahl",
+                "Nutze das Volumen pro Stück und die Stückzahl im Paket.",
+                "Volumen pro Stück mit der Paketstückzahl weiterrechnen",
             ),
             make_guided_step(
                 "Paketpreis",
@@ -1224,7 +1238,89 @@ def task_package_price(level):
                 2,
                 True,
                 "Multipliziere das Paketvolumen mit dem Preis pro Kubikmeter.",
-                "Formel: Paketvolumen x Euro pro Kubikmeter",
+                "Paketvolumen mit dem Kubikmeterpreis weiterrechnen",
+            ),
+        ],
+    }
+
+
+def task_package_db_sale_price(level):
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    package_count = structural_package_count(width_m, height_m)
+    ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    db_percent = db_percent_for_level(level)
+
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(package_count)
+    total_ek = total_volume * ek_price_m3
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    result = total_ek / divisor
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+
+    prompt = random.choice(
+        [
+            f"{request_intro()}: ein volles Paket {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Im Paket liegen {package_count} Stück, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Paket-VK?",
+            f"Für ein Angebot soll ein komplettes Paket {product['name']} kalkuliert werden. Das Maß beträgt {format_m(length_m)} m x {width_text} x {height_text}, im Paket liegen {package_count} Stück. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Verkaufspreis für das Paket?",
+        ]
+    )
+
+    solution = (
+        "Rechenweg:\n"
+        "1. Formel: Volumen pro Stück = Länge x Breite x Höhe\n"
+        f"2. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter\n"
+        f"3. Paketvolumen = {format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = {format_decimal(total_volume, 3)} Kubikmeter\n"
+        f"4. Paket-EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = {format_decimal(total_ek, 2)} Euro\n"
+        f"5. Paket-VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = {format_decimal(result, 2)} Euro"
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "package_db_sale_price",
+        "correction": "Arbeite dich schrittweise vor: erst Einzelvolumen, dann Paketvolumen, danach Paket-EK und erst zuletzt den DB berücksichtigen.",
+        "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Volumen pro Stück",
+                piece_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Beginne mit dem Volumen eines einzelnen Stücks.",
+                "Länge, Breite und Höhe als Meterwerte einsetzen",
+            ),
+            make_guided_step(
+                "Paketvolumen",
+                total_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Nutze das Volumen pro Stück und die Stückzahl im Paket.",
+                "Volumen pro Stück mit der Paketstückzahl weiterrechnen",
+            ),
+            make_guided_step(
+                "Paket-EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Rechne das Paketvolumen mit dem EK pro Kubikmeter weiter.",
+                "Paketvolumen mit dem Kubikmeter-EK weiterrechnen",
+            ),
+            make_guided_step(
+                "Paket-VK",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Berücksichtige zum Schluss den gewünschten DB.",
+                "Paket-EK durch den verbleibenden Kostenanteil teilen",
             ),
         ],
     }
@@ -1246,6 +1342,7 @@ TASK_GENERATORS = [
     task_db_sale_price,
     task_ek_from_vk_db,
     task_package_price,
+    task_package_db_sale_price,
 ]
 
 TASKS_BY_LEVEL = {
@@ -1261,6 +1358,7 @@ TASKS_BY_LEVEL = {
         task_price_per_square_meter,
         task_db_sale_price,
         task_package_price,
+        task_package_db_sale_price,
     ],
     2: [
         task_volume_beam,
@@ -1277,6 +1375,7 @@ TASKS_BY_LEVEL = {
         task_db_sale_price,
         task_ek_from_vk_db,
         task_package_price,
+        task_package_db_sale_price,
     ],
     3: TASK_GENERATORS,
 }
@@ -1406,10 +1505,12 @@ def likely_error_focus(task):
         "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
         "running_meters_from_square_meters": "Achte besonders auf die Richtung Quadratmeter zu Laufmeter über die Breite der Hobelware.",
         "db_sale_price": "Achte besonders auf die Reihenfolge Gesamtvolumen, EK und danach VK mit DB.",
+        "package_db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen, Paket-EK und VK mit DB.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
+        "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
     }
     return focus.get(task["task_type"], "Achte besonders auf die passende Einheit, die Rechenrichtung und die Preisbasis.")
 
@@ -1448,17 +1549,16 @@ def fallback_hint(task, is_correct):
 
 def generate_hint(task, answer_value, is_correct):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
-    formula_line = solution_lines(task)[0] if solution_lines(task) else ""
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Antworte auf Deutsch kurz und konkret in maximal 3 Sätzen. "
         "Wenn die Antwort richtig ist, bestätige das knapp. "
         "Wenn die Antwort falsch ist, nenne kurz den wahrscheinlichsten Fehler und genau den nächsten Rechenschritt. "
+        "Nenne beim ersten Hinweis keine vollständige Formel und rechne die Lösung nicht aus. "
         "Keine Floskeln, keine lange Musterlösung. "
         f"Aufgabe: {task['prompt']} "
         f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
-        f"Formel: {formula_line} "
         f"Typische Fehler: {local_diagnostic or likely_error_focus(task)} "
         f"Zusatzhinweis: {task['correction']}"
     )
@@ -1638,8 +1738,13 @@ def generate_step_explanation(task, question_text):
         return fallback_step_explanation(task, question_text)
 
 
-def choose_task(level, recent_task_types):
+def choose_task(level, recent_task_types, task_number):
     candidates = TASKS_BY_LEVEL[level]
+    if 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
+        db_candidates = [task_func for task_func in candidates if "db" in task_func.__name__]
+        if db_candidates:
+            return random.choice(db_candidates)
+
     if not recent_task_types:
         return random.choice(candidates)
 
@@ -1657,7 +1762,7 @@ def choose_task(level, recent_task_types):
 def create_next_task():
     task_number = st.session_state.task_number
     level = pick_level(task_number)
-    task = choose_task(level, st.session_state.recent_task_types)(level)
+    task = choose_task(level, st.session_state.recent_task_types, task_number)(level)
     st.session_state.task = task
     st.session_state.level = level
     st.session_state.attempt = 1
