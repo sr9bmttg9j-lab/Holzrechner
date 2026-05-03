@@ -137,6 +137,14 @@ Mengen- und Volumenumrechnung:
 - Laufmeter zu Quadratmeter: Laufmeter x Breite
 """
 
+REQUEST_INTROS = [
+    "Ein Kunde fragt folgende Ware an",
+    "Eine Kundin interessiert sich für folgende Ware",
+    "Es geht eine Anfrage über folgendes Material ein",
+    "Für ein Angebot liegt folgende Ware vor",
+    "Im Tagesgeschäft kommt folgende Anfrage rein",
+]
+
 
 def q(value_str):
     return Decimal(value_str)
@@ -248,19 +256,39 @@ def panel_format_text(product):
     return random.choice(formats) if formats else ""
 
 
+def request_intro():
+    return random.choice(REQUEST_INTROS)
+
+
+def hobelware_display_name(product):
+    return f"{product['name']} (Glattkantbretter)"
+
+
+def structural_package_count(width_m, height_m):
+    area = width_m * height_m
+    if area <= Decimal("0.0048"):
+        return 100
+    if area <= Decimal("0.0096"):
+        return 60
+    if area <= Decimal("0.0160"):
+        return 40
+    return 20
+
+
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
     width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
+    package_count = structural_package_count(width_m, height_m)
     result = length_m * width_m * height_m * Decimal(count)
 
     prompt = random.choice(
         [
-            f"Eine Position {product['name']} umfasst {count} Stück mit je {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe.\n\nWie viele Kubikmeter sind das insgesamt?",
-            f"Für eine Lieferung {product['name']} liegen {count} Stück mit {format_m(length_m)} m Länge sowie {format_cm(width_m)} cm x {format_cm(height_m)} cm Querschnitt vor.\n\nWie viele Kubikmeter ergeben sich daraus?",
-            f"Ein Kunde interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe.\n\nWie viele Kubikmeter Ware sind das?",
+            f"{request_intro()}: {count} Stück {product['name']} mit je {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe. In diesem Querschnitt liegen normalerweise {package_count} Stück im Paket.\n\nWie viele Kubikmeter sind das insgesamt?",
+            f"Für eine Lieferung {product['name']} liegen {count} Stück mit {format_m(length_m)} m Länge sowie {format_cm(width_m)} cm x {format_cm(height_m)} cm Querschnitt vor. Ein volles Paket würde hier {package_count} Stück enthalten.\n\nWie viele Kubikmeter ergeben sich daraus?",
+            f"Eine Kundin interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe. Im Paket liegen bei diesem Maß normalerweise {package_count} Stück.\n\nWie viele Kubikmeter Ware sind das?",
         ]
     )
 
@@ -304,15 +332,17 @@ def task_volume_beam(level):
 
 def task_price_per_running_meter(level):
     product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = width_m * height_m * m3_price
 
     prompt = random.choice(
         [
-            f"Ein Angebot für {product['name']} liegt bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie teuer ist 1 Laufmeter?",
-            f"Der Kunde fragt nach dem Laufmeterpreis für {product['name']}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter und hat {format_cm(width_m)} cm x {format_cm(height_m)} cm Querschnitt.\n\nWie teuer ist 1 Laufmeter?",
+            f"{request_intro()}: {display_name}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter, ist {format_cm(width_m)} cm breit, {format_decimal(height_m * 1000, 0)} mm stark und die Bretter sind {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
+            f"Für ein Angebot liegt {display_name} vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Ein Brett ist {format_m(board_length)} m lang und hat {format_cm(width_m)} cm x {format_decimal(height_m * 1000, 0)} mm Querschnitt.\n\nWie teuer ist 1 Laufmeter?",
         ]
     )
 
@@ -548,15 +578,18 @@ def task_total_price_from_volume(level):
 
 def task_square_meters_from_running_meters(level):
     product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
-    running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    board_count = random.choice([4, 6, 8, 10, 12])
+    running_meters = board_length * Decimal(board_count)
     result = running_meters * width_m
 
     prompt = random.choice(
         [
-            f"Für {product['name']} mit {format_cm(width_m)} cm Breite und {format_decimal(thickness_m * 1000, 0)} mm Stärke liegen {format_decimal(running_meters, 0)} Laufmeter vor.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Quadratmeter {product['name']} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
+            f"{request_intro()}: {format_decimal(running_meters, 0)} Laufmeter {display_name}. Ein Brett ist {format_m(board_length)} m lang, die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Quadratmeter {display_name} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Bretter sind {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
         ]
     )
 
@@ -592,8 +625,10 @@ def task_square_meters_from_running_meters(level):
 
 def task_running_meters_from_volume(level):
     product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     if level == 1:
         running_meters = Decimal(random.choice([20, 24, 30, 36, 40, 48]))
     elif level == 2:
@@ -604,8 +639,8 @@ def task_running_meters_from_volume(level):
 
     prompt = random.choice(
         [
-            f"Für {product['name']} liegen insgesamt {format_decimal(total_volume, 3)} Kubikmeter vor. Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Laufmeter {product['name']} in {format_decimal(total_volume, 3)} Kubikmeter enthalten sind. Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie viele Laufmeter sind das?",
+            f"{request_intro()}: {display_name}. Insgesamt liegen {format_decimal(total_volume, 3)} Kubikmeter vor. Die Bretter sind {format_m(board_length)} m lang und haben {format_cm(width_m)} cm Breite bei {format_decimal(height_m * 1000, 0)} mm Stärke.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Laufmeter {display_name} in {format_decimal(total_volume, 3)} Kubikmeter enthalten sind. Ein Brett ist {format_m(board_length)} m lang, die Ware hat {format_cm(width_m)} cm Breite und {format_decimal(height_m * 1000, 0)} mm Stärke.\n\nWie viele Laufmeter sind das?",
         ]
     )
 
@@ -651,15 +686,17 @@ def task_running_meters_from_volume(level):
 
 def task_running_meters_from_square_meters(level):
     product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
     result = square_meters / width_m
 
     prompt = random.choice(
         [
-            f"Für {product['name']} mit {format_cm(width_m)} cm Breite und {format_decimal(thickness_m * 1000, 0)} mm Stärke liegen {format_decimal(square_meters, 0)} Quadratmeter vor.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde fragt nach den Laufmetern einer {product['name']}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter ergeben sich?",
+            f"{request_intro()}: {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Bretter sind {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde fragt nach den Laufmetern einer {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter ergeben sich?",
         ]
     )
 
@@ -699,6 +736,7 @@ def task_db_sale_price(level):
     width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
+    package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
     if level == 1:
         db_percent = Decimal(random.choice([25, 30, 35]))
@@ -714,8 +752,8 @@ def task_db_sale_price(level):
 
     prompt = random.choice(
         [
-            f"Ein Kubikmeter {product['name']} kostet im EK {format_decimal(ek_price_m3, 0)} Euro. Du hast {count} Stück im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der gesamte VK für diese Position?",
-            f"Für eine Anfrage liegen {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm vor. Der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, der Ziel-DB bei {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte VK?",
+            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. Ein Kubikmeter kostet im EK {format_decimal(ek_price_m3, 0)} Euro, bei diesem Querschnitt liegen {package_count} Stück im Paket. Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der gesamte VK für diese Position?",
+            f"Für eine Anfrage liegen {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm vor. Der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, der Ziel-DB bei {format_decimal(db_percent, 0)} %. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte VK?",
         ]
     )
 
@@ -914,6 +952,7 @@ def task_ek_from_vk_db(level):
     width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
+    package_count = structural_package_count(width_m, height_m)
     db_percent = Decimal(random.choice([25, 30, 35]) if level == 1 else random.choice([27, 30, 33, 35]) if level == 2 else random.choice([28, 31, 34, 37]))
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
 
@@ -924,8 +963,8 @@ def task_ek_from_vk_db(level):
 
     prompt = random.choice(
         [
-            f"Für {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm liegt ein VK von {format_decimal(total_vk, 2)} Euro vor. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der gesamte EK?",
-            f"Ein Angebot über {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm endet bei {format_decimal(total_vk, 2)} Euro VK. Der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte EK?",
+            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. Der VK liegt bei {format_decimal(total_vk, 2)} Euro, kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte EK?",
+            f"Ein Angebot über {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm endet bei {format_decimal(total_vk, 2)} Euro VK. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie hoch ist der gesamte EK?",
         ]
     )
 
@@ -967,6 +1006,62 @@ def task_ek_from_vk_db(level):
     }
 
 
+def task_package_price(level):
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    package_count = structural_package_count(width_m, height_m)
+    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    result = length_m * width_m * height_m * Decimal(package_count) * m3_price
+
+    prompt = random.choice(
+        [
+            f"{request_intro()}: ein volles Paket {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. In diesem Querschnitt liegen {package_count} Stück im Paket. Der EK liegt bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis im EK?",
+            f"Für ein Angebot liegt ein volles Paket {product['name']} vor. Das Maß beträgt {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm, im Paket liegen {package_count} Stück und der EK beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis?",
+        ]
+    )
+
+    total_volume = length_m * width_m * height_m * Decimal(package_count)
+    solution = (
+        "Rechenweg:\n"
+        "1. Formel: Paketpreis = Länge x Breite x Höhe x Stückzahl x Euro pro Kubikmeter\n"
+        f"2. Paketpreis = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {package_count} Stück x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(result, 2)} Euro\n"
+        f"3. Kontrollschritt: Das Paket hat insgesamt {format_decimal(total_volume, 3)} Kubikmeter."
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "package_price",
+        "correction": "Rechne zuerst das gesamte Paketvolumen aus Länge x Breite x Höhe x Stückzahl und multipliziere danach mit dem Preis pro Kubikmeter.",
+        "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Paketvolumen",
+                total_volume.normalize(),
+                "m3",
+                3,
+                False,
+                "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
+                "Formel: Länge x Breite x Höhe x Stückzahl",
+            ),
+            make_guided_step(
+                "Paketpreis",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere das Paketvolumen mit dem Preis pro Kubikmeter.",
+                "Formel: Paketvolumen x Euro pro Kubikmeter",
+            ),
+        ],
+    }
+
+
 TASK_GENERATORS = [
     task_volume_beam,
     task_volume_from_running_meters,
@@ -982,6 +1077,7 @@ TASK_GENERATORS = [
     task_total_price_from_volume,
     task_db_sale_price,
     task_ek_from_vk_db,
+    task_package_price,
 ]
 
 TASKS_BY_LEVEL = {
@@ -996,6 +1092,7 @@ TASKS_BY_LEVEL = {
         task_price_per_running_meter,
         task_price_per_square_meter,
         task_db_sale_price,
+        task_package_price,
     ],
     2: [
         task_volume_beam,
@@ -1011,6 +1108,7 @@ TASKS_BY_LEVEL = {
         task_price_per_running_meter,
         task_db_sale_price,
         task_ek_from_vk_db,
+        task_package_price,
     ],
     3: TASK_GENERATORS,
 }
