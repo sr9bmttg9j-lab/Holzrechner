@@ -1,6 +1,7 @@
 import ast
 import random
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+import re
 
 import streamlit as st
 
@@ -1054,6 +1055,47 @@ def fallback_step_explanation(task, selected_steps):
     lines = solution_lines(task)
     selected_lines = [lines[index - 1] for index in selected_steps]
     joined = " ".join(selected_lines)
+
+    if any("VK bei" in line and "% DB" in line for line in selected_lines):
+        match = re.search(r"(\d+(?:,\d+)?) % DB = (\d+(?:,\d+)?) Euro / (\d+(?:,\d+)?)", joined)
+        if match:
+            db_percent, ek_value, factor_value = match.groups()
+            rest_percent = format_decimal(Decimal("100") - Decimal(db_percent.replace(",", ".")), 0)
+            return (
+                f"Hier wird aus dem DB-Satz zuerst der Faktor gebildet. "
+                f"Du nimmst 100 Prozent und ziehst {db_percent} Prozent DB ab. "
+                f"Dann bleiben {rest_percent} Prozent übrig, also als Faktor {factor_value}. "
+                f"Diesen Faktor brauchst du hier für die Division: {ek_value} Euro geteilt durch {factor_value} ergibt den VK von {format_expected(task)} {unit_label(task['unit'])}."
+            )
+
+    if any("Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in line for line in selected_lines):
+        return (
+            "Stell dir einen Kubikmeter Plattenware vor. Wenn du die Dicke der Platte kennst, kannst du daraus ableiten, "
+            "wie viel von diesem Kubikmeter auf einen Quadratmeter Fläche entfällt. Deshalb wird hier der Preis pro Kubikmeter "
+            "mit der Dicke in Meter multipliziert. So kommst du vom Rauminhalt sauber auf den Preis pro Quadratmeter."
+        )
+
+    if any("Laufmeter = Kubikmeter / (Breite x Höhe)" in line for line in selected_lines):
+        return (
+            "Hier suchst du die Länge, die in einem gegebenen Volumen steckt. "
+            "Breite mal Höhe beschreibt den Querschnitt der Ware. Wenn du das Volumen durch diesen Querschnitt teilst, "
+            "bleibt als Ergebnis die Länge in Laufmetern übrig."
+        )
+
+    if any("Kubikmeter = Laufmeter x Breite x Höhe" in line for line in selected_lines):
+        return (
+            "Hier wird aus einer Länge wieder ein Volumen aufgebaut. "
+            "Du hast die Laufmeter als Länge und multiplizierst sie mit Breite und Höhe in Meter. "
+            "So entsteht direkt das Volumen in Kubikmetern."
+        )
+
+    if any("Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)" in line for line in selected_lines):
+        return (
+            "Hier gehst du vom Preis pro Laufmeter zurück auf den Preis pro Kubikmeter. "
+            "Breite mal Höhe beschreibt, wie viel Kubikmeter in einem Laufmeter stecken. "
+            "Deshalb wird der Laufmeterpreis durch Breite mal Höhe geteilt."
+        )
+
     return (
         f"Schau dir diesen Teil des Rechenwegs noch einmal in Ruhe an: {joined} "
         f"Wichtig ist hier zuerst die passende Formelrichtung und dann die Frage, welche Einheit in den Zahlen steckt. "
@@ -1072,6 +1114,8 @@ def generate_step_explanation(task, selected_steps):
         "Gehe ausdrücklich auf die konkreten Zahlen dieser Schritte ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
         "Erkläre bildhaft und anschaulich, zum Beispiel so, dass man sich die Ware oder Platte vor dem inneren Auge vorstellen kann. "
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
+        "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
+        "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' ohne sie direkt mit der konkreten Formel und den Zahlen zu verbinden. "
         "Erkläre nur die ausgewählten Schritte und keine anderen. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
@@ -1096,7 +1140,7 @@ def generate_step_explanation(task, selected_steps):
         response = client.responses.create(
             model="gpt-5-mini",
             input=prompt,
-            max_output_tokens=220,
+            max_output_tokens=320,
         )
         text = (response.output_text or "").strip()
         return text if text else fallback_step_explanation(task, selected_steps)
