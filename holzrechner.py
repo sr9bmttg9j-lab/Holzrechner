@@ -2,7 +2,7 @@ import ast
 import json
 import os
 import random
-from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
 import re
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -91,6 +91,39 @@ RUNNING_METER_PRICES_BY_LEVEL = {
     2: [Decimal("5.35"), Decimal("6.85"), Decimal("8.40"), Decimal("10.25"), Decimal("13.75")],
     3: [Decimal("5.95"), Decimal("7.40"), Decimal("9.35"), Decimal("11.80"), Decimal("14.60")],
 }
+FLOORING_PRODUCTS = [
+    {
+        "name": "Eiche-Massivholzdiele",
+        "lengths": [Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
+        "widths": [Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
+        "thicknesses": [Decimal("0.018"), Decimal("0.020"), Decimal("0.021")],
+        "package_counts": [4, 5, 6, 7, 8],
+    },
+    {
+        "name": "Parkett",
+        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80")],
+        "widths": [Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+        "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014")],
+        "package_counts": [6, 7, 8],
+    },
+    {
+        "name": "Vinylboden",
+        "lengths": [Decimal("1.20"), Decimal("1.22"), Decimal("1.50")],
+        "widths": [Decimal("0.18"), Decimal("0.20"), Decimal("0.23")],
+        "thicknesses": [Decimal("0.003"), Decimal("0.004"), Decimal("0.005")],
+        "package_counts": [10, 12, 16, 20],
+    },
+]
+FLOORING_NEEDS_BY_LEVEL = {
+    1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
+    2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
+    3: [Decimal("65"), Decimal("95"), Decimal("125"), Decimal("150"), Decimal("180")],
+}
+ORDER_EK_VALUES_BY_LEVEL = {
+    1: [Decimal("280"), Decimal("420"), Decimal("560"), Decimal("750"), Decimal("900")],
+    2: [Decimal("365"), Decimal("585"), Decimal("760"), Decimal("980"), Decimal("1250")],
+    3: [Decimal("478"), Decimal("693"), Decimal("815"), Decimal("1190"), Decimal("1540")],
+}
 
 UNIT_LABELS = {
     "m3": "Kubikmeter",
@@ -101,6 +134,8 @@ UNIT_LABELS = {
     "cm": "Zentimeter",
     "mm": "Millimeter",
     "Faktor": "Faktor",
+    "Pakete": "Pakete",
+    "Prozent": "Prozent",
 }
 
 ERROR_PATTERN_GUIDE = """
@@ -148,6 +183,17 @@ Mengen- und Volumenumrechnung:
 - Laufmeter zu Kubikmeter: Laufmeter x Breite x Höhe
 - Quadratmeter zu Laufmeter: Quadratmeter / Breite
 - Laufmeter zu Quadratmeter: Laufmeter x Breite
+
+Bodenpakete:
+- Fläche pro Stück: Länge x Breite
+- Paketfläche: Fläche pro Stück x Stückzahl im Paket
+- Benötigte Pakete: Bedarf in Quadratmeter / Paketfläche, danach auf volle Pakete aufrunden
+
+Deckungsbeitrag:
+- Absoluter DB in Euro: VK - EK
+- Relativer DB in Prozent: (VK - EK) / VK x 100
+- VK aus EK und DB: EK / (1 - DB-Satz)
+- EK aus VK und DB: VK x (1 - DB-Satz)
 """
 
 REQUEST_INTROS = [
@@ -174,6 +220,10 @@ def precise_decimal_places(value, min_places=3, max_places=5):
         if value == value.quantize(quant, rounding=ROUND_HALF_UP):
             return places
     return max_places
+
+
+def round_up_to_whole(value):
+    return value.to_integral_value(rounding=ROUND_CEILING)
 
 
 def format_m(value):
@@ -328,7 +378,17 @@ def call_openai_responses_api(prompt, max_output_tokens):
     return extract_responses_text(response_data)
 
 
-def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None, placeholder=None):
+def make_guided_step(
+    label,
+    expected,
+    unit,
+    display_places,
+    round_for_check,
+    correction,
+    formula_hint=None,
+    placeholder=None,
+    match_mode=None,
+):
     return {
         "label": label,
         "expected": expected,
@@ -338,6 +398,7 @@ def make_guided_step(label, expected, unit, display_places, round_for_check, cor
         "correction": correction,
         "formula_hint": formula_hint or correction,
         "placeholder": placeholder,
+        "match_mode": match_mode,
     }
 
 
@@ -1598,8 +1659,231 @@ def task_package_db_sale_price(level):
     }
 
 
+def task_flooring_packages(level):
+    product = random.choice(FLOORING_PRODUCTS)
+    length_m = random.choice(product["lengths"])
+    width_m = random.choice(product["widths"])
+    thickness_m = random.choice(product["thicknesses"])
+    package_count = random.choice(product["package_counts"])
+    needed_area = choice_for_level(FLOORING_NEEDS_BY_LEVEL, level)
+
+    piece_area = length_m * width_m
+    package_area = piece_area * Decimal(package_count)
+    raw_packages = needed_area / package_area
+    result = round_up_to_whole(raw_packages)
+    piece_area_places = precise_decimal_places(piece_area)
+    package_area_places = precise_decimal_places(package_area)
+    raw_package_places = precise_decimal_places(raw_packages, 3, 4)
+
+    width_text = display_measure(width_m, ("cm", "m"))
+    if product["name"] == "Vinylboden":
+        thickness_text = display_measure(thickness_m, ("mm",))
+    else:
+        thickness_text = display_measure(thickness_m, ("cm", "mm"))
+
+    prompt = random.choice(
+        [
+            f"Eine Kundin benötigt {format_decimal(needed_area, 0)} Quadratmeter {product['name']}. Eine Diele ist {format_m(length_m)} m lang, {width_text} breit und {thickness_text} stark. In einem Paket liegen {package_count} Stück.\n\nWie viele volle Pakete werden benötigt?",
+            f"Für ein Bodenangebot liegen {format_decimal(needed_area, 0)} Quadratmeter Bedarf vor. Die Ware ist {product['name']} mit {format_m(length_m)} m Länge, {width_text} Breite und {thickness_text} Stärke. Pro Paket sind {package_count} Stück enthalten.\n\nWie viele Pakete müssen bestellt werden?",
+            f"Im Auftrag stehen {format_decimal(needed_area, 0)} Quadratmeter {product['name']}. Ein Stück misst {format_m(length_m)} m x {width_text}, die Stärke beträgt {thickness_text}, im Paket liegen {package_count} Stück.\n\nWie viele Pakete sind nötig?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Fläche pro Stück",
+            "Fläche pro Stück = Länge x Breite",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(piece_area, piece_area_places)} Quadratmeter",
+        ),
+        (
+            "Paketfläche",
+            "Paketfläche = Fläche pro Stück x Stückzahl im Paket",
+            f"{format_decimal(piece_area, piece_area_places)} Quadratmeter x {package_count} Stück = "
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter",
+        ),
+        (
+            "Benötigte Pakete",
+            "Pakete = Bedarf / Paketfläche, danach auf volle Pakete aufrunden",
+            f"{format_decimal(needed_area, 0)} Quadratmeter / {format_decimal(package_area, package_area_places)} Quadratmeter = "
+            f"{format_decimal(raw_packages, raw_package_places)} Pakete, aufgerundet = {format_decimal(result, 0)} Pakete",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result,
+        "unit": "Pakete",
+        "display_places": 0,
+        "round_for_check": False,
+        "match_mode": "ceil_integer",
+        "task_type": "flooring_packages",
+        "correction": "Berechne zuerst die Fläche eines Stücks, dann die Paketfläche und runde die benötigte Paketanzahl am Ende auf ein volles Paket auf.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(needed_area, 0)} / "
+            f"({format_m(length_m)} x {format_decimal(width_m, 2)} x {package_count}) = "
+            f"{format_decimal(raw_packages, raw_package_places)}, aufgerundet {format_decimal(result, 0)}"
+        ),
+        "guided_steps": [
+            make_guided_step(
+                "Fläche pro Stück",
+                piece_area.normalize(),
+                "m2",
+                piece_area_places,
+                False,
+                "Rechne zuerst Länge x Breite für ein einzelnes Bodenelement.",
+                "Länge x Breite",
+                placeholder="Zum Beispiel 2 * 0,20",
+            ),
+            make_guided_step(
+                "Paketfläche",
+                package_area.normalize(),
+                "m2",
+                package_area_places,
+                False,
+                "Multipliziere die Fläche pro Stück mit der Stückzahl im Paket.",
+                "Fläche pro Stück x Stückzahl im Paket",
+                placeholder="Zum Beispiel 0,40 * 7",
+            ),
+            make_guided_step(
+                "Benötigte Pakete",
+                result,
+                "Pakete",
+                0,
+                False,
+                "Teile den Bedarf durch die Paketfläche und runde anschließend auf volle Pakete auf.",
+                "Bedarf / Paketfläche, dann auf volle Pakete aufrunden",
+                placeholder="Zum Beispiel 100 / 2,80",
+                match_mode="ceil_integer",
+            ),
+        ],
+    }
+
+
+def task_absolute_db_from_ek_vk(level):
+    product = random.choice(PRODUCTS)["name"]
+    total_ek = choice_for_level(ORDER_EK_VALUES_BY_LEVEL, level)
+    db_percent = db_percent_for_level(level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    total_vk = (total_ek / divisor).quantize(q("1.00"), rounding=ROUND_HALF_UP)
+    absolute_db = total_vk - total_ek
+
+    prompt = random.choice(
+        [
+            f"Ein Auftrag über {product} hat einen EK von {format_decimal(total_ek, 2)} Euro und einen VK von {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
+            f"Für {product} liegt ein abgeschlossener Auftrag vor: EK {format_decimal(total_ek, 2)} Euro, VK {format_decimal(total_vk, 2)} Euro.\n\nWie viel Euro Deckungsbeitrag bleiben absolut übrig?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Absoluter DB",
+            "Absoluter DB = VK - EK",
+            f"{format_decimal(total_vk, 2)} Euro - {format_decimal(total_ek, 2)} Euro = "
+            f"{format_decimal(absolute_db, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": absolute_db.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "absolute_db_from_ek_vk",
+        "correction": "Der absolute DB ist der Eurobetrag zwischen VK und EK.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}",
+        "guided_steps": [
+            make_guided_step(
+                "Absoluter DB",
+                absolute_db.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Ziehe den EK vom VK ab.",
+                "VK - EK",
+                placeholder="Zum Beispiel 142,86 - 100",
+            ),
+        ],
+    }
+
+
+def task_relative_db_from_ek_vk(level):
+    product = random.choice(PRODUCTS)["name"]
+    total_ek = choice_for_level(ORDER_EK_VALUES_BY_LEVEL, level)
+    db_percent = db_percent_for_level(level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    total_vk = (total_ek / divisor).quantize(q("1.00"), rounding=ROUND_HALF_UP)
+    absolute_db = total_vk - total_ek
+    relative_db = ((absolute_db / total_vk) * Decimal("100")).quantize(q("1.00"), rounding=ROUND_HALF_UP)
+
+    prompt = random.choice(
+        [
+            f"Ein Auftrag über {product} wurde mit {format_decimal(total_vk, 2)} Euro VK verkauft. Der EK liegt bei {format_decimal(total_ek, 2)} Euro.\n\nWie hoch ist der DB in Prozent?",
+            f"Für {product} sind VK {format_decimal(total_vk, 2)} Euro und EK {format_decimal(total_ek, 2)} Euro bekannt.\n\nWelcher relative DB-Satz ergibt sich daraus?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Absoluter DB",
+            "Absoluter DB = VK - EK",
+            f"{format_decimal(total_vk, 2)} Euro - {format_decimal(total_ek, 2)} Euro = "
+            f"{format_decimal(absolute_db, 2)} Euro",
+        ),
+        (
+            "DB-Satz",
+            "DB-Satz = absoluter DB / VK x 100",
+            f"{format_decimal(absolute_db, 2)} Euro / {format_decimal(total_vk, 2)} Euro x 100 = "
+            f"{format_decimal(relative_db, 2)} Prozent",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": relative_db,
+        "unit": "Prozent",
+        "display_places": 2,
+        "round_for_check": True,
+        "match_mode": "percent_or_factor",
+        "task_type": "relative_db_from_ek_vk",
+        "correction": "Berechne zuerst den absoluten DB in Euro und setze ihn danach ins Verhältnis zum VK.",
+        "solution": solution,
+        "perfect_formula": (
+            f"({format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}) / "
+            f"{format_decimal(total_vk, 2)} * 100"
+        ),
+        "guided_steps": [
+            make_guided_step(
+                "Absoluter DB",
+                absolute_db.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Ziehe zuerst den EK vom VK ab.",
+                "VK - EK",
+                placeholder="Zum Beispiel 142,86 - 100",
+            ),
+            make_guided_step(
+                "DB-Satz",
+                relative_db,
+                "Prozent",
+                2,
+                True,
+                "Teile den absoluten DB durch den VK und multipliziere mit 100.",
+                "Absoluter DB / VK x 100",
+                placeholder="Zum Beispiel 42,86 / 142,86 * 100",
+                match_mode="percent_or_factor",
+            ),
+        ],
+    }
+
+
 TASK_GENERATORS = [
     task_unit_conversion,
+    task_flooring_packages,
     task_volume_beam,
     task_volume_from_running_meters,
     task_volume_from_square_meters,
@@ -1614,6 +1898,8 @@ TASK_GENERATORS = [
     task_total_price_from_volume,
     task_db_sale_price,
     task_ek_from_vk_db,
+    task_absolute_db_from_ek_vk,
+    task_relative_db_from_ek_vk,
     task_package_price,
     task_package_db_sale_price,
 ]
@@ -1626,6 +1912,7 @@ TASK_TYPE_TO_GENERATOR = {
 TASKS_BY_LEVEL = {
     1: [
         task_unit_conversion,
+        task_flooring_packages,
         task_volume_beam,
         task_volume_from_running_meters,
         task_square_meters_from_running_meters,
@@ -1636,11 +1923,14 @@ TASKS_BY_LEVEL = {
         task_price_per_running_meter,
         task_price_per_square_meter,
         task_db_sale_price,
+        task_absolute_db_from_ek_vk,
+        task_relative_db_from_ek_vk,
         task_package_price,
         task_package_db_sale_price,
     ],
     2: [
         task_unit_conversion,
+        task_flooring_packages,
         task_volume_beam,
         task_volume_from_running_meters,
         task_volume_from_square_meters,
@@ -1654,6 +1944,8 @@ TASKS_BY_LEVEL = {
         task_price_per_running_meter,
         task_db_sale_price,
         task_ek_from_vk_db,
+        task_absolute_db_from_ek_vk,
+        task_relative_db_from_ek_vk,
         task_package_price,
         task_package_db_sale_price,
     ],
@@ -1661,14 +1953,24 @@ TASKS_BY_LEVEL = {
 }
 
 
-def values_match(user_value, expected_value, round_for_check):
+def values_match(user_value, expected_value, round_for_check, match_mode=None):
+    if match_mode == "ceil_integer":
+        return round_up_to_whole(user_value) == expected_value
+
+    if match_mode == "percent_or_factor":
+        if user_value.quantize(q("1.00"), rounding=ROUND_HALF_UP) == expected_value:
+            return True
+        expected_factor = (expected_value / Decimal("100")).quantize(q("1.0000"), rounding=ROUND_HALF_UP)
+        user_factor = user_value.quantize(q("1.0000"), rounding=ROUND_HALF_UP)
+        return user_factor == expected_factor
+
     if round_for_check:
         return user_value.quantize(q("1.00"), rounding=ROUND_HALF_UP) == expected_value
     return user_value == expected_value
 
 
-def guided_values_match(user_value, expected_value, round_for_check, current_index, unit):
-    if values_match(user_value, expected_value, round_for_check):
+def guided_values_match(user_value, expected_value, round_for_check, current_index, unit, match_mode=None):
+    if values_match(user_value, expected_value, round_for_check, match_mode):
         return True
 
     if unit == "EUR" and round_for_check:
@@ -1694,6 +1996,15 @@ def format_value_for_task(value, task):
 
 
 def format_user_result(value, task):
+    if task.get("match_mode") == "ceil_integer":
+        rounded = round_up_to_whole(value)
+        if value != rounded:
+            return f"{format_decimal(value, 3).rstrip('0').rstrip(',')} -> {format_decimal(rounded, 0)}"
+        return format_decimal(rounded, 0)
+
+    if task.get("match_mode") == "percent_or_factor" and abs(value) <= Decimal("1"):
+        return f"{format_decimal(value, 4).rstrip('0').rstrip(',')} -> {format_decimal(value * 100, 2)}"
+
     if task["unit"] == "EUR":
         return format_decimal(value, 2)
 
@@ -1704,6 +2015,15 @@ def format_user_result(value, task):
 
 
 def format_value_for_step(value, step):
+    if step.get("match_mode") == "ceil_integer":
+        rounded = round_up_to_whole(value)
+        if value != rounded:
+            return f"{format_decimal(value, 3).rstrip('0').rstrip(',')} -> {format_decimal(rounded, 0)}"
+        return format_decimal(rounded, 0)
+
+    if step.get("match_mode") == "percent_or_factor" and abs(value) <= Decimal("1"):
+        return f"{format_decimal(value, 4).rstrip('0').rstrip(',')} -> {format_decimal(value * 100, 2)}"
+
     return format_decimal(value, step["display_places"])
 
 
@@ -1726,6 +2046,16 @@ def default_step_placeholder(step):
         return "Zum Beispiel 560 * 0,05"
     if "preis pro kubikmeter" in label:
         return "Zum Beispiel 6,20 / 0,00304"
+    if "fläche pro stück" in label:
+        return "Zum Beispiel 2 * 0,20"
+    if "paketfläche" in label:
+        return "Zum Beispiel 0,40 * 7"
+    if "pakete" in label:
+        return "Zum Beispiel 100 / 2,80"
+    if "absoluter db" in label:
+        return "Zum Beispiel 142,86 - 100"
+    if "db-satz" in label or "relativer db" in label:
+        return "Zum Beispiel 42,86 / 142,86 * 100"
     if "volumen pro" in label:
         return "Zum Beispiel 5 * 0,12 * 0,12"
     if "paketvolumen" in label:
@@ -1758,7 +2088,7 @@ def step_placeholder(step):
 def clean_formula_expression(expression):
     expression = re.sub(r"^Berechnung:\s*", "", expression)
     cleaned = re.sub(
-        r"\b(Meter|Kubikmeter|Quadratmeter|Laufmeter|Euro|Stück|pro|DB|bei)\b",
+        r"\b(Meter|Kubikmeter|Quadratmeter|Laufmeter|Euro|Stück|Pakete|Prozent|pro|DB|bei)\b",
         "",
         expression,
     )
@@ -1822,6 +2152,9 @@ def render_theory_section():
 | Kubikmeter | Quadratmeter | Kubikmeter / Dicke |
 | Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe |
 | Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) |
+| Bodenstück | Quadratmeter pro Stück | Länge x Breite |
+| Bodenpaket | Quadratmeter pro Paket | Quadratmeter pro Stück x Stückzahl im Paket |
+| Bedarf | Pakete | Bedarf / Paketfläche, danach auf volle Pakete aufrunden |
 """
     )
 
@@ -1844,9 +2177,10 @@ def render_theory_section():
         """
 | Gesucht | Rechenweg | Beispiel |
 | --- | --- | --- |
+| absoluter DB | DB in Euro = VK - EK | 142,86 Euro - 100 Euro |
+| relativer DB | DB in Prozent = DB in Euro / VK x 100 | 42,86 Euro / 142,86 Euro x 100 |
 | VK aus EK und DB | VK = EK / (1 - DB-Satz) | 100 Euro / 0,70 bei 30 Prozent DB |
 | EK aus VK und DB | EK = VK x (1 - DB-Satz) | 142,86 Euro x 0,70 bei 30 Prozent DB |
-| DB-Satz aus EK und VK | DB = (VK - EK) / VK | (142,86 - 100) / 142,86 |
 """
     )
     st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
@@ -1929,6 +2263,19 @@ def diagnose_common_mistake(task, answer_value, expected_value):
                 "Prüfe deshalb zuerst die Einheit der Eingangsgröße und danach, ob du multiplizieren oder teilen musst."
             )
 
+    if task["task_type"] == "flooring_packages":
+        if answer_value < expected_value:
+            return (
+                "Bei Bodenpaketen darfst du nicht abrunden. "
+                "Wenn eine Kommazahl an Paketen herauskommt, muss auf das nächste volle Paket aufgerundet werden."
+            )
+
+    if task["task_type"] in {"absolute_db_from_ek_vk", "relative_db_from_ek_vk"}:
+        return (
+            "Beim DB gehst du zuerst vom Unterschied zwischen VK und EK aus. "
+            "Für den Prozentwert wird dieser Unterschied anschließend durch den VK geteilt."
+        )
+
     return ""
 
 
@@ -1969,6 +2316,9 @@ def likely_error_focus(task):
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
+        "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
+        "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
+        "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
     }
     return focus.get(task["task_type"], "Achte besonders auf die passende Einheit, die Rechenrichtung und die Preisbasis.")
 
@@ -2175,6 +2525,27 @@ def fallback_step_explanation(task, question_text):
                 f"Mit genau diesem Faktor rechnest du weiter: {ek_value} Euro geteilt durch {factor_value} ergibt {format_expected(task)} {unit_label(task['unit'])}."
             )
 
+    if task["task_type"] == "flooring_packages":
+        return (
+            "Bei Bodenpaketen zählt zuerst die Fläche eines einzelnen Stücks: Länge mal Breite. "
+            "Diese Fläche wird mit der Stückzahl im Paket multipliziert, dadurch erhältst du die Quadratmeter pro Paket. "
+            "Am Ende teilst du den Bedarf durch die Paketfläche und rundest auf, weil man keine halben Pakete verkaufen kann."
+        )
+
+    if task["task_type"] == "relative_db_from_ek_vk":
+        return (
+            "Für den relativen DB brauchst du zuerst den absoluten DB: VK minus EK. "
+            "Dieser Eurobetrag wird dann durch den VK geteilt, weil der DB-Satz immer im Verhältnis zum Verkaufspreis betrachtet wird. "
+            "Mit mal 100 machst du daraus den Prozentwert."
+        )
+
+    if task["task_type"] == "absolute_db_from_ek_vk":
+        return (
+            "Der absolute DB ist der Betrag, der zwischen Verkaufspreis und Einkaufspreis liegt. "
+            "Du ziehst also einfach den EK vom VK ab. "
+            "Das Ergebnis bleibt ein Eurobetrag, noch kein Prozentwert."
+        )
+
     if ("dicke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in joined:
         return (
             "Stell dir einen Kubikmeter Plattenware vor. Ein Quadratmeter dieser Platte hat nur die Dicke als dritte Dimension. "
@@ -2351,7 +2722,7 @@ def handle_submission():
     st.session_state.result_text = f"Dein Ergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}"
     st.session_state.last_diagnostic_hint = diagnose_common_mistake(task, answer_value, task["expected"])
 
-    if values_match(answer_value, task["expected"], task["round_for_check"]):
+    if values_match(answer_value, task["expected"], task["round_for_check"], task.get("match_mode")):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
         st.session_state.hint_text = generate_hint(task, answer_value, True)
@@ -2409,8 +2780,15 @@ def handle_guided_submission():
         st.session_state.guided_step_feedback = []
         return
 
-    exact_step_match = values_match(answer_value, step["expected"], step["round_for_check"])
-    if guided_values_match(answer_value, step["expected"], step["round_for_check"], current_index, step["unit"]):
+    exact_step_match = values_match(answer_value, step["expected"], step["round_for_check"], step.get("match_mode"))
+    if guided_values_match(
+        answer_value,
+        step["expected"],
+        step["round_for_check"],
+        current_index,
+        step["unit"],
+        step.get("match_mode"),
+    ):
         if exact_step_match:
             success_text = (
                 f"{step['label']}: {raw_value} = "
