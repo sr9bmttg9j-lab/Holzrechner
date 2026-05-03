@@ -1352,63 +1352,66 @@ def solution_lines(task):
     return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
 
 
-def parse_step_selection(text, max_steps):
-    numbers = []
-    for part in text.replace(";", ",").split(","):
-        stripped = part.strip()
-        if not stripped:
-            continue
-        if not stripped.isdigit():
-            raise ValueError
-        value = int(stripped)
-        if value < 1 or value > max_steps:
-            raise ValueError
-        if value not in numbers:
-            numbers.append(value)
-    if not numbers:
+def normalize_explanation_question(text):
+    stripped = text.strip()
+    if not stripped:
         raise ValueError
-    return numbers
+
+    if re.fullmatch(r"[\d,\s;]+", stripped):
+        numbers = []
+        for part in stripped.replace(";", ",").split(","):
+            piece = part.strip()
+            if not piece:
+                continue
+            if piece.isdigit():
+                numbers.append(piece)
+        if numbers:
+            if len(numbers) == 1:
+                return f"Bitte erkläre mir Schritt {numbers[0]} genauer."
+            return f"Bitte erkläre mir die Schritte {', '.join(numbers)} genauer."
+
+    return stripped
 
 
-def fallback_step_explanation(task, selected_steps):
+def fallback_step_explanation(task, question_text):
     lines = solution_lines(task)
-    selected_lines = [lines[index - 1] for index in selected_steps]
-    joined = " ".join(selected_lines)
+    joined = " ".join(lines)
+    lower_question = question_text.lower()
 
-    if any("VK bei" in line and "% DB" in line for line in selected_lines):
+    if ("db" in lower_question or "0,75" in lower_question or "25" in lower_question) and "VK bei" in joined:
         match = re.search(r"(\d+(?:,\d+)?) % DB = (\d+(?:,\d+)?) Euro / (\d+(?:,\d+)?)", joined)
         if match:
             db_percent, ek_value, factor_value = match.groups()
             rest_percent = format_decimal(Decimal("100") - Decimal(db_percent.replace(",", ".")), 0)
             return (
-                f"Hier wird aus dem DB-Satz zuerst der Faktor gebildet. "
+                f"Hier wird zuerst aus dem DB-Satz der passende Faktor gemacht. "
                 f"Du nimmst 100 Prozent und ziehst {db_percent} Prozent DB ab. "
-                f"Dann bleiben {rest_percent} Prozent übrig, also als Faktor {factor_value}. "
-                f"Diesen Faktor brauchst du hier für die Division: {ek_value} Euro geteilt durch {factor_value} ergibt den VK von {format_expected(task)} {unit_label(task['unit'])}."
+                f"Dann bleiben {rest_percent} Prozent übrig, also als Dezimalzahl {factor_value}. "
+                f"Mit genau diesem Faktor rechnest du weiter: {ek_value} Euro geteilt durch {factor_value} ergibt {format_expected(task)} {unit_label(task['unit'])}."
             )
 
-    if any("Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in line for line in selected_lines):
+    if ("dicke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in joined:
         return (
-            "Stell dir einen Kubikmeter Plattenware vor. Wenn du die Dicke der Platte kennst, kannst du daraus ableiten, "
-            "wie viel von diesem Kubikmeter auf einen Quadratmeter Fläche entfällt. Deshalb wird hier der Preis pro Kubikmeter "
-            "mit der Dicke in Meter multipliziert. So kommst du vom Rauminhalt sauber auf den Preis pro Quadratmeter."
+            "Stell dir einen Kubikmeter Plattenware vor. Ein Quadratmeter dieser Platte hat nur die Dicke als dritte Dimension. "
+            "Deshalb brauchst du genau die Dicke in Meter, um vom Preis pro Kubikmeter auf den Preis pro Quadratmeter zu kommen. "
+            "Du nimmst also den Preis pro Kubikmeter und multiplizierst ihn mit der Dicke der Platte."
         )
 
-    if any("Laufmeter = Kubikmeter / (Breite x Höhe)" in line for line in selected_lines):
+    if ("laufmeter" in lower_question or "breite" in lower_question or "höhe" in lower_question) and "Laufmeter = Kubikmeter / (Breite x Höhe)" in joined:
         return (
             "Hier suchst du die Länge, die in einem gegebenen Volumen steckt. "
             "Breite mal Höhe beschreibt den Querschnitt der Ware. Wenn du das Volumen durch diesen Querschnitt teilst, "
             "bleibt als Ergebnis die Länge in Laufmetern übrig."
         )
 
-    if any("Kubikmeter = Laufmeter x Breite x Höhe" in line for line in selected_lines):
+    if ("kubikmeter" in lower_question or "laufmeter" in lower_question) and "Kubikmeter = Laufmeter x Breite x Höhe" in joined:
         return (
             "Hier wird aus einer Länge wieder ein Volumen aufgebaut. "
             "Du hast die Laufmeter als Länge und multiplizierst sie mit Breite und Höhe in Meter. "
             "So entsteht direkt das Volumen in Kubikmetern."
         )
 
-    if any("Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)" in line for line in selected_lines):
+    if ("preis" in lower_question or "kubikmeter" in lower_question or "laufmeter" in lower_question) and "Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)" in joined:
         return (
             "Hier gehst du vom Preis pro Laufmeter zurück auf den Preis pro Kubikmeter. "
             "Breite mal Höhe beschreibt, wie viel Kubikmeter in einem Laufmeter stecken. "
@@ -1416,31 +1419,32 @@ def fallback_step_explanation(task, selected_steps):
         )
 
     return (
-        f"Schau dir diesen Teil des Rechenwegs noch einmal in Ruhe an: {joined} "
-        f"Wichtig ist hier zuerst die passende Formelrichtung und dann die Frage, welche Einheit in den Zahlen steckt. "
+        f"Schau dir diesen Rechenweg noch einmal in Ruhe an: {joined} "
+        f"Wichtig ist hier zuerst die Formel und danach die Frage, welche Einheit in den Zahlen steckt. "
         f"So wird die gegebene Größe sauber in {unit_label(task['unit'])} weitergeführt."
     )
 
 
-def generate_step_explanation(task, selected_steps):
+def generate_step_explanation(task, question_text):
     lines = solution_lines(task)
-    selected_lines = "\n".join(lines[index - 1] for index in selected_steps)
+    joined_lines = "\n".join(lines)
     prompt = (
         "Du bist ein Lernassistent für die Holzbranche. "
-        "Erkläre auf Deutsch nur die ausgewählten Schritte eines Muster-Rechenwegs. "
+        "Erkläre auf Deutsch eine freie Rückfrage zu einem Muster-Rechenweg. "
         "Sprich ruhig, konkret und fachlich. "
+        "Beziehe dich direkt auf die gestellte Frage. "
         "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
-        "Gehe ausdrücklich auf die konkreten Zahlen dieser Schritte ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
+        "Gehe ausdrücklich auf die konkreten Zahlen aus dem Rechenweg ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
         "Erkläre bildhaft und anschaulich, zum Beispiel so, dass man sich die Ware oder Platte vor dem inneren Auge vorstellen kann. "
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
         "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' ohne sie direkt mit der konkreten Formel und den Zahlen zu verbinden. "
-        "Erkläre nur die ausgewählten Schritte und keine anderen. "
+        "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
         f"Zielgröße: {unit_label(task['unit'])}. "
-        f"Ausgewählte Schritt-Nummern: {', '.join(str(step) for step in selected_steps)}. "
-        f"Ausgewählte Schritte:\n{selected_lines}"
+        f"Rechenweg:\n{joined_lines}\n"
+        f"Frage: {question_text}"
     )
 
     try:
@@ -1450,7 +1454,7 @@ def generate_step_explanation(task, selected_steps):
         if not api_key:
             st.session_state.explanation_backend = "fallback_no_key"
             st.session_state.explanation_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
-            return fallback_step_explanation(task, selected_steps)
+            return fallback_step_explanation(task, question_text)
 
         client = OpenAI(api_key=api_key)
         response = client.responses.create(
@@ -1465,11 +1469,11 @@ def generate_step_explanation(task, selected_steps):
             return text
         st.session_state.explanation_backend = "fallback_empty_response"
         st.session_state.explanation_backend_error = "OpenAI-Antwort war leer."
-        return fallback_step_explanation(task, selected_steps)
+        return fallback_step_explanation(task, question_text)
     except Exception as exc:
         st.session_state.explanation_backend = "fallback_exception"
         st.session_state.explanation_backend_error = str(exc)
-        return fallback_step_explanation(task, selected_steps)
+        return fallback_step_explanation(task, question_text)
 
 
 def choose_task(level, recent_task_types):
@@ -1643,14 +1647,14 @@ def handle_guided_submission():
 def handle_explanation_request():
     request_text = st.session_state.explanation_request.strip()
     try:
-        selected_steps = parse_step_selection(request_text, len(solution_lines(st.session_state.task)))
+        normalized_question = normalize_explanation_question(request_text)
     except ValueError:
-        st.session_state.explanation_error = "Bitte gib gültige Schritt-Nummern ein, zum Beispiel 1 oder 1,3."
+        st.session_state.explanation_error = "Bitte stell hier eine kurze Frage zum Rechenweg."
         st.session_state.explanation_text = ""
         return
 
     st.session_state.explanation_error = ""
-    st.session_state.explanation_text = generate_step_explanation(st.session_state.task, selected_steps)
+    st.session_state.explanation_text = generate_step_explanation(st.session_state.task, normalized_question)
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -1769,9 +1773,9 @@ if st.session_state.solution_visible:
     st.code(st.session_state.task["solution"])
     with st.form("solution_explanation_form", clear_on_submit=False):
         st.text_input(
-            "Welche Schritt-Nummern möchtest du erklärt haben?",
+            "Was möchtest du zum Rechenweg wissen?",
             key="explanation_request",
-            placeholder="Zum Beispiel 1 oder 1,3",
+            placeholder="Zum Beispiel: Warum muss ich hier durch 0,75 teilen?",
         )
         explanation_submitted = st.form_submit_button("Schritte erklären", type="primary")
 
