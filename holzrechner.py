@@ -1423,6 +1423,27 @@ def format_value_for_step(value, step):
     return format_decimal(value, step["display_places"])
 
 
+def guided_completed_entry(text, kind="success"):
+    return {
+        "text": text,
+        "kind": kind,
+    }
+
+
+def render_guided_completed_entry(entry):
+    if isinstance(entry, dict):
+        text = entry.get("text", "")
+        kind = entry.get("kind", "success")
+    else:
+        text = str(entry)
+        kind = "success"
+
+    if kind == "warning":
+        st.warning(text)
+    else:
+        st.success(text)
+
+
 def is_close_factor(value, target):
     tolerance = abs(target) * Decimal("0.03")
     return abs(value - target) <= tolerance
@@ -1537,6 +1558,62 @@ def progressive_step_hint(task, step, answer_value, step_attempt):
     return (
         f"{step['formula_hint']}. "
         f"Achte danach noch einmal genau auf die Richtung der Rechnung und auf die richtige Einheit."
+    )
+
+
+def fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt):
+    diagnostic = diagnose_step_mistake(task, step, answer_value)
+    user_result = f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}"
+    correct_result = f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}"
+    base = (
+        f"Deine Eingabe {raw_value} ergibt {user_result}. "
+        f"Für {step['label']} sollte hier {correct_result} herauskommen."
+    )
+
+    if diagnostic:
+        return f"{base} {diagnostic}"
+    if step_attempt == 1:
+        return f"{base} {step['correction']}"
+    return f"{base} {step['formula_hint']}"
+
+
+def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt):
+    prompt = (
+        "Du bist ein Lernassistent für den Holzhandel. "
+        "Ein einzelner Zwischenschritt wurde falsch gelöst. "
+        "Antworte auf Deutsch in maximal 3 kurzen Sätzen. "
+        "Vergleiche die Nutzereingabe konkret mit dem richtigen Wert. "
+        "Erkläre den wahrscheinlichsten Fehler und nenne nur den nächsten kleinen Korrekturgedanken. "
+        "Keine lange Musterlösung, kein Bezug auf vorherige Hinweise. "
+        f"Aufgabe: {task['prompt']} "
+        f"Zwischenschritt: {step['label']}. "
+        f"Eingabe des Nutzers: {raw_value}. "
+        f"Berechneter Wert der Eingabe: {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
+        f"Richtiger Wert für diesen Schritt: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
+        f"Versuch im Zwischenschritt: {step_attempt} von 3. "
+        f"Typischer Fehler: {diagnose_step_mistake(task, step, answer_value) or step['correction']} "
+        f"Fachlicher Hinweis: {step['formula_hint']}"
+    )
+
+    try:
+        if not get_openai_api_key():
+            return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
+
+        text = call_openai_responses_api(prompt, 110)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
+
+
+def auto_resolve_guided_step(step, raw_value, answer_value):
+    return guided_completed_entry(
+        f"Achtung, aufgelöst: {step['label']} = "
+        f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
+        f"Deine Eingabe {raw_value} ergab {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}.",
+        "warning",
     )
 
 
@@ -1888,7 +1965,7 @@ def handle_guided_submission():
             f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. Passt."
         )
         completed = st.session_state.guided_completed
-        completed.append(success_text)
+        completed.append(guided_completed_entry(success_text))
         st.session_state.guided_completed = completed
         st.session_state.guided_step_feedback = []
 
@@ -1916,7 +1993,34 @@ def handle_guided_submission():
     st.session_state.guided_step_attempts = attempts
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.guided_summary = progressive_step_hint(task, step, answer_value, step_attempt)
+    error_hint = generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
+
+    if step_attempt >= 3:
+        completed = st.session_state.guided_completed
+        completed.append(auto_resolve_guided_step(step, raw_value, answer_value))
+        st.session_state.guided_completed = completed
+        st.session_state.guided_step_feedback = []
+
+        if current_index == len(guided_steps) - 1:
+            st.session_state.guided_summary = (
+                f"{error_hint} Ich habe diesen letzten Zwischenschritt jetzt aufgelöst, "
+                "damit du den vollständigen Rechenweg in Ruhe prüfen kannst."
+            )
+            st.session_state.guided_visible = True
+            st.session_state.solution_visible = False
+            st.session_state.task_finished = True
+            st.session_state.explanation_text = ""
+            st.rerun()
+
+        next_step = guided_steps[current_index + 1]
+        st.session_state.guided_step_index = current_index + 1
+        st.session_state.guided_summary = (
+            f"{error_hint} Ich habe diesen Zwischenschritt jetzt aufgelöst. "
+            f"Weiter geht es mit {next_step['label']}."
+        )
+        st.rerun()
+
+    st.session_state.guided_summary = error_hint
     st.session_state.guided_step_feedback = []
 
 
@@ -2021,8 +2125,8 @@ if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
     st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
 
-    for completed_text in st.session_state.guided_completed:
-        st.success(completed_text)
+    for completed_entry in st.session_state.guided_completed:
+        render_guided_completed_entry(completed_entry)
 
     guided_steps = st.session_state.task.get("guided_steps", [])
     current_index = st.session_state.guided_step_index
