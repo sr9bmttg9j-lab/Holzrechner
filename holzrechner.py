@@ -255,6 +255,11 @@ def display_measure(value_m, allowed_units):
     return f"{format_decimal(value_m, 3)} m"
 
 
+def display_measure_pair_same_unit(first_m, second_m, allowed_units):
+    unit = random.choice(list(allowed_units))
+    return display_measure(first_m, (unit,)), display_measure(second_m, (unit,))
+
+
 def call_openai_responses_api(prompt, max_output_tokens):
     api_key = get_openai_api_key()
     if not api_key:
@@ -427,8 +432,7 @@ def task_volume_beam(level):
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     result = length_m * width_m * height_m * Decimal(count)
-    width_text = display_measure(width_m, ("cm", "m"))
-    height_text = display_measure(height_m, ("cm", "m"))
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
@@ -906,8 +910,7 @@ def task_db_sale_price(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     result = total_ek / divisor
-    width_text = display_measure(width_m, ("cm", "m"))
-    height_text = display_measure(height_m, ("cm", "m"))
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
@@ -1123,8 +1126,7 @@ def task_ek_from_vk_db(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     total_vk = total_ek / divisor
-    width_text = display_measure(width_m, ("cm", "m"))
-    height_text = display_measure(height_m, ("cm", "m"))
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
@@ -1179,8 +1181,7 @@ def task_package_price(level):
     package_count = structural_package_count(width_m, height_m)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = length_m * width_m * height_m * Decimal(package_count) * m3_price
-    width_text = display_measure(width_m, ("cm", "m"))
-    height_text = display_measure(height_m, ("cm", "m"))
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
@@ -1468,6 +1469,42 @@ def generate_hint(task, answer_value, is_correct):
         return fallback_hint(task, is_correct)
 
 
+def fallback_guided_transition(completed_step, completed_value, next_step):
+    return (
+        f"{completed_step['label']} passt: {format_value_for_step(completed_value, completed_step)} "
+        f"{unit_label(completed_step['unit'])}. "
+        f"Als Nächstes: {next_step['label']}. {next_step['formula_hint']}"
+    )
+
+
+def generate_guided_transition_hint(task, completed_step, completed_value, next_step):
+    prompt = (
+        "Du bist ein Lernassistent für den Holzhandel. "
+        "Ein Zwischenschritt wurde richtig gelöst. "
+        "Antworte auf Deutsch in maximal 2 kurzen Sätzen. "
+        "Nenne das Zwischenergebnis mit Einheit und erkläre konkret, wie damit im nächsten Schritt weitergerechnet wird. "
+        "Wenn im Muster-Rechenweg eine konkrete Zahl für den nächsten Faktor vorkommt, nenne sie. "
+        f"Aufgabe: {task['prompt']} "
+        f"Richtiger Zwischenschritt: {completed_step['label']} = "
+        f"{format_value_for_step(completed_value, completed_step)} {unit_label(completed_step['unit'])}. "
+        f"Nächster Schritt: {next_step['label']}. "
+        f"Nächste Formel: {next_step['formula_hint']} "
+        f"Muster-Rechenweg: {' '.join(solution_lines(task))}"
+    )
+
+    try:
+        if not get_openai_api_key():
+            return fallback_guided_transition(completed_step, completed_value, next_step)
+
+        text = call_openai_responses_api(prompt, 90)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    return fallback_guided_transition(completed_step, completed_value, next_step)
+
+
 def solution_lines(task):
     return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
 
@@ -1741,13 +1778,14 @@ def handle_guided_submission():
             st.session_state.solution_visible = False
             st.session_state.task_finished = True
             st.session_state.explanation_text = ""
-            return
+            st.rerun()
 
+        next_step = guided_steps[current_index + 1]
         st.session_state.guided_step_index = current_index + 1
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.guided_summary = "Der Schritt passt. Jetzt kannst du mit dem nächsten weitermachen."
-        return
+        st.session_state.guided_summary = generate_guided_transition_hint(task, step, answer_value, next_step)
+        st.rerun()
 
     attempts = st.session_state.guided_step_attempts
     step_attempt = attempts.get(current_index, 0) + 1
