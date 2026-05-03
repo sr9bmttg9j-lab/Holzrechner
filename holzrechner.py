@@ -226,6 +226,15 @@ def round_up_to_whole(value):
     return value.to_integral_value(rounding=ROUND_CEILING)
 
 
+def ensure_sentence(text):
+    text = str(text).strip()
+    if not text:
+        return text
+    if text[-1] in ".!?":
+        return text
+    return f"{text}."
+
+
 def format_m(value):
     return format_decimal(value, 2).rstrip("0").rstrip(",")
 
@@ -2127,6 +2136,10 @@ def render_musterloesung(task):
 
 def render_theory_section():
     st.markdown("#### Einheiten")
+    st.write(
+        "Einheiten sind die Grundlage für jede saubere Rechnung. Besonders bei Zentimeter, Millimeter und Meter "
+        "entstehen schnell Faktor-10-, Faktor-100- oder Faktor-1000-Fehler."
+    )
     st.markdown(
         """
 | Richtung | Regel | Beispiel |
@@ -2142,6 +2155,10 @@ def render_theory_section():
     st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
 
     st.markdown("#### Volumen und Mengen")
+    st.write(
+        "Volumen und Mengen brauchst du, um Ware fachlich vergleichbar zu machen. Je nach Produkt wird in Laufmetern, "
+        "Quadratmetern, Kubikmetern, Stück oder ganzen Paketen gedacht."
+    )
     st.markdown(
         """
 | Von | Nach | Rechenweg |
@@ -2159,6 +2176,10 @@ def render_theory_section():
     )
 
     st.markdown("#### Preise")
+    st.write(
+        "Preise hängen immer an einer Einheit. Darum ist entscheidend, ob ein Preis pro Laufmeter, Quadratmeter "
+        "oder Kubikmeter gemeint ist, bevor du multiplizierst oder teilst."
+    )
     st.markdown(
         """
 | Von | Nach | Rechenweg |
@@ -2173,6 +2194,10 @@ def render_theory_section():
     )
 
     st.markdown("#### Deckungsbeitrag")
+    st.write(
+        "Der Deckungsbeitrag zeigt, was vom Verkaufspreis nach Abzug des Einkaufspreises übrig bleibt. "
+        "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis."
+    )
     st.markdown(
         """
 | Gesucht | Rechenweg | Beispiel |
@@ -2205,6 +2230,27 @@ def render_guided_completed_entry(entry):
         st.warning(text)
     else:
         st.success(text)
+
+
+def render_guided_summary():
+    text = st.session_state.get("guided_summary", "")
+    if not text:
+        return
+
+    kind = st.session_state.get("guided_summary_kind", "warning")
+    if kind == "success":
+        st.success(text)
+    elif kind == "error":
+        st.error(text)
+    else:
+        st.warning(text)
+
+
+def guided_has_warning():
+    for entry in st.session_state.get("guided_completed", []):
+        if isinstance(entry, dict) and entry.get("kind") == "warning":
+            return True
+    return False
 
 
 def is_close_factor(value, target):
@@ -2449,9 +2495,10 @@ def generate_hint(task, answer_value, is_correct):
 
 def fallback_guided_transition(completed_step, completed_value, next_step):
     return (
-        f"{completed_step['label']} passt: {format_value_for_step(completed_value, completed_step)} "
+        f"Als Nächstes: {next_step['label']}. "
+        f"Nutze {completed_step['label']} = {format_value_for_step(completed_value, completed_step)} "
         f"{unit_label(completed_step['unit'])}. "
-        f"Als Nächstes: {next_step['label']}. {next_step['formula_hint']}"
+        f"{ensure_sentence(next_step['formula_hint'])}"
     )
 
 
@@ -2460,7 +2507,8 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein Zwischenschritt wurde richtig gelöst. "
         "Antworte auf Deutsch in maximal 2 kurzen Sätzen. "
-        "Nenne das Zwischenergebnis mit Einheit und erkläre konkret, wie damit im nächsten Schritt weitergerechnet wird. "
+        f"Beginne mit dem nächsten Schritt, also: 'Als Nächstes: {next_step['label']}.' "
+        "Nenne danach das Zwischenergebnis mit Einheit und erkläre konkret, wie damit im nächsten Schritt weitergerechnet wird. "
         "Wenn im Muster-Rechenweg eine konkrete Zahl für den nächsten Faktor vorkommt, nenne sie. "
         f"Aufgabe: {task['prompt']} "
         f"Richtiger Zwischenschritt: {completed_step['label']} = "
@@ -2476,7 +2524,7 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
 
         text = call_openai_responses_api(prompt, 90)
         if text:
-            return text
+            return ensure_sentence(text)
     except Exception:
         pass
 
@@ -2670,6 +2718,7 @@ def create_next_task():
     st.session_state.hint_backend_error = ""
     st.session_state.guided_visible = False
     st.session_state.guided_summary = ""
+    st.session_state.guided_summary_kind = "warning"
     st.session_state.guided_step_feedback = []
     st.session_state.guided_step_index = 0
     st.session_state.guided_step_attempts = {}
@@ -2732,6 +2781,7 @@ def handle_submission():
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
+        st.session_state.guided_summary_kind = "warning"
         st.session_state.guided_step_feedback = []
         st.session_state.explanation_text = ""
         return
@@ -2742,6 +2792,7 @@ def handle_submission():
         st.session_state.hint_text = progressive_main_hint(task, answer_value, st.session_state.attempt)
         st.session_state.guided_visible = st.session_state.attempt >= 2
         st.session_state.guided_summary = ""
+        st.session_state.guided_summary_kind = "warning"
         st.session_state.guided_step_feedback = []
         st.session_state.attempt += 1
         return
@@ -2768,7 +2819,9 @@ def handle_guided_submission():
         st.session_state.feedback_kind = "warning"
         st.session_state.feedback_text = ""
         st.session_state.guided_summary = f"{step['label']}: Bitte gib hier einen Rechenweg oder ein Ergebnis ein."
+        st.session_state.guided_summary_kind = "warning"
         st.session_state.guided_step_feedback = []
+        st.rerun()
         return
 
     try:
@@ -2777,7 +2830,9 @@ def handle_guided_submission():
         st.session_state.feedback_kind = "error"
         st.session_state.feedback_text = ""
         st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :"
+        st.session_state.guided_summary_kind = "error"
         st.session_state.guided_step_feedback = []
+        st.rerun()
         return
 
     exact_step_match = values_match(answer_value, step["expected"], step["round_for_check"], step.get("match_mode"))
@@ -2811,6 +2866,7 @@ def handle_guided_submission():
             st.session_state.feedback_text = ""
             st.session_state.hint_text = ""
             st.session_state.guided_summary = "Alle Zwischenschritte passen. Schau dir den Rechenweg gerne noch einmal in Ruhe an."
+            st.session_state.guided_summary_kind = "warning" if guided_has_warning() else "success"
             st.session_state.guided_visible = True
             st.session_state.solution_visible = False
             st.session_state.task_finished = True
@@ -2822,6 +2878,7 @@ def handle_guided_submission():
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
         st.session_state.guided_summary = generate_guided_transition_hint(task, step, answer_value, next_step)
+        st.session_state.guided_summary_kind = "warning" if guided_has_warning() else "success"
         st.rerun()
 
     attempts = st.session_state.guided_step_attempts
@@ -2843,6 +2900,7 @@ def handle_guided_submission():
                 f"{error_hint} Ich habe diesen letzten Zwischenschritt jetzt aufgelöst, "
                 "damit du den vollständigen Rechenweg in Ruhe prüfen kannst."
             )
+            st.session_state.guided_summary_kind = "warning"
             st.session_state.guided_visible = True
             st.session_state.solution_visible = False
             st.session_state.task_finished = True
@@ -2855,10 +2913,13 @@ def handle_guided_submission():
             f"{error_hint} Ich habe diesen Zwischenschritt jetzt aufgelöst. "
             f"Weiter geht es mit {next_step['label']}."
         )
+        st.session_state.guided_summary_kind = "warning"
         st.rerun()
 
     st.session_state.guided_summary = error_hint
+    st.session_state.guided_summary_kind = "warning"
     st.session_state.guided_step_feedback = []
+    st.rerun()
 
 
 def handle_explanation_request():
@@ -2989,6 +3050,8 @@ if st.session_state.guided_visible:
     for completed_entry in st.session_state.guided_completed:
         render_guided_completed_entry(completed_entry)
 
+    render_guided_summary()
+
     guided_steps = st.session_state.task.get("guided_steps", [])
     current_index = st.session_state.guided_step_index
 
@@ -3005,12 +3068,6 @@ if st.session_state.guided_visible:
 
         if guided_submitted:
             handle_guided_submission()
-
-    if st.session_state.guided_summary:
-        if st.session_state.feedback_kind == "success":
-            st.success(st.session_state.guided_summary)
-        else:
-            st.warning(st.session_state.guided_summary)
 
 if st.session_state.solution_visible:
     st.warning(
