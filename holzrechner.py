@@ -316,7 +316,7 @@ def call_openai_responses_api(prompt, max_output_tokens):
     return extract_responses_text(response_data)
 
 
-def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
+def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None, placeholder=None):
     return {
         "label": label,
         "expected": expected,
@@ -325,6 +325,7 @@ def make_guided_step(label, expected, unit, display_places, round_for_check, cor
         "round_for_check": round_for_check,
         "correction": correction,
         "formula_hint": formula_hint or correction,
+        "placeholder": placeholder,
     }
 
 
@@ -510,7 +511,7 @@ def task_price_per_running_meter(level):
     solution = (
         "Rechenweg:\n"
         "1. Formel: Euro pro Laufmeter = Euro pro Kubikmeter x Breite x Höhe\n"
-        f"2. Preis je Laufmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
+        f"2. Preis je Laufmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -528,7 +529,7 @@ def task_price_per_running_meter(level):
                 "Querschnitt",
                 cross_section.normalize(),
                 "m2",
-                4,
+                5,
                 False,
                 "Rechne zuerst Breite x Höhe mit Meterwerten.",
             ),
@@ -539,6 +540,7 @@ def task_price_per_running_meter(level):
                 2,
                 True,
                 "Multipliziere danach den Querschnitt mit dem Preis pro Kubikmeter.",
+                placeholder="Zum Beispiel 0,00304 * 350",
             ),
         ],
     }
@@ -1080,7 +1082,7 @@ def task_m3_price_from_running_meter(level):
     solution = (
         "Rechenweg:\n"
         "1. Formel: Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)\n"
-        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter) = {format_decimal(result, 2)} Euro pro Kubikmeter"
+        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter) = {format_decimal(result, 2)} Euro pro Kubikmeter"
     )
 
     return {
@@ -1097,10 +1099,11 @@ def task_m3_price_from_running_meter(level):
                 "Breite x Höhe",
                 cross_section.normalize(),
                 "m2",
-                4,
+                5,
                 False,
                 "Rechne zuerst Breite x Höhe mit Meterwerten.",
                 "Formel: Breite x Höhe",
+                placeholder="Zum Beispiel 0,16 * 0,019",
             ),
             make_guided_step(
                 "Preis pro Kubikmeter",
@@ -1391,7 +1394,11 @@ def guided_values_match(user_value, expected_value, round_for_check, current_ind
     if values_match(user_value, expected_value, round_for_check):
         return True
 
-    if current_index == 0 or unit == "EUR":
+    if unit == "EUR" and round_for_check:
+        rounded_user_value = user_value.quantize(q("1.00"), rounding=ROUND_HALF_UP)
+        return abs(rounded_user_value - expected_value) <= Decimal("0.01")
+
+    if current_index == 0:
         return False
 
     if expected_value == 0:
@@ -1421,6 +1428,54 @@ def format_user_result(value, task):
 
 def format_value_for_step(value, step):
     return format_decimal(value, step["display_places"])
+
+
+def is_direct_result_input(text):
+    cleaned = text.strip().replace(" ", "")
+    return bool(re.fullmatch(r"[+-]?\d+(?:[,.]\d+)?", cleaned))
+
+
+def default_step_placeholder(step):
+    label = step["label"].lower()
+    unit = step["unit"]
+
+    if "db-faktor" in label:
+        return "Zum Beispiel 1 - 0,23"
+    if "querschnitt" in label or "breite x höhe" in label:
+        return "Zum Beispiel 0,16 * 0,019"
+    if "preis je laufmeter" in label:
+        return "Zum Beispiel 0,00304 * 350"
+    if "preis pro quadratmeter" in label or "preis je quadratmeter" in label:
+        return "Zum Beispiel 560 * 0,05"
+    if "preis pro kubikmeter" in label:
+        return "Zum Beispiel 6,20 / 0,00304"
+    if "volumen pro" in label:
+        return "Zum Beispiel 5 * 0,12 * 0,12"
+    if "paketvolumen" in label:
+        return "Zum Beispiel 0,072 * 40"
+    if "gesamtvolumen" in label:
+        return "Zum Beispiel 0,072 * 8"
+    if "paket-vk" in label or "vk" in label:
+        return "Zum Beispiel 1008 / 0,77"
+    if "paket-ek" in label or "paketpreis" in label or "gesamtpreis" in label:
+        return "Zum Beispiel 2,88 * 350"
+    if "laufmeter" in label:
+        return "Zum Beispiel 0,36 / 0,012"
+    if "quadratmeter" in label:
+        return "Zum Beispiel 1,35 / 0,025"
+    if unit == "EUR":
+        return "Zum Beispiel 0,00304 * 350"
+    if unit == "m3":
+        return "Zum Beispiel 6 * 0,08 * 0,12"
+    if unit == "m2":
+        return "Zum Beispiel 1,35 / 0,025"
+    if unit == "lfm":
+        return "Zum Beispiel 0,36 / 0,012"
+    return "Zum Beispiel 0,96 * 350"
+
+
+def step_placeholder(step):
+    return step.get("placeholder") or default_step_placeholder(step)
 
 
 def guided_completed_entry(text, kind="success"):
@@ -1848,6 +1903,7 @@ def create_next_task():
     st.session_state.result_text = ""
     st.session_state.last_answer_display = ""
     st.session_state.solution_visible = False
+    st.session_state.show_success_solution = False
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
@@ -1908,6 +1964,7 @@ def handle_submission():
         st.session_state.feedback_text = ""
         st.session_state.hint_text = generate_hint(task, answer_value, True)
         st.session_state.solution_visible = False
+        st.session_state.show_success_solution = is_direct_result_input(answer_text)
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
@@ -1959,11 +2016,20 @@ def handle_guided_submission():
         st.session_state.guided_step_feedback = []
         return
 
+    exact_step_match = values_match(answer_value, step["expected"], step["round_for_check"])
     if guided_values_match(answer_value, step["expected"], step["round_for_check"], current_index, step["unit"]):
-        success_text = (
-            f"{step['label']}: {raw_value} = "
-            f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. Passt."
-        )
+        if exact_step_match:
+            success_text = (
+                f"{step['label']}: {raw_value} = "
+                f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. Passt."
+            )
+        else:
+            success_text = (
+                f"{step['label']}: {raw_value} = "
+                f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
+                f"Passt als Rundung; fachlich liegt der Schritt bei "
+                f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}."
+            )
         completed = st.session_state.guided_completed
         completed.append(guided_completed_entry(success_text))
         st.session_state.guided_completed = completed
@@ -2081,12 +2147,12 @@ st.write(
 )
 st.write(
     "Du musst hier nichts im Taschenrechner ausrechnen. Es reicht, wenn du deinen Rechenweg als Formel eingibst, "
-    "also zum Beispiel mit mal und geteilt."
+    "also zum Beispiel mit mal und geteilt. Du kannst aber auch direkt das Endergebnis eintragen."
 )
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
-st.caption("Bitte gib deinen Rechenweg als Formel ein.")
+st.caption("Du kannst deinen Rechenweg als Formel oder direkt das Endergebnis eintragen.")
 
 with st.form("answer_form", clear_on_submit=False):
     st.text_input(
@@ -2121,6 +2187,10 @@ if st.session_state.hint_text and not st.session_state.solution_visible:
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
 
+if st.session_state.get("show_success_solution") and not st.session_state.solution_visible:
+    st.success("Der Endwert stimmt. Hier ist der passende Rechenweg dazu:")
+    st.code(st.session_state.task["solution"])
+
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
     st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
@@ -2138,7 +2208,7 @@ if st.session_state.guided_visible:
             st.text_input(
                 current_step["label"],
                 key=f"guided_input_{current_index + 1}",
-                placeholder="Zum Beispiel 0,96 * 350",
+                placeholder=step_placeholder(current_step),
             )
             guided_submitted = st.form_submit_button("Schritt prüfen", type="primary")
 
