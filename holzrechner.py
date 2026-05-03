@@ -1371,10 +1371,12 @@ def task_db_sale_price(level):
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = db_percent_for_product(product, level)
 
-    total_volume = length_m * width_m * height_m * Decimal(count)
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(count)
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     result = total_ek / divisor
+    piece_volume_places = precise_decimal_places(piece_volume)
     total_volume_places = precise_decimal_places(total_volume)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
@@ -1387,10 +1389,16 @@ def task_db_sale_price(level):
 
     solution = format_solution_steps(
         (
-            "Gesamtvolumen",
-            "Gesamtvolumen = Länge x Breite x Höhe x Stückzahl",
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 2)} Meter x {count} Stück = {format_decimal(total_volume, total_volume_places)} Kubikmeter",
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+        ),
+        (
+            "Gesamtvolumen",
+            "Gesamtvolumen = Volumen pro Stück x Stückzahl",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {count} Stück = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
         ),
         (
             "Gesamter EK",
@@ -1413,7 +1421,7 @@ def task_db_sale_price(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "db_sale_price",
-        "correction": "Rechne zuerst das Gesamtvolumen und daraus den gesamten EK. Für den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0,70 bei 30 % DB.",
+        "correction": "Rechne zuerst das Volumen eines einzelnen Stücks, daraus das Gesamtvolumen und danach den gesamten EK. Für den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0,70 bei 30 % DB.",
         "solution": solution,
         "perfect_formula": (
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
@@ -1421,13 +1429,24 @@ def task_db_sale_price(level):
         ),
         "guided_steps": [
             make_guided_step(
+                "Volumen pro Stück",
+                piece_volume.normalize(),
+                "m3",
+                piece_volume_places,
+                False,
+                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
+                "Länge x Breite x Höhe",
+                placeholder="Zum Beispiel 9 * 0,12 * 0,10",
+            ),
+            make_guided_step(
                 "Gesamtvolumen",
                 total_volume.normalize(),
                 "m3",
                 total_volume_places,
                 False,
-                "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
-                "Formel: Länge x Breite x Höhe x Stückzahl",
+                "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
+                "Volumen pro Stück x Stückzahl",
+                placeholder="Zum Beispiel 0,108 * 8",
             ),
             make_guided_step(
                 "Gesamter EK",
@@ -2652,7 +2671,7 @@ def likely_error_focus(task):
         "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter und auf den Querschnitt.",
         "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
         "running_meters_from_square_meters": "Achte besonders auf die Richtung Quadratmeter zu Laufmeter über die Breite der Hobelware.",
-        "db_sale_price": "Achte besonders auf die Reihenfolge Gesamtvolumen, EK und danach VK mit DB.",
+        "db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Gesamtvolumen, EK und danach VK mit DB.",
         "package_db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen, Paket-EK und VK mit DB.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
