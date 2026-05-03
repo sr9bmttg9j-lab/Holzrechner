@@ -210,9 +210,9 @@ def task_volume_beam(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen pro Stück = {format_m(length_m)} x {format_decimal(width_m, 2)} x "
-        f"{format_decimal(height_m, 2)} = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter\n"
-        f"2. Gesamtvolumen = {format_decimal(length_m * width_m * height_m, 3)} x {count} = "
+        f"1. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+        f"{format_decimal(height_m, 2)} Meter = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter\n"
+        f"2. Gesamtvolumen = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter x {count} Stück = "
         f"{format_decimal(result, 3)} Kubikmeter"
     )
 
@@ -263,11 +263,11 @@ def task_price_per_running_meter(level):
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
         f"{format_decimal(cross_section, 4)} Quadratmeter\n"
-        f"2. Volumen von 1 Laufmeter = {format_decimal(cross_section, 4)} x 1 = "
+        f"2. Volumen von 1 Laufmeter = {format_decimal(cross_section, 4)} Quadratmeter x 1 Laufmeter = "
         f"{format_decimal(cross_section, 4)} Kubikmeter\n"
-        f"3. Preis je Laufmeter = {format_decimal(cross_section, 4)} x {format_decimal(m3_price, 0)} = "
+        f"3. Preis je Laufmeter = {format_decimal(cross_section, 4)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -316,9 +316,9 @@ def task_price_per_square_meter(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen von 1 Quadratmeter Platte = 1 x {format_decimal(thickness_m, 3)} = "
+        f"1. Volumen von 1 Quadratmeter Platte = 1 Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
         f"{format_decimal(thickness_m, 3)} Kubikmeter\n"
-        f"2. Preis je Quadratmeter = {format_decimal(thickness_m, 3)} x {format_decimal(m3_price, 0)} = "
+        f"2. Preis je Quadratmeter = {format_decimal(thickness_m, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -367,7 +367,7 @@ def task_square_meters_from_volume(level):
     solution = (
         "Rechenweg:\n"
         "1. Formel: Quadratmeter = Kubikmeter / Dicke\n"
-        f"2. Quadratmeter = {format_decimal(total_volume, 3)} / {format_decimal(thickness_m, 3)} = "
+        f"2. Quadratmeter = {format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
         f"{format_decimal(result, 0)} Quadratmeter"
     )
 
@@ -417,7 +417,7 @@ def task_total_price_from_volume(level):
     solution = (
         "Rechenweg:\n"
         "1. Gesamtpreis = Volumen x Preis pro Kubikmeter\n"
-        f"2. Gesamtpreis = {format_decimal(total_volume, 3)} x {format_decimal(m3_price, 0)} = "
+        f"2. Gesamtpreis = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -465,10 +465,10 @@ def task_running_meters_from_volume(level):
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = "
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
         f"{format_decimal(cross_section, 4)} Quadratmeter\n"
         "2. Formel: Laufmeter = Kubikmeter / Querschnitt\n"
-        f"3. Laufmeter = {format_decimal(total_volume, 3)} / {format_decimal(cross_section, 4)} = "
+        f"3. Laufmeter = {format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(cross_section, 4)} Quadratmeter = "
         f"{format_decimal(running_meters, 0)} Laufmeter"
     )
 
@@ -532,11 +532,11 @@ def task_db_sale_price(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Gesamtvolumen = {format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x {count} = "
+        f"1. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {count} Stück = "
         f"{format_decimal(total_volume, 3)} Kubikmeter\n"
-        f"2. Gesamter EK = {format_decimal(total_volume, 3)} x {format_decimal(ek_price_m3, 0)} = "
+        f"2. Gesamter EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
         f"{format_decimal(total_ek, 2)} Euro\n"
-        f"3. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} / {format_decimal(divisor, 2)} = "
+        f"3. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -597,8 +597,8 @@ def task_volume_from_running_meters(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = {format_decimal(width_m * height_m, 4)} Quadratmeter\n"
-        f"2. Volumen = {format_decimal(width_m * height_m, 4)} x {format_decimal(running_meters, 0)} = {format_decimal(result, 3)} Kubikmeter"
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(width_m * height_m, 4)} Quadratmeter\n"
+        f"2. Volumen = {format_decimal(width_m * height_m, 4)} Quadratmeter x {format_decimal(running_meters, 0)} Laufmeter = {format_decimal(result, 3)} Kubikmeter"
     )
 
     return {
@@ -640,7 +640,7 @@ def task_volume_from_total_price(level):
     solution = (
         "Rechenweg:\n"
         f"1. Volumen = Gesamtpreis / Preis pro Kubikmeter\n"
-        f"2. Volumen = {format_decimal(total_price, 2)} / {format_decimal(m3_price, 0)} = {format_decimal(total_volume, 3)} Kubikmeter"
+        f"2. Volumen = {format_decimal(total_price, 2)} Euro / {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(total_volume, 3)} Kubikmeter"
     )
 
     return {
@@ -682,8 +682,8 @@ def task_m3_price_from_running_meter(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} = {format_decimal(cross_section, 4)} Quadratmeter\n"
-        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} / {format_decimal(cross_section, 4)} = {format_decimal(result, 2)} Euro"
+        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(cross_section, 4)} Quadratmeter\n"
+        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / {format_decimal(cross_section, 4)} Quadratmeter = {format_decimal(result, 2)} Euro pro Kubikmeter"
     )
 
     return {
@@ -742,7 +742,7 @@ def task_ek_from_vk_db(level):
     solution = (
         "Rechenweg:\n"
         f"1. EK = VK x (1 - DB)\n"
-        f"2. EK = {format_decimal(total_vk, 2)} x {format_decimal(divisor, 2)} = {format_decimal(total_ek, 2)} Euro"
+        f"2. EK = {format_decimal(total_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(total_ek, 2)} Euro"
     )
 
     return {
@@ -1000,6 +1000,51 @@ def generate_hint(task, answer_value, is_correct):
         return fallback_hint(task, is_correct)
 
 
+def fallback_solution_explanation(task):
+    return (
+        f"Die Aufgabe wird hier Schritt für Schritt über die passende Einheit gelöst. "
+        f"Starte mit der gegebenen Größe, rechne sauber in {unit_label(task['unit'])} um "
+        f"und achte darauf, dass jede Zwischenrechnung die Einheit mitträgt. "
+        f"Der Muster-Rechenweg oben zeigt genau diese Reihenfolge."
+    )
+
+
+def generate_solution_explanation(task):
+    prompt = (
+        "Du bist ein Lernassistent für die Holzbranche. "
+        "Erkläre auf Deutsch den folgenden Muster-Rechenweg in drei bis fünf kurzen Sätzen. "
+        "Sprich ruhig, konkret und fachlich. "
+        "Erkläre ausdrücklich, welche Einheit in jedem Schritt gedacht wird und warum der Rechenweg logisch zur Zielgröße führt. "
+        "Gib keine neue alternative Lösung, sondern erläutere genau den vorhandenen Muster-Rechenweg. "
+        f"Aufgabentext: {task['prompt']} "
+        f"Zielgröße: {unit_label(task['unit'])}. "
+        f"Muster-Rechenweg: {task['solution']}"
+    )
+
+    try:
+        from openai import OpenAI
+
+        api_key = None
+        if "OPENAI_API_KEY" in st.secrets:
+            api_key = st.secrets["OPENAI_API_KEY"]
+        elif "openai_api_key" in st.secrets:
+            api_key = st.secrets["openai_api_key"]
+
+        if not api_key:
+            return fallback_solution_explanation(task)
+
+        client = OpenAI(api_key=api_key)
+        response = client.responses.create(
+            model="gpt-5-mini",
+            input=prompt,
+            max_output_tokens=180,
+        )
+        text = (response.output_text or "").strip()
+        return text if text else fallback_solution_explanation(task)
+    except Exception:
+        return fallback_solution_explanation(task)
+
+
 def choose_task(level, recent_task_types):
     candidates = TASKS_BY_LEVEL[level]
     if not recent_task_types:
@@ -1037,6 +1082,7 @@ def create_next_task():
     st.session_state.guided_step_index = 0
     st.session_state.guided_step_attempts = {}
     st.session_state.guided_completed = []
+    st.session_state.solution_explanation = ""
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
@@ -1079,6 +1125,7 @@ def handle_submission():
         st.session_state.feedback_text = ""
         st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
         st.session_state.solution_visible = True
+        st.session_state.solution_explanation = generate_solution_explanation(task)
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
@@ -1099,6 +1146,7 @@ def handle_submission():
     st.session_state.feedback_text = ""
     st.session_state.hint_text = f"{task['correction']} Die Aufgabe wird jetzt aufgelöst."
     st.session_state.solution_visible = True
+    st.session_state.solution_explanation = generate_solution_explanation(task)
     st.session_state.task_finished = True
     st.session_state.guided_visible = False
 
@@ -1142,6 +1190,7 @@ def handle_guided_submission():
             st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
             st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
             st.session_state.solution_visible = True
+            st.session_state.solution_explanation = generate_solution_explanation(task)
             st.session_state.task_finished = True
             return
 
@@ -1279,6 +1328,8 @@ if st.session_state.guided_visible and not st.session_state.task_finished:
 if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
     st.code(st.session_state.task["solution"])
+    if st.session_state.solution_explanation:
+        st.info(f"KI-Erklärung: {st.session_state.solution_explanation}")
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
