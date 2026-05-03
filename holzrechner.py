@@ -176,23 +176,44 @@ def unit_label(unit):
     return UNIT_LABELS.get(unit, unit)
 
 
-def get_openai_api_key():
+def normalize_secret_value(value):
+    if value is None:
+        return ""
+
+    text = str(value)
+    text = text.replace("\u200b", "").replace("\ufeff", "")
+    text = re.sub(r"\s+", "", text)
+    return text.strip()
+
+
+def key_fingerprint(value):
+    normalized = normalize_secret_value(value)
+    if not normalized:
+        return "leer"
+    if len(normalized) <= 16:
+        return normalized
+    return f"{normalized[:12]}...{normalized[-4:]} (Länge {len(normalized)})"
+
+
+def get_raw_openai_api_key():
     for key in ("OPENAI_API_KEY", "openai_api_key"):
         try:
             if key in st.secrets and st.secrets[key]:
-                secret_value = str(st.secrets[key]).strip()
-                if secret_value:
-                    return secret_value
+                return str(st.secrets[key])
         except Exception:
             pass
 
         env_value = os.getenv(key)
         if env_value:
-            env_value = env_value.strip()
-            if env_value:
-                return env_value
+            return env_value
 
     return None
+
+
+def get_openai_api_key():
+    raw_value = get_raw_openai_api_key()
+    normalized = normalize_secret_value(raw_value)
+    return normalized or None
 
 
 def get_optional_openai_header(name):
@@ -1921,6 +1942,17 @@ if st.session_state.solution_visible:
             else:
                 details = f" - {backend_error}" if backend_error else ""
                 st.caption(f"Erklärungsquelle: {backend_text}{details}")
+                raw_key = get_raw_openai_api_key()
+                normalized_key = get_openai_api_key()
+                if raw_key:
+                    raw_length = len(str(raw_key))
+                    normalized_length = len(normalized_key or "")
+                    whitespace_changed = "ja" if raw_length != normalized_length else "nein"
+                    st.caption(
+                        "Geladener Key-Fingerprint: "
+                        f"{key_fingerprint(normalized_key)} | "
+                        f"Leerzeichen/Zeilenumbrüche entfernt: {whitespace_changed}"
+                    )
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
