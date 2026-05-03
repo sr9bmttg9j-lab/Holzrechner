@@ -291,6 +291,45 @@ def call_openai_responses_api(prompt, max_output_tokens):
     return extract_responses_text(response_data)
 
 
+def test_openai_models_api():
+    api_key = get_openai_api_key()
+    if not api_key:
+        return "Kein OpenAI-Key geladen."
+
+    headers = {
+        "Authorization": f"Bearer {api_key}",
+    }
+
+    organization = get_optional_openai_header("OPENAI_ORGANIZATION")
+    project = get_optional_openai_header("OPENAI_PROJECT")
+    if organization:
+        headers["OpenAI-Organization"] = organization
+    if project:
+        headers["OpenAI-Project"] = project
+
+    request = urllib_request.Request(
+        "https://api.openai.com/v1/models",
+        headers=headers,
+        method="GET",
+    )
+
+    try:
+        with urllib_request.urlopen(request, timeout=30) as response:
+            body = response.read().decode("utf-8")
+    except urllib_error.HTTPError as exc:
+        error_body = exc.read().decode("utf-8", errors="replace")
+        return f"HTTP {exc.code}: {error_body}"
+    except urllib_error.URLError as exc:
+        return f"Netzwerkfehler: {exc.reason}"
+
+    try:
+        payload = json.loads(body)
+        model_count = len(payload.get("data", []))
+        return f"200 OK, {model_count} Modelle abrufbar"
+    except json.JSONDecodeError:
+        return "200 OK, aber die Antwort war kein JSON."
+
+
 def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
     return {
         "label": label,
@@ -1438,7 +1477,8 @@ def generate_hint(task, answer_value, is_correct):
         return fallback_hint(task, is_correct)
     except Exception as exc:
         st.session_state.hint_backend = "fallback_exception"
-        st.session_state.hint_backend_error = str(exc)
+        models_test = test_openai_models_api()
+        st.session_state.hint_backend_error = f"{exc} | Vergleichstest /v1/models: {models_test}"
         return fallback_hint(task, is_correct)
 
 
@@ -1557,7 +1597,8 @@ def generate_step_explanation(task, question_text):
         return fallback_step_explanation(task, question_text)
     except Exception as exc:
         st.session_state.explanation_backend = "fallback_exception"
-        st.session_state.explanation_backend_error = str(exc)
+        models_test = test_openai_models_api()
+        st.session_state.explanation_backend_error = f"{exc} | Vergleichstest /v1/models: {models_test}"
         return fallback_step_explanation(task, question_text)
 
 
