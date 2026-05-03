@@ -188,6 +188,27 @@ def get_openai_api_key():
     return None
 
 
+def sanitize_backend_error(text):
+    if not text:
+        return ""
+
+    sanitized = str(text)
+    sanitized = re.sub(r"sk-[A-Za-z0-9_\-]+", "sk-***", sanitized)
+    return sanitized
+
+
+def backend_status_text(backend_name):
+    if backend_name == "api":
+        return "OpenAI-Antwort aktiv"
+    if backend_name == "fallback_no_key":
+        return "Lokaler Fallback: Kein OpenAI-Key gefunden"
+    if backend_name == "fallback_empty_response":
+        return "Lokaler Fallback: OpenAI hat leer geantwortet"
+    if backend_name == "fallback_exception":
+        return "Lokaler Fallback: OpenAI-Anfrage ist fehlgeschlagen"
+    return ""
+
+
 def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
     return {
         "label": label,
@@ -1787,6 +1808,14 @@ if st.session_state.solution_visible:
 
     if st.session_state.explanation_text:
         st.info(f"Erklärung: {st.session_state.explanation_text}")
+        backend_text = backend_status_text(st.session_state.explanation_backend)
+        backend_error = sanitize_backend_error(st.session_state.explanation_backend_error)
+        if backend_text:
+            if st.session_state.explanation_backend == "api":
+                st.caption(f"Erklärungsquelle: {backend_text}")
+            else:
+                details = f" - {backend_error}" if backend_error else ""
+                st.caption(f"Erklärungsquelle: {backend_text}{details}")
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
