@@ -265,8 +265,32 @@ def extract_responses_text(payload):
             text = content.get("text")
             if content.get("type") in ("output_text", "text") and text:
                 collected.append(str(text))
+            refusal_text = content.get("refusal")
+            if content.get("type") == "refusal" and refusal_text:
+                collected.append(str(refusal_text))
 
     return "\n".join(collected).strip()
+
+
+def summarize_response_payload(payload):
+    output_items = payload.get("output", [])
+    if not output_items:
+        return "Keine output-Elemente vorhanden."
+
+    parts = []
+    for index, item in enumerate(output_items, start=1):
+        item_type = item.get("type", "unbekannt")
+        role = item.get("role", "")
+        status = item.get("status", "")
+        content_types = []
+        for content in item.get("content", []):
+            content_types.append(content.get("type", "unbekannt"))
+        content_summary = ", ".join(content_types) if content_types else "ohne content"
+        role_text = f", Rolle {role}" if role else ""
+        status_text = f", Status {status}" if status else ""
+        parts.append(f"Item {index}: Typ {item_type}{role_text}{status_text}, Content {content_summary}")
+
+    return " | ".join(parts)
 
 
 def call_openai_responses_api(prompt, max_output_tokens):
@@ -288,8 +312,24 @@ def call_openai_responses_api(prompt, max_output_tokens):
 
     payload = {
         "model": "gpt-5-mini",
-        "input": prompt,
+        "input": [
+            {
+                "role": "user",
+                "content": [
+                    {
+                        "type": "input_text",
+                        "text": prompt,
+                    }
+                ],
+            }
+        ],
         "max_output_tokens": max_output_tokens,
+        "reasoning": {
+            "effort": "minimal",
+        },
+        "text": {
+            "verbosity": "medium",
+        },
     }
 
     request = urllib_request.Request(
@@ -309,7 +349,11 @@ def call_openai_responses_api(prompt, max_output_tokens):
         raise RuntimeError(f"Netzwerkfehler: {exc.reason}") from exc
 
     response_data = json.loads(body)
-    return extract_responses_text(response_data)
+    return {
+        "text": extract_responses_text(response_data),
+        "summary": summarize_response_payload(response_data),
+        "response_id": response_data.get("id", ""),
+    }
 
 
 def test_openai_models_api():
@@ -1488,13 +1532,14 @@ def generate_hint(task, answer_value, is_correct):
             st.session_state.hint_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_hint(task, is_correct)
 
-        text = call_openai_responses_api(prompt, 160)
+        response_data = call_openai_responses_api(prompt, 160)
+        text = response_data["text"]
         if text:
             st.session_state.hint_backend = "api_rest"
-            st.session_state.hint_backend_error = ""
+            st.session_state.hint_backend_error = f"Response-ID: {response_data['response_id']}" if response_data["response_id"] else ""
             return text
         st.session_state.hint_backend = "fallback_empty_response"
-        st.session_state.hint_backend_error = "OpenAI-Antwort war leer."
+        st.session_state.hint_backend_error = f"OpenAI-Antwort war leer. {response_data['summary']}"
         return fallback_hint(task, is_correct)
     except Exception as exc:
         st.session_state.hint_backend = "fallback_exception"
@@ -1608,13 +1653,14 @@ def generate_step_explanation(task, question_text):
             st.session_state.explanation_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_step_explanation(task, question_text)
 
-        text = call_openai_responses_api(prompt, 320)
+        response_data = call_openai_responses_api(prompt, 320)
+        text = response_data["text"]
         if text:
             st.session_state.explanation_backend = "api_rest"
-            st.session_state.explanation_backend_error = ""
+            st.session_state.explanation_backend_error = f"Response-ID: {response_data['response_id']}" if response_data["response_id"] else ""
             return text
         st.session_state.explanation_backend = "fallback_empty_response"
-        st.session_state.explanation_backend_error = "OpenAI-Antwort war leer."
+        st.session_state.explanation_backend_error = f"OpenAI-Antwort war leer. {response_data['summary']}"
         return fallback_step_explanation(task, question_text)
     except Exception as exc:
         st.session_state.explanation_backend = "fallback_exception"
