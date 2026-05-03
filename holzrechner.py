@@ -1288,6 +1288,20 @@ def values_match(user_value, expected_value, round_for_check):
     return user_value == expected_value
 
 
+def guided_values_match(user_value, expected_value, round_for_check, current_index, unit):
+    if values_match(user_value, expected_value, round_for_check):
+        return True
+
+    if current_index == 0 or unit == "EUR":
+        return False
+
+    if expected_value == 0:
+        return False
+
+    tolerance = abs(expected_value) * Decimal("0.005")
+    return abs(user_value - expected_value) <= tolerance
+
+
 def format_expected(task):
     return format_decimal(task["expected"], task["display_places"])
 
@@ -1763,8 +1777,11 @@ def handle_guided_submission():
         st.session_state.guided_step_feedback = []
         return
 
-    if values_match(answer_value, step["expected"], step["round_for_check"]):
-        success_text = f"{step['label']}: passt. Ergebnis {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}."
+    if guided_values_match(answer_value, step["expected"], step["round_for_check"], current_index, step["unit"]):
+        success_text = (
+            f"{step['label']}: {raw_value} = "
+            f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. Passt."
+        )
         completed = st.session_state.guided_completed
         completed.append(success_text)
         st.session_state.guided_completed = completed
