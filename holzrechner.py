@@ -1,9 +1,15 @@
 import ast
+import os
 import random
 from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 import re
 
 import streamlit as st
+from dotenv import load_dotenv
+
+
+load_dotenv()
+load_dotenv("env")
 
 
 PRODUCTS = [
@@ -165,6 +171,21 @@ def format_cm(value):
 
 def unit_label(unit):
     return UNIT_LABELS.get(unit, unit)
+
+
+def get_openai_api_key():
+    for key in ("OPENAI_API_KEY", "openai_api_key"):
+        try:
+            if key in st.secrets and st.secrets[key]:
+                return str(st.secrets[key])
+        except Exception:
+            pass
+
+        env_value = os.getenv(key)
+        if env_value:
+            return env_value
+
+    return None
 
 
 def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
@@ -1301,13 +1322,10 @@ def generate_hint(task, answer_value, is_correct):
     try:
         from openai import OpenAI
 
-        api_key = None
-        if "OPENAI_API_KEY" in st.secrets:
-            api_key = st.secrets["OPENAI_API_KEY"]
-        elif "openai_api_key" in st.secrets:
-            api_key = st.secrets["openai_api_key"]
-
+        api_key = get_openai_api_key()
         if not api_key:
+            st.session_state.hint_backend = "fallback_no_key"
+            st.session_state.hint_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_hint(task, is_correct)
 
         client = OpenAI(api_key=api_key)
@@ -1317,8 +1335,16 @@ def generate_hint(task, answer_value, is_correct):
             max_output_tokens=160,
         )
         text = (response.output_text or "").strip()
-        return text if text else fallback_hint(task, is_correct)
-    except Exception:
+        if text:
+            st.session_state.hint_backend = "api"
+            st.session_state.hint_backend_error = ""
+            return text
+        st.session_state.hint_backend = "fallback_empty_response"
+        st.session_state.hint_backend_error = "OpenAI-Antwort war leer."
+        return fallback_hint(task, is_correct)
+    except Exception as exc:
+        st.session_state.hint_backend = "fallback_exception"
+        st.session_state.hint_backend_error = str(exc)
         return fallback_hint(task, is_correct)
 
 
@@ -1420,13 +1446,10 @@ def generate_step_explanation(task, selected_steps):
     try:
         from openai import OpenAI
 
-        api_key = None
-        if "OPENAI_API_KEY" in st.secrets:
-            api_key = st.secrets["OPENAI_API_KEY"]
-        elif "openai_api_key" in st.secrets:
-            api_key = st.secrets["openai_api_key"]
-
+        api_key = get_openai_api_key()
         if not api_key:
+            st.session_state.explanation_backend = "fallback_no_key"
+            st.session_state.explanation_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
             return fallback_step_explanation(task, selected_steps)
 
         client = OpenAI(api_key=api_key)
@@ -1436,8 +1459,16 @@ def generate_step_explanation(task, selected_steps):
             max_output_tokens=320,
         )
         text = (response.output_text or "").strip()
-        return text if text else fallback_step_explanation(task, selected_steps)
-    except Exception:
+        if text:
+            st.session_state.explanation_backend = "api"
+            st.session_state.explanation_backend_error = ""
+            return text
+        st.session_state.explanation_backend = "fallback_empty_response"
+        st.session_state.explanation_backend_error = "OpenAI-Antwort war leer."
+        return fallback_step_explanation(task, selected_steps)
+    except Exception as exc:
+        st.session_state.explanation_backend = "fallback_exception"
+        st.session_state.explanation_backend_error = str(exc)
         return fallback_step_explanation(task, selected_steps)
 
 
@@ -1472,6 +1503,8 @@ def create_next_task():
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
     st.session_state.last_diagnostic_hint = ""
+    st.session_state.hint_backend = ""
+    st.session_state.hint_backend_error = ""
     st.session_state.guided_visible = False
     st.session_state.guided_summary = ""
     st.session_state.guided_step_feedback = []
@@ -1481,6 +1514,8 @@ def create_next_task():
     st.session_state.explanation_request = ""
     st.session_state.explanation_text = ""
     st.session_state.explanation_error = ""
+    st.session_state.explanation_backend = ""
+    st.session_state.explanation_backend_error = ""
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
