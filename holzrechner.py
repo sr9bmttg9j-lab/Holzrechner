@@ -186,34 +186,23 @@ def normalize_secret_value(value):
     return text.strip()
 
 
-def key_fingerprint(value):
-    normalized = normalize_secret_value(value)
-    if not normalized:
-        return "leer"
-    if len(normalized) <= 16:
-        return normalized
-    return f"{normalized[:12]}...{normalized[-4:]} (Länge {len(normalized)})"
-
-
-def get_raw_openai_api_key():
+def get_openai_api_key():
     for key in ("OPENAI_API_KEY", "openai_api_key"):
         try:
             if key in st.secrets and st.secrets[key]:
-                return str(st.secrets[key])
+                secret_value = normalize_secret_value(st.secrets[key])
+                if secret_value:
+                    return secret_value
         except Exception:
             pass
 
         env_value = os.getenv(key)
         if env_value:
-            return env_value
+            env_value = normalize_secret_value(env_value)
+            if env_value:
+                return env_value
 
     return None
-
-
-def get_openai_api_key():
-    raw_value = get_raw_openai_api_key()
-    normalized = normalize_secret_value(raw_value)
-    return normalized or None
 
 
 def get_optional_openai_header(name):
@@ -234,27 +223,6 @@ def get_optional_openai_header(name):
     return None
 
 
-def sanitize_backend_error(text):
-    if not text:
-        return ""
-
-    sanitized = str(text)
-    sanitized = re.sub(r"sk-[A-Za-z0-9_\-]+", "sk-***", sanitized)
-    return sanitized
-
-
-def backend_status_text(backend_name):
-    if backend_name in ("api", "api_rest"):
-        return "OpenAI-Antwort aktiv"
-    if backend_name == "fallback_no_key":
-        return "Lokaler Fallback: Kein OpenAI-Key gefunden"
-    if backend_name == "fallback_empty_response":
-        return "Lokaler Fallback: OpenAI hat leer geantwortet"
-    if backend_name == "fallback_exception":
-        return "Lokaler Fallback: OpenAI-Anfrage ist fehlgeschlagen"
-    return ""
-
-
 def extract_responses_text(payload):
     if payload.get("output_text"):
         return str(payload["output_text"]).strip()
@@ -270,27 +238,6 @@ def extract_responses_text(payload):
                 collected.append(str(refusal_text))
 
     return "\n".join(collected).strip()
-
-
-def summarize_response_payload(payload):
-    output_items = payload.get("output", [])
-    if not output_items:
-        return "Keine output-Elemente vorhanden."
-
-    parts = []
-    for index, item in enumerate(output_items, start=1):
-        item_type = item.get("type", "unbekannt")
-        role = item.get("role", "")
-        status = item.get("status", "")
-        content_types = []
-        for content in item.get("content", []):
-            content_types.append(content.get("type", "unbekannt"))
-        content_summary = ", ".join(content_types) if content_types else "ohne content"
-        role_text = f", Rolle {role}" if role else ""
-        status_text = f", Status {status}" if status else ""
-        parts.append(f"Item {index}: Typ {item_type}{role_text}{status_text}, Content {content_summary}")
-
-    return " | ".join(parts)
 
 
 def call_openai_responses_api(prompt, max_output_tokens):
@@ -349,50 +296,7 @@ def call_openai_responses_api(prompt, max_output_tokens):
         raise RuntimeError(f"Netzwerkfehler: {exc.reason}") from exc
 
     response_data = json.loads(body)
-    return {
-        "text": extract_responses_text(response_data),
-        "summary": summarize_response_payload(response_data),
-        "response_id": response_data.get("id", ""),
-    }
-
-
-def test_openai_models_api():
-    api_key = get_openai_api_key()
-    if not api_key:
-        return "Kein OpenAI-Key geladen."
-
-    headers = {
-        "Authorization": f"Bearer {api_key}",
-    }
-
-    organization = get_optional_openai_header("OPENAI_ORGANIZATION")
-    project = get_optional_openai_header("OPENAI_PROJECT")
-    if organization:
-        headers["OpenAI-Organization"] = organization
-    if project:
-        headers["OpenAI-Project"] = project
-
-    request = urllib_request.Request(
-        "https://api.openai.com/v1/models",
-        headers=headers,
-        method="GET",
-    )
-
-    try:
-        with urllib_request.urlopen(request, timeout=30) as response:
-            body = response.read().decode("utf-8")
-    except urllib_error.HTTPError as exc:
-        error_body = exc.read().decode("utf-8", errors="replace")
-        return f"HTTP {exc.code}: {error_body}"
-    except urllib_error.URLError as exc:
-        return f"Netzwerkfehler: {exc.reason}"
-
-    try:
-        payload = json.loads(body)
-        model_count = len(payload.get("data", []))
-        return f"200 OK, {model_count} Modelle abrufbar"
-    except json.JSONDecodeError:
-        return "200 OK, aber die Antwort war kein JSON."
+    return extract_responses_text(response_data)
 
 
 def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
@@ -1529,22 +1433,20 @@ def generate_hint(task, answer_value, is_correct):
     try:
         if not get_openai_api_key():
             st.session_state.hint_backend = "fallback_no_key"
-            st.session_state.hint_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
+            st.session_state.hint_backend_error = ""
             return fallback_hint(task, is_correct)
 
-        response_data = call_openai_responses_api(prompt, 160)
-        text = response_data["text"]
+        text = call_openai_responses_api(prompt, 160)
         if text:
             st.session_state.hint_backend = "api_rest"
-            st.session_state.hint_backend_error = f"Response-ID: {response_data['response_id']}" if response_data["response_id"] else ""
+            st.session_state.hint_backend_error = ""
             return text
         st.session_state.hint_backend = "fallback_empty_response"
-        st.session_state.hint_backend_error = f"OpenAI-Antwort war leer. {response_data['summary']}"
+        st.session_state.hint_backend_error = ""
         return fallback_hint(task, is_correct)
-    except Exception as exc:
+    except Exception:
         st.session_state.hint_backend = "fallback_exception"
-        models_test = test_openai_models_api()
-        st.session_state.hint_backend_error = f"{exc} | Vergleichstest /v1/models: {models_test}"
+        st.session_state.hint_backend_error = ""
         return fallback_hint(task, is_correct)
 
 
@@ -1650,22 +1552,20 @@ def generate_step_explanation(task, question_text):
     try:
         if not get_openai_api_key():
             st.session_state.explanation_backend = "fallback_no_key"
-            st.session_state.explanation_backend_error = "OPENAI_API_KEY fehlt in st.secrets und in der lokalen Umgebung."
+            st.session_state.explanation_backend_error = ""
             return fallback_step_explanation(task, question_text)
 
-        response_data = call_openai_responses_api(prompt, 320)
-        text = response_data["text"]
+        text = call_openai_responses_api(prompt, 320)
         if text:
             st.session_state.explanation_backend = "api_rest"
-            st.session_state.explanation_backend_error = f"Response-ID: {response_data['response_id']}" if response_data["response_id"] else ""
+            st.session_state.explanation_backend_error = ""
             return text
         st.session_state.explanation_backend = "fallback_empty_response"
-        st.session_state.explanation_backend_error = f"OpenAI-Antwort war leer. {response_data['summary']}"
+        st.session_state.explanation_backend_error = ""
         return fallback_step_explanation(task, question_text)
-    except Exception as exc:
+    except Exception:
         st.session_state.explanation_backend = "fallback_exception"
-        models_test = test_openai_models_api()
-        st.session_state.explanation_backend_error = f"{exc} | Vergleichstest /v1/models: {models_test}"
+        st.session_state.explanation_backend_error = ""
         return fallback_step_explanation(task, question_text)
 
 
@@ -1980,25 +1880,6 @@ if st.session_state.solution_visible:
 
     if st.session_state.explanation_text:
         st.info(f"Erklärung: {st.session_state.explanation_text}")
-        backend_text = backend_status_text(st.session_state.explanation_backend)
-        backend_error = sanitize_backend_error(st.session_state.explanation_backend_error)
-        if backend_text:
-            if st.session_state.explanation_backend in ("api", "api_rest"):
-                st.caption(f"Erklärungsquelle: {backend_text}")
-            else:
-                details = f" - {backend_error}" if backend_error else ""
-                st.caption(f"Erklärungsquelle: {backend_text}{details}")
-                raw_key = get_raw_openai_api_key()
-                normalized_key = get_openai_api_key()
-                if raw_key:
-                    raw_length = len(str(raw_key))
-                    normalized_length = len(normalized_key or "")
-                    whitespace_changed = "ja" if raw_length != normalized_length else "nein"
-                    st.caption(
-                        "Geladener Key-Fingerprint: "
-                        f"{key_fingerprint(normalized_key)} | "
-                        f"Leerzeichen/Zeilenumbrüche entfernt: {whitespace_changed}"
-                    )
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
