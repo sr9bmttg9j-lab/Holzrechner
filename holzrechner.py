@@ -832,6 +832,16 @@ def format_value_for_task(value, task):
     return format_decimal(value, task["display_places"])
 
 
+def format_user_result(value, task):
+    if task["unit"] == "EUR":
+        return format_decimal(value, 2)
+
+    if value == value.quantize(q("1"), rounding=ROUND_HALF_UP):
+        return format_decimal(value, 0)
+
+    return format_decimal(value, 4).rstrip("0").rstrip(",")
+
+
 def format_value_for_step(value, step):
     return format_decimal(value, step["display_places"])
 
@@ -971,7 +981,7 @@ def generate_hint(task, answer_value, is_correct):
         "Gib nicht die komplette Musterlösung Wort für Wort aus. "
         f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
-        f"Nutzerergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}. "
+        f"Nutzerergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
         f"Bewertung: {'richtig' if is_correct else 'falsch'}. "
         f"Lokaler Korrekturhinweis: {task['correction']} "
@@ -1149,7 +1159,7 @@ def handle_submission():
         return
 
     task = st.session_state.task
-    st.session_state.result_text = f"Dein Ergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}"
+    st.session_state.result_text = f"Dein Ergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}"
     st.session_state.last_diagnostic_hint = diagnose_common_mistake(task, answer_value, task["expected"])
 
     if values_match(answer_value, task["expected"], task["round_for_check"]):
