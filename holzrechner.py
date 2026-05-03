@@ -1771,7 +1771,7 @@ def render_musterloesung(task):
     st.subheader("Musterlösung")
     formula = perfect_input_formula(task)
     if formula:
-        st.write("Perfekte Eingabe in einem Rutsch:")
+        st.write("Das kannst du in den Taschenrechner eingeben, um direkt zum richtigen Ergebnis zu kommen:")
         st.code(formula)
     st.write("Rechenweg mit Einheiten:")
     st.code(task["solution"])
@@ -2272,6 +2272,7 @@ def create_next_task():
     st.session_state.last_answer_display = ""
     st.session_state.solution_visible = False
     st.session_state.show_success_solution = False
+    st.session_state.show_optional_solution = False
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
@@ -2338,6 +2339,7 @@ def handle_submission():
         st.session_state.hint_text = generate_hint(task, answer_value, True)
         st.session_state.solution_visible = False
         st.session_state.show_success_solution = is_direct_result_input(answer_text)
+        st.session_state.show_optional_solution = False
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
@@ -2640,7 +2642,11 @@ if st.session_state.solution_visible:
         st.info(f"Erklärung: {st.session_state.explanation_text}")
 
 if st.session_state.task_finished and not st.session_state.solution_visible:
-    render_musterloesung(st.session_state.task)
+    if st.session_state.get("show_optional_solution"):
+        render_musterloesung(st.session_state.task)
+    elif st.button("Musterlösung anzeigen"):
+        st.session_state.show_optional_solution = True
+        st.rerun()
 
 if st.session_state.task_finished:
     left_col, right_col = st.columns(2)
