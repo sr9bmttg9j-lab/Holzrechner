@@ -333,20 +333,13 @@ def task_price_per_square_meter(level):
         "solution": solution,
         "guided_steps": [
             make_guided_step(
-                "Volumen von 1 Quadratmeter",
-                thickness_m.normalize(),
-                "m3",
-                3,
-                False,
-                "Ein Quadratmeter Platte mal Dicke ergibt das Volumen.",
-            ),
-            make_guided_step(
-                "Preis je Quadratmeter",
+                "Preis pro Quadratmeter",
                 result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
                 "EUR",
                 2,
                 True,
-                "Multipliziere dieses Volumen mit dem Preis pro Kubikmeter.",
+                "Rechne hier direkt Dicke in Meter x Preis pro Kubikmeter.",
+                "Formel: Dicke in Meter x Preis pro Kubikmeter",
             ),
         ],
     }
@@ -840,6 +833,68 @@ def format_value_for_step(value, step):
     return format_decimal(value, step["display_places"])
 
 
+def is_close_factor(value, target):
+    tolerance = abs(target) * Decimal("0.03")
+    return abs(value - target) <= tolerance
+
+
+def diagnose_common_mistake(task, answer_value, expected_value):
+    if expected_value == 0:
+        return ""
+
+    try:
+        ratio = (answer_value / expected_value).copy_abs()
+    except (InvalidOperation, ZeroDivisionError):
+        return ""
+
+    if task["task_type"] == "price_per_square_meter":
+        if is_close_factor(ratio, Decimal("10")):
+            return (
+                "Dein Ergebnis ist ungefähr zehnmal so hoch wie die richtige Lösung. "
+                "Das sieht stark danach aus, dass die Dicke in Zentimetern nicht sauber in Meter umgerechnet wurde, "
+                "zum Beispiel 5 cm als 0,5 m statt 0,05 m."
+            )
+        if is_close_factor(ratio, Decimal("100")):
+            return (
+                "Dein Ergebnis ist ungefähr hundertmal so hoch wie die richtige Lösung. "
+                "Prüfe die Umrechnung der Dicke sehr genau. Hier liegt sehr wahrscheinlich ein Fehler beim Sprung von Zentimeter oder Millimeter auf Meter vor."
+            )
+
+    if task["task_type"] in {"square_meters_from_volume", "volume_from_running_meters", "running_meters_from_volume", "volume_beam"}:
+        if is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100")) or is_close_factor(ratio, Decimal("1000")):
+            return (
+                "Dein Ergebnis weicht ungefähr um den Faktor 10, 100 oder 1000 ab. "
+                "Das spricht oft für einen Fehler bei der Umrechnung von Millimeter, Zentimeter und Meter."
+            )
+
+    if task["task_type"] in {"price_per_running_meter", "m3_price_from_running_meter", "total_price_from_volume", "volume_from_total_price"}:
+        if is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100")):
+            return (
+                "Dein Ergebnis liegt grob um einen glatten Faktor daneben. "
+                "Prüfe deshalb zuerst die Einheit der Eingangsgröße und danach, ob du multiplizieren oder teilen musst."
+            )
+
+    return ""
+
+
+def diagnose_step_mistake(task, step, answer_value):
+    message = diagnose_common_mistake(task, answer_value, step["expected"])
+    if message:
+        return message
+
+    try:
+        ratio = (answer_value / step["expected"]).copy_abs()
+    except (InvalidOperation, ZeroDivisionError):
+        return ""
+
+    if step["unit"] == "m3" and (is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100"))):
+        return (
+            "Dein Ergebnis liegt ungefähr um einen typischen Umrechnungsfaktor daneben. "
+            "Prüfe noch einmal, ob Breite, Höhe oder Dicke wirklich in Meter eingesetzt wurden."
+        )
+    return ""
+
+
 def likely_error_focus(task):
     focus = {
         "volume_beam": "Achte besonders auf vollständige Maße, auf die Stückzahl und auf die Volumenlogik.",
@@ -866,7 +921,12 @@ def progressive_main_hint(task, answer_value, attempt):
     return "Wenn du magst, geh die Aufgabe jetzt unten Schritt für Schritt durch. So lässt sich der Rechenweg sauber aufbauen."
 
 
-def progressive_step_hint(step, step_attempt):
+def progressive_step_hint(task, step, answer_value, step_attempt):
+    diagnostic = diagnose_step_mistake(task, step, answer_value)
+    if diagnostic:
+        if step_attempt <= 1:
+            return diagnostic
+        return f"{diagnostic} {step['formula_hint']}"
     if step_attempt <= 1:
         return step["correction"]
     if step_attempt == 2:
@@ -883,13 +943,15 @@ def fallback_hint(task, is_correct):
             "Das passt fachlich. Geh den Rechenweg noch einmal kurz durch und prüfe, "
             "welche Größe du zuerst umgerechnet hast und warum das Ergebnis in dieser Einheit stimmig ist."
         )
+    diagnostic = st.session_state.get("last_diagnostic_hint", "")
     return (
-        f"{task['correction']} Prüfe danach noch einmal, welche Eingangsgröße gegeben ist "
+        f"{diagnostic} {task['correction']} Prüfe danach noch einmal, welche Eingangsgröße gegeben ist "
         "und auf welche Zielgröße du tatsächlich kommen sollst."
-    )
+    ).strip()
 
 
 def generate_hint(task, answer_value, is_correct):
+    local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
     prompt = (
         "Du bist ein Lernassistent für die Holzbranche. "
         "Gib auf Deutsch einen hilfreichen Hinweis mit drei bis fünf kurzen Sätzen. "
@@ -910,6 +972,7 @@ def generate_hint(task, answer_value, is_correct):
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
         f"Bewertung: {'richtig' if is_correct else 'falsch'}. "
         f"Lokaler Korrekturhinweis: {task['correction']} "
+        f"Lokale Voranalyse zu einem möglichen Fehlerbild: {local_diagnostic or 'Kein klarer lokaler Musterhinweis.'} "
         "Wenn die Antwort falsch ist, nenne zuerst kurz die wahrscheinlichste Fehlerquelle und erst danach den nächsten sinnvollen Rechenschritt."
     )
 
@@ -967,6 +1030,7 @@ def create_next_task():
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
+    st.session_state.last_diagnostic_hint = ""
     st.session_state.guided_visible = False
     st.session_state.guided_summary = ""
     st.session_state.guided_step_feedback = []
@@ -1008,6 +1072,7 @@ def handle_submission():
 
     task = st.session_state.task
     st.session_state.result_text = f"Dein Ergebnis: {format_value_for_task(answer_value, task)} {unit_label(task['unit'])}"
+    st.session_state.last_diagnostic_hint = diagnose_common_mistake(task, answer_value, task["expected"])
 
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
@@ -1039,7 +1104,8 @@ def handle_submission():
 
 
 def handle_guided_submission():
-    guided_steps = st.session_state.task.get("guided_steps", [])
+    task = st.session_state.task
+    guided_steps = task.get("guided_steps", [])
     if not guided_steps:
         return
 
@@ -1091,7 +1157,7 @@ def handle_guided_submission():
     st.session_state.guided_step_attempts = attempts
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.guided_summary = progressive_step_hint(step, step_attempt)
+    st.session_state.guided_summary = progressive_step_hint(task, step, answer_value, step_attempt)
     st.session_state.guided_step_feedback = []
 
 
@@ -1137,6 +1203,10 @@ st.write(
     "Im Holzhandel ist sauberes Umrechnen jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB "
     "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
+st.write(
+    "Du musst hier nichts im Taschenrechner ausrechnen. Es reicht, wenn du deinen Rechenweg als Formel eingibst, "
+    "also zum Beispiel mit mal und geteilt."
+)
 
 col1, col2 = st.columns(2)
 col1.metric("Aufgabe", st.session_state.task_number)
@@ -1144,7 +1214,7 @@ col2.metric("Schwierigkeit", st.session_state.level)
 
 st.subheader("Aufgabe")
 st.write(st.session_state.task["prompt"])
-st.caption("Bitte gib deinen Rechenweg ein oder gib das konkrete Ergebnis ein.")
+st.caption("Bitte gib deinen Rechenweg als Formel ein.")
 
 with st.form("answer_form", clear_on_submit=False):
     st.text_input(
