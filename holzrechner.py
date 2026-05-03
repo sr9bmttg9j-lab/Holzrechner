@@ -177,13 +177,17 @@ def get_openai_api_key():
     for key in ("OPENAI_API_KEY", "openai_api_key"):
         try:
             if key in st.secrets and st.secrets[key]:
-                return str(st.secrets[key])
+                secret_value = str(st.secrets[key]).strip()
+                if secret_value:
+                    return secret_value
         except Exception:
             pass
 
         env_value = os.getenv(key)
         if env_value:
-            return env_value
+            env_value = env_value.strip()
+            if env_value:
+                return env_value
 
     return None
 
