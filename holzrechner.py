@@ -158,13 +158,6 @@ REQUEST_INTROS = [
     "Im Tagesgeschäft kommt folgende Anfrage rein",
 ]
 
-THEORY_CLUSTERS = [
-    {"id": "units", "label": "Einheiten", "state_key": "cluster_units"},
-    {"id": "volume", "label": "Volumen und Mengen", "state_key": "cluster_volume"},
-    {"id": "prices", "label": "Preise", "state_key": "cluster_prices"},
-    {"id": "db", "label": "Deckungsbeitrag", "state_key": "cluster_db"},
-]
-
 
 def q(value_str):
     return Decimal(value_str)
@@ -1484,26 +1477,6 @@ TASK_TYPE_TO_GENERATOR = {
     for task_func in TASK_GENERATORS
 }
 
-TASK_TYPE_TO_CLUSTER = {
-    "unit_conversion": "units",
-    "volume_beam": "volume",
-    "volume_from_running_meters": "volume",
-    "volume_from_square_meters": "volume",
-    "running_meters_from_volume": "volume",
-    "running_meters_from_square_meters": "volume",
-    "square_meters_from_volume": "volume",
-    "square_meters_from_running_meters": "volume",
-    "price_per_running_meter": "prices",
-    "m3_price_from_running_meter": "prices",
-    "price_per_square_meter": "prices",
-    "total_price_from_volume": "prices",
-    "volume_from_total_price": "prices",
-    "package_price": "prices",
-    "db_sale_price": "db",
-    "ek_from_vk_db": "db",
-    "package_db_sale_price": "db",
-}
-
 TASKS_BY_LEVEL = {
     1: [
         task_unit_conversion,
@@ -2015,33 +1988,6 @@ def solution_lines(task):
     return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
 
 
-def selected_theory_clusters():
-    selected = {
-        cluster["id"]
-        for cluster in THEORY_CLUSTERS
-        if st.session_state.get(cluster["state_key"], True)
-    }
-    if selected:
-        return selected
-    return {cluster["id"] for cluster in THEORY_CLUSTERS}
-
-
-def task_func_type(task_func):
-    return task_func.__name__.replace("task_", "")
-
-
-def task_func_cluster(task_func):
-    return TASK_TYPE_TO_CLUSTER.get(task_func_type(task_func), "volume")
-
-
-def filter_task_candidates_by_clusters(candidates, selected_clusters):
-    return [
-        task_func
-        for task_func in candidates
-        if task_func_cluster(task_func) in selected_clusters
-    ]
-
-
 def normalize_explanation_question(text):
     stripped = text.strip()
     if not stripped:
@@ -2161,12 +2107,8 @@ def choose_task(level, recent_task_types, task_number, forced_task_type=None):
     if forced_task_type in TASK_TYPE_TO_GENERATOR:
         return TASK_TYPE_TO_GENERATOR[forced_task_type]
 
-    selected_clusters = selected_theory_clusters()
-    candidates = filter_task_candidates_by_clusters(TASKS_BY_LEVEL[level], selected_clusters)
-    if not candidates:
-        candidates = TASKS_BY_LEVEL[level]
-
-    if "db" in selected_clusters and 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
+    candidates = TASKS_BY_LEVEL[level]
+    if 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
         db_candidates = [task_func for task_func in candidates if "db" in task_func.__name__]
         if db_candidates:
             return random.choice(db_candidates)
@@ -2176,7 +2118,7 @@ def choose_task(level, recent_task_types, task_number, forced_task_type=None):
 
     filtered = []
     for task_func in candidates:
-        task_name = task_func_type(task_func)
+        task_name = task_func.__name__.replace("task_", "")
         if task_name not in recent_task_types:
             filtered.append(task_func)
 
@@ -2225,10 +2167,6 @@ def create_next_task():
 
 
 def init_state():
-    for cluster in THEORY_CLUSTERS:
-        if cluster["state_key"] not in st.session_state:
-            st.session_state[cluster["state_key"]] = True
-
     if "task_number" not in st.session_state:
         st.session_state.task_number = 1
         st.session_state.recent_task_types = []
@@ -2451,26 +2389,6 @@ st.markdown(
             border-color: #b91c1c !important;
             color: white !important;
         }
-
-        .st-key-cluster_units,
-        .st-key-cluster_volume,
-        .st-key-cluster_prices,
-        .st-key-cluster_db {
-            background-color: rgba(22, 163, 74, 0.22);
-            border: 1px solid #16a34a;
-            border-radius: 8px;
-            padding: 0.55rem 0.7rem;
-            min-height: 3.1rem;
-        }
-
-        .st-key-cluster_units:has(input:not(:checked)),
-        .st-key-cluster_volume:has(input:not(:checked)),
-        .st-key-cluster_prices:has(input:not(:checked)),
-        .st-key-cluster_db:has(input:not(:checked)) {
-            background-color: transparent;
-            border-color: #4b5563;
-            opacity: 0.72;
-        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -2497,19 +2415,6 @@ if st.button(
 
 if st.session_state.show_theory:
     render_theory_section()
-
-st.subheader("Übungsbereiche")
-st.write("Für folgende Aufgabentypen brauche ich auf jeden Fall noch Unterstützung:")
-cluster_columns = st.columns(4)
-for column, cluster in zip(cluster_columns, THEORY_CLUSTERS):
-    with column:
-        st.checkbox(
-            cluster["label"],
-            key=cluster["state_key"],
-        )
-
-if not any(st.session_state.get(cluster["state_key"], True) for cluster in THEORY_CLUSTERS):
-    st.warning("Wenn kein Bereich ausgewählt ist, bleibt die komplette Aufgabenmischung aktiv.")
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
