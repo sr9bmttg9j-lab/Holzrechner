@@ -97,6 +97,10 @@ UNIT_LABELS = {
     "m2": "Quadratmeter",
     "lfm": "Laufmeter",
     "EUR": "Euro",
+    "m": "Meter",
+    "cm": "Zentimeter",
+    "mm": "Millimeter",
+    "Faktor": "Faktor",
 }
 
 ERROR_PATTERN_GUIDE = """
@@ -484,6 +488,113 @@ def task_volume_beam(level):
                 3,
                 False,
                 "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
+            ),
+        ],
+    }
+
+
+def task_unit_conversion(level):
+    conversion = random.choice(
+        [
+            {
+                "product": "KVH",
+                "value": Decimal(random.choice(["5", "6", "8", "10", "12"])),
+                "from_unit": "m",
+                "to_unit": "mm",
+                "factor": Decimal("1000"),
+                "dimension": "Länge",
+                "question": "Wie viele Millimeter sind das?",
+                "operation": "x",
+            },
+            {
+                "product": "Hobelware",
+                "value": Decimal(random.choice(["300", "400", "500", "600"])),
+                "from_unit": "cm",
+                "to_unit": "m",
+                "factor": Decimal("100"),
+                "dimension": "Länge",
+                "question": "Wie viele Meter sind das?",
+                "operation": "/",
+            },
+            {
+                "product": "Platte",
+                "value": Decimal(random.choice(["18", "22", "25", "40", "50"])),
+                "from_unit": "mm",
+                "to_unit": "cm",
+                "factor": Decimal("10"),
+                "dimension": "Dicke",
+                "question": "Wie viele Zentimeter sind das?",
+                "operation": "/",
+            },
+            {
+                "product": "Platte",
+                "value": Decimal(random.choice(["18", "22", "25", "40", "50"])),
+                "from_unit": "mm",
+                "to_unit": "m",
+                "factor": Decimal("1000"),
+                "dimension": "Dicke",
+                "question": "Wie viele Meter sind das?",
+                "operation": "/",
+            },
+            {
+                "product": "Hobelware",
+                "value": Decimal(random.choice(["10", "12", "16", "20"])),
+                "from_unit": "cm",
+                "to_unit": "mm",
+                "factor": Decimal("10"),
+                "dimension": "Breite",
+                "question": "Wie viele Millimeter sind das?",
+                "operation": "x",
+            },
+        ]
+    )
+
+    if conversion["operation"] == "x":
+        result = conversion["value"] * conversion["factor"]
+        formula = f"{format_decimal(conversion['value'], 0)} x {format_decimal(conversion['factor'], 0)}"
+        formula_text = f"{unit_label(conversion['from_unit'])} zu {unit_label(conversion['to_unit'])}: mal {format_decimal(conversion['factor'], 0)}"
+    else:
+        result = conversion["value"] / conversion["factor"]
+        formula = f"{format_decimal(conversion['value'], 0)} / {format_decimal(conversion['factor'], 0)}"
+        formula_text = f"{unit_label(conversion['from_unit'])} zu {unit_label(conversion['to_unit'])}: geteilt durch {format_decimal(conversion['factor'], 0)}"
+
+    display_places = 3 if conversion["to_unit"] == "m" and result != result.quantize(q("1"), rounding=ROUND_HALF_UP) else 0
+    if conversion["to_unit"] == "cm" and result != result.quantize(q("1"), rounding=ROUND_HALF_UP):
+        display_places = 1
+
+    prompt = random.choice(
+        [
+            f"Bei {conversion['product']} geht es um eine {conversion['dimension']} von {format_decimal(conversion['value'], 0)} {unit_label(conversion['from_unit'])}.\n\n{conversion['question']}",
+            f"Für eine kurze Maßkontrolle liegt folgende Angabe vor: {format_decimal(conversion['value'], 0)} {unit_label(conversion['from_unit'])} {conversion['dimension'].lower()} bei {conversion['product']}.\n\n{conversion['question']}",
+        ]
+    )
+
+    solution = (
+        "Rechenweg:\n"
+        f"1. Formel: {formula_text}\n"
+        f"2. Umrechnung = {formula} = {format_decimal(result, display_places)} {unit_label(conversion['to_unit'])}"
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.normalize(),
+        "unit": conversion["to_unit"],
+        "display_places": display_places,
+        "round_for_check": False,
+        "task_type": "unit_conversion",
+        "correction": "Achte auf den Sprung zwischen Millimeter, Zentimeter und Meter. Je größer die Einheit wird, desto kleiner wird die Zahl.",
+        "solution": solution,
+        "perfect_formula": formula,
+        "guided_steps": [
+            make_guided_step(
+                "Einheiten umrechnen",
+                result.normalize(),
+                conversion["to_unit"],
+                display_places,
+                False,
+                f"Rechne {formula_text.lower()}.",
+                formula_text,
+                placeholder=formula,
             ),
         ],
     }
@@ -1342,6 +1453,7 @@ def task_package_db_sale_price(level):
 
 
 TASK_GENERATORS = [
+    task_unit_conversion,
     task_volume_beam,
     task_volume_from_running_meters,
     task_volume_from_square_meters,
@@ -1367,6 +1479,7 @@ TASK_TYPE_TO_GENERATOR = {
 
 TASKS_BY_LEVEL = {
     1: [
+        task_unit_conversion,
         task_volume_beam,
         task_volume_from_running_meters,
         task_square_meters_from_running_meters,
@@ -1381,6 +1494,7 @@ TASKS_BY_LEVEL = {
         task_package_db_sale_price,
     ],
     2: [
+        task_unit_conversion,
         task_volume_beam,
         task_volume_from_running_meters,
         task_volume_from_square_meters,
@@ -1532,6 +1646,63 @@ def render_musterloesung(task):
     st.code(task["solution"])
 
 
+def render_theory_section():
+    st.markdown("#### Einheiten")
+    st.markdown(
+        """
+| Richtung | Regel | Beispiel |
+| --- | --- | --- |
+| Meter zu Zentimeter | mal 100 | 5 Meter = 500 Zentimeter |
+| Meter zu Millimeter | mal 1000 | 5 Meter = 5000 Millimeter |
+| Zentimeter zu Meter | geteilt durch 100 | 500 Zentimeter = 5 Meter |
+| Zentimeter zu Millimeter | mal 10 | 12 Zentimeter = 120 Millimeter |
+| Millimeter zu Zentimeter | geteilt durch 10 | 40 Millimeter = 4 Zentimeter |
+| Millimeter zu Meter | geteilt durch 1000 | 40 Millimeter = 0,04 Meter |
+"""
+    )
+    st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
+
+    st.markdown("#### Volumen und Mengen")
+    st.markdown(
+        """
+| Von | Nach | Rechenweg |
+| --- | --- | --- |
+| Laufmeter | Quadratmeter | Laufmeter x Breite |
+| Quadratmeter | Laufmeter | Quadratmeter / Breite |
+| Quadratmeter | Kubikmeter | Quadratmeter x Dicke |
+| Kubikmeter | Quadratmeter | Kubikmeter / Dicke |
+| Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe |
+| Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) |
+"""
+    )
+
+    st.markdown("#### Preise")
+    st.markdown(
+        """
+| Von | Nach | Rechenweg |
+| --- | --- | --- |
+| Euro pro Laufmeter | Euro pro Quadratmeter | Euro pro Laufmeter / Breite |
+| Euro pro Quadratmeter | Euro pro Laufmeter | Euro pro Quadratmeter x Breite |
+| Euro pro Quadratmeter | Euro pro Kubikmeter | Euro pro Quadratmeter / Dicke |
+| Euro pro Kubikmeter | Euro pro Quadratmeter | Euro pro Kubikmeter x Dicke |
+| Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Höhe) |
+| Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Höhe |
+"""
+    )
+
+    st.markdown("#### Deckungsbeitrag")
+    st.markdown(
+        """
+| Gesucht | Rechenweg | Beispiel |
+| --- | --- | --- |
+| VK aus EK und DB | VK = EK / (1 - DB-Satz) | 100 Euro / 0,70 bei 30 Prozent DB |
+| EK aus VK und DB | EK = VK x (1 - DB-Satz) | 142,86 Euro x 0,70 bei 30 Prozent DB |
+| DB-Satz aus EK und VK | DB = (VK - EK) / VK | (142,86 - 100) / 142,86 |
+"""
+    )
+    st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
+
+
 def guided_completed_entry(text, kind="success"):
     return {
         "text": text,
@@ -1580,6 +1751,13 @@ def diagnose_common_mistake(task, answer_value, expected_value):
                 "Prüfe die Umrechnung der Dicke sehr genau. Hier liegt sehr wahrscheinlich ein Fehler beim Sprung von Zentimeter oder Millimeter auf Meter vor."
             )
 
+    if task["task_type"] == "unit_conversion":
+        if is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100")) or is_close_factor(ratio, Decimal("1000")):
+            return (
+                "Dein Ergebnis liegt um einen typischen Einheitenfaktor daneben. "
+                "Prüfe, ob du zwischen Millimeter, Zentimeter und Meter multiplizieren oder teilen musst."
+            )
+
     if task["task_type"] in {
         "square_meters_from_volume",
         "volume_from_square_meters",
@@ -1626,6 +1804,7 @@ def diagnose_step_mistake(task, step, answer_value):
 def likely_error_focus(task):
     focus = {
         "volume_beam": "Achte besonders auf vollständige Maße, auf die Stückzahl und auf die Volumenlogik.",
+        "unit_conversion": "Achte besonders auf den Einheitenfaktor zwischen Millimeter, Zentimeter und Meter.",
         "price_per_running_meter": "Achte besonders auf Querschnitt, Volumen von 1 Laufmeter und die richtige Preisbasis.",
         "price_per_square_meter": "Achte besonders auf die Dicke der Platte und auf die Preisbasis pro Kubikmeter.",
         "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
@@ -1992,8 +2171,12 @@ def init_state():
         st.session_state.task_number = 1
         st.session_state.recent_task_types = []
         st.session_state.pending_next_task = False
+        st.session_state.show_theory = False
         create_next_task()
         return
+
+    if "show_theory" not in st.session_state:
+        st.session_state.show_theory = False
 
     if st.session_state.get("pending_next_task"):
         create_next_task()
@@ -2194,6 +2377,18 @@ st.markdown(
             border-color: #15803d;
             color: white;
         }
+
+        .st-key-repeat_task_type_button button {
+            background-color: #dc2626 !important;
+            border-color: #dc2626 !important;
+            color: white !important;
+        }
+
+        .st-key-repeat_task_type_button button:hover {
+            background-color: #b91c1c !important;
+            border-color: #b91c1c !important;
+            color: white !important;
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -2208,6 +2403,18 @@ st.write(
     "Du musst hier nichts im Taschenrechner ausrechnen. Es reicht, wenn du deinen Rechenweg als Formel eingibst, "
     "also zum Beispiel mit mal und geteilt. Du kannst aber auch direkt das Endergebnis eintragen."
 )
+
+st.subheader("Theorie auffrischen")
+st.write("Möchtest du noch deine theoretischen Grundlagen auffrischen? Dann klick hier.")
+if st.button(
+    "Theorie ausblenden" if st.session_state.show_theory else "Theorie anzeigen",
+    key="theory_toggle_button",
+):
+    st.session_state.show_theory = not st.session_state.show_theory
+    st.rerun()
+
+if st.session_state.show_theory:
+    render_theory_section()
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
@@ -2307,9 +2514,9 @@ if st.session_state.task_finished and not st.session_state.solution_visible:
 if st.session_state.task_finished:
     left_col, right_col = st.columns(2)
     with left_col:
-        repeat_task_type = st.button("Gleicher Aufgabentyp", type="primary")
+        repeat_task_type = st.button("Gleicher Aufgabentyp", key="repeat_task_type_button")
     with right_col:
-        different_task_type = st.button("Anderer Aufgabentyp")
+        different_task_type = st.button("Anderer Aufgabentyp", type="primary")
 
     if repeat_task_type or different_task_type:
         st.session_state.task_number += 1
