@@ -77,6 +77,11 @@ COUNTS_BY_LEVEL = {
     2: [5, 6, 8, 10, 12, 14, 18, 24, 30],
     3: [5, 7, 9, 11, 14, 18, 22, 28, 36],
 }
+BOARD_COUNTS_BY_LEVEL = {
+    1: [4, 6, 8, 10, 12],
+    2: [6, 8, 10, 12, 14, 16],
+    3: [8, 10, 12, 14, 16, 18, 20],
+}
 THICKNESSES_BY_LEVEL = {
     1: [Decimal("0.018"), Decimal("0.022"), Decimal("0.027"), Decimal("0.040"), Decimal("0.050")],
     2: [Decimal("0.019"), Decimal("0.022"), Decimal("0.025"), Decimal("0.027"), Decimal("0.040"), Decimal("0.050")],
@@ -124,6 +129,11 @@ PANEL_M2_PRICES_BY_LEVEL = {
     1: [Decimal("8.90"), Decimal("12.50"), Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
     2: [Decimal("9.80"), Decimal("14.90"), Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
     3: [Decimal("11.40"), Decimal("17.80"), Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+}
+PANEL_COUNTS_BY_LEVEL = {
+    1: [6, 8, 10, 12, 15, 18, 20],
+    2: [10, 12, 16, 20, 24, 30],
+    3: [14, 18, 22, 28, 32, 40],
 }
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
@@ -588,6 +598,14 @@ def panel_package_count(product):
     return random.choice([20, 25, 30])
 
 
+def panel_count_for_level(level):
+    return random.choice(PANEL_COUNTS_BY_LEVEL[level])
+
+
+def board_count_for_level(level):
+    return random.choice(BOARD_COUNTS_BY_LEVEL[level])
+
+
 def evaluate_expression(text):
     cleaned = text.strip().replace(",", ".")
     cleaned = cleaned.replace("x", "*").replace("X", "*").replace(":", "/")
@@ -1031,21 +1049,21 @@ def task_price_per_square_meter(level):
 def task_square_meters_from_volume(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
     thickness_m = panel_thickness_for_product(product, level)
-    if level == 1:
-        square_meters = Decimal(random.choice([12, 18, 24, 30, 36, 48]))
-    elif level == 2:
-        square_meters = Decimal(random.choice([15, 21, 27, 33, 39, 45]))
-    else:
-        square_meters = Decimal(random.choice([14, 22, 28, 34, 42, 54]))
+    panel_count = panel_count_for_level(level)
+    sheet_area = length_m * width_m
+    square_meters = sheet_area * Decimal(panel_count)
     total_volume = square_meters * thickness_m
     result = square_meters
+    square_meters_places = precise_decimal_places(square_meters, 2, 4)
+    total_volume_places = precise_decimal_places(total_volume)
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Es liegt eine Ware von {format_decimal(total_volume, 3)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {thickness_text} dick.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, 3)} Kubikmeter bei {thickness_text} Dicke.\n\nWie viele Quadratmeter ergeben sich?",
+            f"Es liegt eine Ware von {format_decimal(total_volume, total_volume_places)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {thickness_text} dick.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, total_volume_places)} Kubikmeter bei {thickness_text} Dicke.\n\nWie viele Quadratmeter ergeben sich?",
         ]
     )
 
@@ -1053,8 +1071,8 @@ def task_square_meters_from_volume(level):
         (
             "Quadratmeter",
             "Quadratmeter = Kubikmeter / Dicke",
-            f"{format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
-            f"{format_decimal(result, 0)} Quadratmeter",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(result, square_meters_places)} Quadratmeter",
         ),
     )
 
@@ -1062,7 +1080,7 @@ def task_square_meters_from_volume(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "m2",
-        "display_places": 0,
+        "display_places": square_meters_places,
         "round_for_check": False,
         "task_type": "square_meters_from_volume",
         "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
@@ -1080,7 +1098,7 @@ def task_square_meters_from_volume(level):
                 "Quadratmeter",
                 result.normalize(),
                 "m2",
-                0,
+                square_meters_places,
                 False,
                 "Teile das Volumen durch die Dicke.",
             ),
@@ -1091,21 +1109,20 @@ def task_square_meters_from_volume(level):
 def task_volume_from_square_meters(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
     thickness_m = panel_thickness_for_product(product, level)
-    if level == 1:
-        square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
-    elif level == 2:
-        square_meters = Decimal(random.choice([15, 21, 27, 33, 39]))
-    else:
-        square_meters = Decimal(random.choice([14, 22, 28, 34, 42]))
+    panel_count = panel_count_for_level(level)
+    sheet_area = length_m * width_m
+    square_meters = sheet_area * Decimal(panel_count)
     result = square_meters * thickness_m
+    square_meters_places = precise_decimal_places(square_meters, 2, 4)
     result_places = precise_decimal_places(result)
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, 0)} Quadratmeter vor. Die Platte ist {thickness_text} dick.\n\nWie viele Kubikmeter sind das?",
-            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter bei {thickness_text} Dicke.\n\nWie viele Kubikmeter ergeben sich?",
+            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, square_meters_places)} Quadratmeter vor. Die Platte ist {thickness_text} dick.\n\nWie viele Kubikmeter sind das?",
+            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, square_meters_places)} Quadratmeter bei {thickness_text} Dicke.\n\nWie viele Kubikmeter ergeben sich?",
         ]
     )
 
@@ -1113,7 +1130,7 @@ def task_volume_from_square_meters(level):
         (
             "Kubikmeter",
             "Kubikmeter = Quadratmeter x Dicke",
-            f"{format_decimal(square_meters, 0)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(square_meters, square_meters_places)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(result, result_places)} Kubikmeter",
         ),
     )
@@ -1191,16 +1208,18 @@ def task_square_meters_from_running_meters(level):
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
-    board_count = random.choice([4, 6, 8, 10, 12])
+    board_count = board_count_for_level(level)
     running_meters = board_length * Decimal(board_count)
     result = running_meters * width_m
+    running_meters_places = precise_decimal_places(running_meters, 0, 1)
+    result_places = precise_decimal_places(result)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {format_decimal(running_meters, 0)} Laufmeter {display_name}. Ein Brett ist {format_m(board_length)} m lang, die Ware ist {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Quadratmeter {display_name} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
+            f"{request_intro()}: {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Ein Brett ist {format_m(board_length)} m lang, die Ware ist {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Quadratmeter {display_name} aus {format_decimal(running_meters, running_meters_places)} Laufmetern ergeben. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
         ]
     )
 
@@ -1208,8 +1227,8 @@ def task_square_meters_from_running_meters(level):
         (
             "Quadratmeter",
             "Quadratmeter = Laufmeter x Breite",
-            f"{format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter = "
-            f"{format_decimal(result, 3)} Quadratmeter",
+            f"{format_decimal(running_meters, running_meters_places)} Laufmeter x {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, result_places)} Quadratmeter",
         ),
     )
 
@@ -1217,7 +1236,7 @@ def task_square_meters_from_running_meters(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "m2",
-        "display_places": 3,
+        "display_places": result_places,
         "round_for_check": False,
         "task_type": "square_meters_from_running_meters",
         "correction": "Für Hobelware rechnest du die Laufmeter mit der Breite in Meter zu Quadratmetern um.",
@@ -1227,7 +1246,7 @@ def task_square_meters_from_running_meters(level):
                 "Quadratmeter",
                 result.normalize(),
                 "m2",
-                3,
+                result_places,
                 False,
                 "Rechne hier direkt Laufmeter x Breite in Meter.",
                 "Formel: Laufmeter x Breite",
@@ -1242,14 +1261,11 @@ def task_running_meters_from_volume(level):
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
-    if level == 1:
-        running_meters = Decimal(random.choice([20, 24, 30, 36, 40, 48]))
-    elif level == 2:
-        running_meters = Decimal(random.choice([18, 26, 32, 38, 44, 50]))
-    else:
-        running_meters = Decimal(random.choice([21, 27, 35, 41, 45, 55]))
+    board_count = board_count_for_level(level)
+    running_meters = board_length * Decimal(board_count)
     total_volume = width_m * height_m * running_meters
     total_volume_places = precise_decimal_places(total_volume)
+    running_meters_places = precise_decimal_places(running_meters, 0, 1)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
 
@@ -1272,7 +1288,7 @@ def task_running_meters_from_volume(level):
             "Laufmeter",
             "Laufmeter = Kubikmeter / Querschnitt",
             f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
-            f"{format_decimal(running_meters, 0)} Laufmeter",
+            f"{format_decimal(running_meters, running_meters_places)} Laufmeter",
         ),
     )
 
@@ -1280,7 +1296,7 @@ def task_running_meters_from_volume(level):
         "prompt": prompt,
         "expected": running_meters.normalize(),
         "unit": "lfm",
-        "display_places": 0,
+        "display_places": running_meters_places,
         "round_for_check": False,
         "task_type": "running_meters_from_volume",
         "correction": "Rechne zuerst Breite x Höhe mit Meterwerten und teile dann das Gesamtvolumen durch dieses Ergebnis.",
@@ -1303,7 +1319,7 @@ def task_running_meters_from_volume(level):
                 "Laufmeter",
                 running_meters.normalize(),
                 "lfm",
-                0,
+                running_meters_places,
                 False,
                 "Teile danach das Gesamtvolumen durch den Querschnitt.",
                 "Formel: Laufmeter = Kubikmeter / (Breite x Höhe)",
@@ -1318,15 +1334,18 @@ def task_running_meters_from_square_meters(level):
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
-    square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
-    result = square_meters / width_m
+    board_count = board_count_for_level(level)
+    result = board_length * Decimal(board_count)
+    square_meters = result * width_m
+    square_meters_places = precise_decimal_places(square_meters)
+    result_places = precise_decimal_places(result, 0, 1)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde fragt nach den Laufmetern einer {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter ergeben sich?",
+            f"{request_intro()}: {display_name}. Verfügbar sind {format_decimal(square_meters, square_meters_places)} Quadratmeter. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde fragt nach den Laufmetern einer {display_name}. Verfügbar sind {format_decimal(square_meters, square_meters_places)} Quadratmeter. Die Ware ist {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter ergeben sich?",
         ]
     )
 
@@ -1334,8 +1353,8 @@ def task_running_meters_from_square_meters(level):
         (
             "Laufmeter",
             "Laufmeter = Quadratmeter / Breite",
-            f"{format_decimal(square_meters, 0)} Quadratmeter / {format_decimal(width_m, 2)} Meter = "
-            f"{format_decimal(result, 0)} Laufmeter",
+            f"{format_decimal(square_meters, square_meters_places)} Quadratmeter / {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, result_places)} Laufmeter",
         ),
     )
 
@@ -1343,7 +1362,7 @@ def task_running_meters_from_square_meters(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "lfm",
-        "display_places": 0,
+        "display_places": result_places,
         "round_for_check": False,
         "task_type": "running_meters_from_square_meters",
         "correction": "Für Hobelware teilst du die Quadratmeter durch die Breite in Meter, um die Laufmeter zu erhalten.",
@@ -1353,7 +1372,7 @@ def task_running_meters_from_square_meters(level):
                 "Laufmeter",
                 result.normalize(),
                 "lfm",
-                0,
+                result_places,
                 False,
                 "Rechne hier direkt Quadratmeter / Breite in Meter.",
                 "Formel: Quadratmeter / Breite",
@@ -1472,18 +1491,22 @@ def task_db_sale_price(level):
 
 def task_volume_from_running_meters(level):
     product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
-    running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    board_count = board_count_for_level(level)
+    running_meters = board_length * Decimal(board_count)
     result = width_m * height_m * running_meters
     result_places = precise_decimal_places(result)
+    running_meters_places = precise_decimal_places(running_meters, 0, 1)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Ein Kunde plant {format_decimal(running_meters, 0)} Laufmeter {product['name']} mit einem Querschnitt von {width_text} x {thickness_text}.\n\nWie viele Kubikmeter sind das?",
-            f"Für eine Position {product['name']} liegen {format_decimal(running_meters, 0)} Laufmeter bei {width_text} x {thickness_text} Querschnitt vor.\n\nWie viele Kubikmeter ergeben sich daraus?",
+            f"Ein Kunde plant {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Die Bretter sind {format_m(board_length)} m lang und haben einen Querschnitt von {width_text} x {thickness_text}.\n\nWie viele Kubikmeter sind das?",
+            f"Für eine Position {display_name} liegen {format_decimal(running_meters, running_meters_places)} Laufmeter bei {width_text} x {thickness_text} Querschnitt vor. Ein Brett ist {format_m(board_length)} m lang.\n\nWie viele Kubikmeter ergeben sich daraus?",
         ]
     )
 
@@ -1491,7 +1514,7 @@ def task_volume_from_running_meters(level):
         (
             "Gesamtvolumen",
             "Kubikmeter = Laufmeter x Breite x Höhe",
-            f"{format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(running_meters, running_meters_places)} Laufmeter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 3)} Meter = {format_decimal(result, result_places)} Kubikmeter",
         ),
     )
