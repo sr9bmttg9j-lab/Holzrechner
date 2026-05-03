@@ -333,6 +333,17 @@ def make_guided_step(label, expected, unit, display_places, round_for_check, cor
     }
 
 
+def format_solution_steps(*steps):
+    lines = ["Rechenweg:"]
+    for index, (title, formula, calculation) in enumerate(steps, start=1):
+        if index > 1:
+            lines.append("")
+        lines.append(f"{index}. {title}")
+        lines.append(f"Formel: {formula}")
+        lines.append(f"Berechnung: {calculation}")
+    return "\n".join(lines)
+
+
 def current_level(task_number):
     if task_number >= 10:
         return 3
@@ -444,7 +455,8 @@ def task_volume_beam(level):
     height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
-    result = length_m * width_m * height_m * Decimal(count)
+    piece_volume = length_m * width_m * height_m
+    result = piece_volume * Decimal(count)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -455,12 +467,19 @@ def task_volume_beam(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Kubikmeter = Länge x Breite x Höhe x Stückzahl\n"
-        f"2. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-        f"{format_decimal(height_m, 2)} Meter x {count} Stück = "
-        f"{format_decimal(result, 3)} Kubikmeter"
+    solution = format_solution_steps(
+        (
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Gesamtvolumen",
+            "Gesamtvolumen = Volumen pro Stück x Stückzahl",
+            f"{format_decimal(piece_volume, 3)} Kubikmeter x {count} Stück = "
+            f"{format_decimal(result, 3)} Kubikmeter",
+        ),
     )
 
     return {
@@ -472,10 +491,14 @@ def task_volume_beam(level):
         "task_type": "volume_beam",
         "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Höhe zu berechnen und danach mit der Stückzahl zu multiplizieren.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_m(length_m)} x {format_decimal(width_m, 2)} x "
+            f"{format_decimal(height_m, 2)} x {count}"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
-                (length_m * width_m * height_m).normalize(),
+                piece_volume.normalize(),
                 "m3",
                 3,
                 False,
@@ -569,10 +592,12 @@ def task_unit_conversion(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        f"1. Formel: {formula_text}\n"
-        f"2. Umrechnung = {formula} = {format_decimal(result, display_places)} {unit_label(conversion['to_unit'])}"
+    solution = format_solution_steps(
+        (
+            "Einheiten umrechnen",
+            formula_text,
+            f"{formula} = {format_decimal(result, display_places)} {unit_label(conversion['to_unit'])}",
+        ),
     )
 
     return {
@@ -619,11 +644,19 @@ def task_price_per_running_meter(level):
     )
 
     cross_section = width_m * height_m
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Euro pro Laufmeter = Euro pro Kubikmeter x Breite x Höhe\n"
-        f"2. Preis je Laufmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
-        f"{format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Querschnitt",
+            "Querschnitt = Breite x Höhe",
+            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
+            f"{format_decimal(cross_section, 5)} Quadratmeter",
+        ),
+        (
+            "Preis je Laufmeter",
+            "Euro pro Laufmeter = Euro pro Kubikmeter x Querschnitt",
+            f"{format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(cross_section, 5)} Quadratmeter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -635,6 +668,10 @@ def task_price_per_running_meter(level):
         "task_type": "price_per_running_meter",
         "correction": "Prüfe, ob du zuerst Breite x Höhe in Meter angesetzt und daraus das Volumen von 1 Laufmeter bestimmt hast.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(m3_price, 0)} x {format_decimal(width_m, 2)} x "
+            f"{format_decimal(height_m, 3)}"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Querschnitt",
@@ -672,11 +709,13 @@ def task_price_per_square_meter(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke\n"
-        f"2. Preis je Quadratmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
-        f"{format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Preis je Quadratmeter",
+            "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke",
+            f"{format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -723,11 +762,13 @@ def task_square_meters_from_volume(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Quadratmeter = Kubikmeter / Dicke\n"
-        f"2. Quadratmeter = {format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
-        f"{format_decimal(result, 0)} Quadratmeter"
+    solution = format_solution_steps(
+        (
+            "Quadratmeter",
+            "Quadratmeter = Kubikmeter / Dicke",
+            f"{format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(result, 0)} Quadratmeter",
+        ),
     )
 
     return {
@@ -780,11 +821,13 @@ def task_volume_from_square_meters(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Kubikmeter = Quadratmeter x Dicke\n"
-        f"2. Kubikmeter = {format_decimal(square_meters, 0)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
-        f"{format_decimal(result, 3)} Kubikmeter"
+    solution = format_solution_steps(
+        (
+            "Kubikmeter",
+            "Kubikmeter = Quadratmeter x Dicke",
+            f"{format_decimal(square_meters, 0)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(result, 3)} Kubikmeter",
+        ),
     )
 
     return {
@@ -823,11 +866,13 @@ def task_total_price_from_volume(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Gesamtpreis = Volumen x Preis pro Kubikmeter\n"
-        f"2. Gesamtpreis = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
-        f"{format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Gesamtpreis",
+            "Gesamtpreis = Volumen x Preis pro Kubikmeter",
+            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -871,11 +916,13 @@ def task_square_meters_from_running_meters(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Quadratmeter = Laufmeter x Breite\n"
-        f"2. Quadratmeter = {format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter = "
-        f"{format_decimal(result, 3)} Quadratmeter"
+    solution = format_solution_steps(
+        (
+            "Quadratmeter",
+            "Quadratmeter = Laufmeter x Breite",
+            f"{format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, 3)} Quadratmeter",
+        ),
     )
 
     return {
@@ -925,11 +972,19 @@ def task_running_meters_from_volume(level):
     )
 
     cross_section = width_m * height_m
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Laufmeter = Kubikmeter / (Breite x Höhe)\n"
-        f"2. Laufmeter = {format_decimal(total_volume, 3)} Kubikmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter) = "
-        f"{format_decimal(running_meters, 0)} Laufmeter"
+    solution = format_solution_steps(
+        (
+            "Breite x Höhe",
+            "Querschnitt = Breite x Höhe",
+            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
+            f"{format_decimal(cross_section, 5)} Quadratmeter",
+        ),
+        (
+            "Laufmeter",
+            "Laufmeter = Kubikmeter / Querschnitt",
+            f"{format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
+            f"{format_decimal(running_meters, 0)} Laufmeter",
+        ),
     )
 
     return {
@@ -941,6 +996,10 @@ def task_running_meters_from_volume(level):
         "task_type": "running_meters_from_volume",
         "correction": "Rechne zuerst Breite x Höhe mit Meterwerten und teile dann das Gesamtvolumen durch dieses Ergebnis.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(total_volume, 3)} / "
+            f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Breite x Höhe",
@@ -982,11 +1041,13 @@ def task_running_meters_from_square_meters(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Laufmeter = Quadratmeter / Breite\n"
-        f"2. Laufmeter = {format_decimal(square_meters, 0)} Quadratmeter / {format_decimal(width_m, 2)} Meter = "
-        f"{format_decimal(result, 0)} Laufmeter"
+    solution = format_solution_steps(
+        (
+            "Laufmeter",
+            "Laufmeter = Quadratmeter / Breite",
+            f"{format_decimal(square_meters, 0)} Quadratmeter / {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, 0)} Laufmeter",
+        ),
     )
 
     return {
@@ -1035,15 +1096,25 @@ def task_db_sale_price(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Gesamtvolumen = Länge x Breite x Höhe x Stückzahl\n"
-        f"2. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {count} Stück = "
-        f"{format_decimal(total_volume, 3)} Kubikmeter\n"
-        f"3. Gesamter EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
-        f"{format_decimal(total_ek, 2)} Euro\n"
-        f"4. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
-        f"{format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Gesamtvolumen",
+            "Gesamtvolumen = Länge x Breite x Höhe x Stückzahl",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 2)} Meter x {count} Stück = {format_decimal(total_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Gesamter EK",
+            "Gesamter EK = Gesamtvolumen x EK pro Kubikmeter",
+            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_ek, 2)} Euro",
+        ),
+        (
+            "Gesamter VK",
+            "Gesamter VK = gesamter EK / (1 - DB-Satz)",
+            f"{format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -1107,10 +1178,13 @@ def task_volume_from_running_meters(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Kubikmeter = Laufmeter x Breite x Höhe\n"
-        f"2. Volumen = {format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(result, 3)} Kubikmeter"
+    solution = format_solution_steps(
+        (
+            "Gesamtvolumen",
+            "Kubikmeter = Laufmeter x Breite x Höhe",
+            f"{format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 3)} Meter = {format_decimal(result, 3)} Kubikmeter",
+        ),
     )
 
     return {
@@ -1149,10 +1223,13 @@ def task_volume_from_total_price(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        f"1. Volumen = Gesamtpreis / Preis pro Kubikmeter\n"
-        f"2. Volumen = {format_decimal(total_price, 2)} Euro / {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(total_volume, 3)} Kubikmeter"
+    solution = format_solution_steps(
+        (
+            "Kubikmeter",
+            "Volumen = Gesamtpreis / Preis pro Kubikmeter",
+            f"{format_decimal(total_price, 2)} Euro / {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_volume, 3)} Kubikmeter",
+        ),
     )
 
     return {
@@ -1194,10 +1271,19 @@ def task_m3_price_from_running_meter(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)\n"
-        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter) = {format_decimal(result, 2)} Euro pro Kubikmeter"
+    solution = format_solution_steps(
+        (
+            "Breite x Höhe",
+            "Querschnitt = Breite x Höhe",
+            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
+            f"{format_decimal(cross_section, 5)} Quadratmeter",
+        ),
+        (
+            "Preis pro Kubikmeter",
+            "Euro pro Kubikmeter = Euro pro Laufmeter / Querschnitt",
+            f"{format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
+            f"{format_decimal(result, 2)} Euro pro Kubikmeter",
+        ),
     )
 
     return {
@@ -1209,6 +1295,10 @@ def task_m3_price_from_running_meter(level):
         "task_type": "m3_price_from_running_meter",
         "correction": "Teile den Laufmeterpreis durch Breite x Höhe in Meter, um auf den Kubikmeterpreis zu kommen.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(price_per_lfm, 2)} / "
+            f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Breite x Höhe",
@@ -1256,10 +1346,17 @@ def task_ek_from_vk_db(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        f"1. EK = VK x (1 - DB)\n"
-        f"2. EK = {format_decimal(total_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(total_ek, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "DB-Faktor",
+            "DB-Faktor = 1 - DB-Satz",
+            f"1 - {format_decimal(db_percent, 0)} % = {format_decimal(divisor, 2)}",
+        ),
+        (
+            "Gesamter EK",
+            "EK = VK x DB-Faktor",
+            f"{format_decimal(total_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(total_ek, 2)} Euro",
+        ),
     )
 
     return {
@@ -1313,12 +1410,25 @@ def task_package_price(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Volumen pro Stück = Länge x Breite x Höhe\n"
-        f"2. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter\n"
-        f"3. Paketvolumen = {format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = {format_decimal(total_volume, 3)} Kubikmeter\n"
-        f"4. Paketpreis = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = {format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Paketvolumen",
+            "Paketvolumen = Volumen pro Stück x Stückzahl im Paket",
+            f"{format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = "
+            f"{format_decimal(total_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Paketpreis",
+            "Paketpreis = Paketvolumen x Preis pro Kubikmeter",
+            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -1389,13 +1499,31 @@ def task_package_db_sale_price(level):
         ]
     )
 
-    solution = (
-        "Rechenweg:\n"
-        "1. Formel: Volumen pro Stück = Länge x Breite x Höhe\n"
-        f"2. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter\n"
-        f"3. Paketvolumen = {format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = {format_decimal(total_volume, 3)} Kubikmeter\n"
-        f"4. Paket-EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = {format_decimal(total_ek, 2)} Euro\n"
-        f"5. Paket-VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = {format_decimal(result, 2)} Euro"
+    solution = format_solution_steps(
+        (
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Paketvolumen",
+            "Paketvolumen = Volumen pro Stück x Stückzahl im Paket",
+            f"{format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = "
+            f"{format_decimal(total_volume, 3)} Kubikmeter",
+        ),
+        (
+            "Paket-EK",
+            "Paket-EK = Paketvolumen x EK pro Kubikmeter",
+            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_ek, 2)} Euro",
+        ),
+        (
+            "Paket-VK",
+            "Paket-VK = Paket-EK / (1 - DB-Satz)",
+            f"{format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
     )
 
     return {
@@ -1610,6 +1738,7 @@ def step_placeholder(step):
 
 
 def clean_formula_expression(expression):
+    expression = re.sub(r"^Berechnung:\s*", "", expression)
     cleaned = re.sub(
         r"\b(Meter|Kubikmeter|Quadratmeter|Laufmeter|Euro|Stück|pro|DB|bei)\b",
         "",
@@ -1632,6 +1761,8 @@ def perfect_input_formula(task):
         parts = line.split(" = ")
         if len(parts) >= 3:
             return clean_formula_expression(parts[-2])
+        if len(parts) == 2:
+            return clean_formula_expression(parts[0])
 
     return ""
 
