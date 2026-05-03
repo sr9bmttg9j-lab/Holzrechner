@@ -944,6 +944,10 @@ def task_db_sale_price(level):
         "task_type": "db_sale_price",
         "correction": "Rechne zuerst das Gesamtvolumen und daraus den gesamten EK. Für den VK mit DB teilst du den EK durch 1 minus DB-Satz, also zum Beispiel durch 0,70 bei 30 % DB.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
+            f"{count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Gesamtvolumen",
@@ -1215,6 +1219,10 @@ def task_package_price(level):
         "task_type": "package_price",
         "correction": "Starte mit dem Volumen eines einzelnen Stücks. Danach baust du daraus das Paketvolumen auf und erst anschließend den Preis.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
+            f"{package_count} x {format_decimal(m3_price, 0)}"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -1288,6 +1296,10 @@ def task_package_db_sale_price(level):
         "task_type": "package_db_sale_price",
         "correction": "Arbeite dich schrittweise vor: erst Einzelvolumen, dann Paketvolumen, danach Paket-EK und erst zuletzt den DB berücksichtigen.",
         "solution": solution,
+        "perfect_formula": (
+            f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
+            f"{package_count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
+        ),
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -1347,6 +1359,11 @@ TASK_GENERATORS = [
     task_package_price,
     task_package_db_sale_price,
 ]
+
+TASK_TYPE_TO_GENERATOR = {
+    task_func.__name__.replace("task_", ""): task_func
+    for task_func in TASK_GENERATORS
+}
 
 TASKS_BY_LEVEL = {
     1: [
@@ -1476,6 +1493,43 @@ def default_step_placeholder(step):
 
 def step_placeholder(step):
     return step.get("placeholder") or default_step_placeholder(step)
+
+
+def clean_formula_expression(expression):
+    cleaned = re.sub(
+        r"\b(Meter|Kubikmeter|Quadratmeter|Laufmeter|Euro|Stück|pro|DB|bei)\b",
+        "",
+        expression,
+    )
+    cleaned = cleaned.replace("%", "")
+    cleaned = re.sub(r"\s+", " ", cleaned)
+    cleaned = re.sub(r"\(\s+", "(", cleaned)
+    cleaned = re.sub(r"\s+\)", ")", cleaned)
+    return cleaned.strip()
+
+
+def perfect_input_formula(task):
+    if task.get("perfect_formula"):
+        return task["perfect_formula"]
+
+    for line in reversed(solution_lines(task)):
+        if " = " not in line or "Formel:" in line:
+            continue
+        parts = line.split(" = ")
+        if len(parts) >= 3:
+            return clean_formula_expression(parts[-2])
+
+    return ""
+
+
+def render_musterloesung(task):
+    st.subheader("Musterlösung")
+    formula = perfect_input_formula(task)
+    if formula:
+        st.write("Perfekte Eingabe in einem Rutsch:")
+        st.code(formula)
+    st.write("Rechenweg mit Einheiten:")
+    st.code(task["solution"])
 
 
 def guided_completed_entry(text, kind="success"):
@@ -1870,7 +1924,10 @@ def generate_step_explanation(task, question_text):
         return fallback_step_explanation(task, question_text)
 
 
-def choose_task(level, recent_task_types, task_number):
+def choose_task(level, recent_task_types, task_number, forced_task_type=None):
+    if forced_task_type in TASK_TYPE_TO_GENERATOR:
+        return TASK_TYPE_TO_GENERATOR[forced_task_type]
+
     candidates = TASKS_BY_LEVEL[level]
     if 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
         db_candidates = [task_func for task_func in candidates if "db" in task_func.__name__]
@@ -1894,7 +1951,8 @@ def choose_task(level, recent_task_types, task_number):
 def create_next_task():
     task_number = st.session_state.task_number
     level = pick_level(task_number)
-    task = choose_task(level, st.session_state.recent_task_types, task_number)(level)
+    forced_task_type = st.session_state.get("next_task_type_override")
+    task = choose_task(level, st.session_state.recent_task_types, task_number, forced_task_type)(level)
     st.session_state.task = task
     st.session_state.level = level
     st.session_state.attempt = 1
@@ -1922,6 +1980,7 @@ def create_next_task():
     st.session_state.explanation_backend = ""
     st.session_state.explanation_backend_error = ""
     st.session_state.pending_next_task = False
+    st.session_state.next_task_type_override = None
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
     for index, _step in enumerate(task.get("guided_steps", []), start=1):
@@ -2158,7 +2217,7 @@ with st.form("answer_form", clear_on_submit=False):
     st.text_input(
         "Deine Eingabe",
         key="answer_input",
-        placeholder="Zum Beispiel 6 * 0,08 * 0,12 * 10",
+        placeholder="",
         disabled=st.session_state.task_finished,
     )
     submitted = st.form_submit_button(
@@ -2186,10 +2245,6 @@ if st.session_state.hint_text and not st.session_state.solution_visible:
         st.success(f"Hinweis: {st.session_state.hint_text}")
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
-
-if st.session_state.get("show_success_solution") and not st.session_state.solution_visible:
-    st.success("Der Endwert stimmt. Hier ist der passende Rechenweg dazu:")
-    st.code(st.session_state.task["solution"])
 
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
@@ -2228,7 +2283,7 @@ if st.session_state.solution_visible:
         f"Richtig wäre: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}. "
         f"{st.session_state.hint_text}"
     )
-    st.code(st.session_state.task["solution"])
+    render_musterloesung(st.session_state.task)
     with st.form("solution_explanation_form", clear_on_submit=False):
         st.text_input(
             "Was möchtest du zum Rechenweg wissen?",
@@ -2246,8 +2301,21 @@ if st.session_state.solution_visible:
     if st.session_state.explanation_text:
         st.info(f"Erklärung: {st.session_state.explanation_text}")
 
+if st.session_state.task_finished and not st.session_state.solution_visible:
+    render_musterloesung(st.session_state.task)
+
 if st.session_state.task_finished:
-    if st.button("Nächste Aufgabe", type="primary"):
+    left_col, right_col = st.columns(2)
+    with left_col:
+        repeat_task_type = st.button("Gleicher Aufgabentyp", type="primary")
+    with right_col:
+        different_task_type = st.button("Anderer Aufgabentyp")
+
+    if repeat_task_type or different_task_type:
         st.session_state.task_number += 1
+        if repeat_task_type:
+            st.session_state.next_task_type_override = st.session_state.task["task_type"]
+        else:
+            st.session_state.next_task_type_override = None
         st.session_state.pending_next_task = True
         st.rerun()
