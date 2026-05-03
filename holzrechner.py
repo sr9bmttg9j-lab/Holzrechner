@@ -172,6 +172,10 @@ def format_cm(value):
     return format_decimal(value * 100, 1).rstrip("0").rstrip(",")
 
 
+def format_mm(value):
+    return format_decimal(value * 1000, 0)
+
+
 def unit_label(unit):
     return UNIT_LABELS.get(unit, unit)
 
@@ -240,6 +244,17 @@ def extract_responses_text(payload):
     return "\n".join(collected).strip()
 
 
+def display_measure(value_m, allowed_units):
+    unit = random.choice(list(allowed_units))
+    if unit == "m":
+        return f"{format_m(value_m)} m"
+    if unit == "cm":
+        return f"{format_cm(value_m)} cm"
+    if unit == "mm":
+        return f"{format_mm(value_m)} mm"
+    return f"{format_decimal(value_m, 3)} m"
+
+
 def call_openai_responses_api(prompt, max_output_tokens):
     api_key = get_openai_api_key()
     if not api_key:
@@ -258,7 +273,7 @@ def call_openai_responses_api(prompt, max_output_tokens):
         headers["OpenAI-Project"] = project
 
     payload = {
-        "model": "gpt-5-mini",
+        "model": "gpt-4o-mini",
         "input": [
             {
                 "role": "user",
@@ -271,11 +286,8 @@ def call_openai_responses_api(prompt, max_output_tokens):
             }
         ],
         "max_output_tokens": max_output_tokens,
-        "reasoning": {
-            "effort": "minimal",
-        },
         "text": {
-            "verbosity": "medium",
+            "verbosity": "low",
         },
     }
 
@@ -415,12 +427,14 @@ def task_volume_beam(level):
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     result = length_m * width_m * height_m * Decimal(count)
+    width_text = display_measure(width_m, ("cm", "m"))
+    height_text = display_measure(height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {count} Stück {product['name']} mit je {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe. In diesem Querschnitt liegen normalerweise {package_count} Stück im Paket.\n\nWie viele Kubikmeter sind das insgesamt?",
-            f"Für eine Lieferung {product['name']} liegen {count} Stück mit {format_m(length_m)} m Länge sowie {format_cm(width_m)} cm x {format_cm(height_m)} cm Querschnitt vor. Ein volles Paket würde hier {package_count} Stück enthalten.\n\nWie viele Kubikmeter ergeben sich daraus?",
-            f"Eine Kundin interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {format_cm(width_m)} cm Breite und {format_cm(height_m)} cm Höhe. Im Paket liegen bei diesem Maß normalerweise {package_count} Stück.\n\nWie viele Kubikmeter Ware sind das?",
+            f"{request_intro()}: {count} Stück {product['name']} mit je {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Höhe. In diesem Querschnitt liegen normalerweise {package_count} Stück im Paket.\n\nWie viele Kubikmeter sind das insgesamt?",
+            f"Für eine Lieferung {product['name']} liegen {count} Stück mit {format_m(length_m)} m Länge sowie {width_text} x {height_text} Querschnitt vor. Ein volles Paket würde hier {package_count} Stück enthalten.\n\nWie viele Kubikmeter ergeben sich daraus?",
+            f"Eine Kundin interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Höhe. Im Paket liegen bei diesem Maß normalerweise {package_count} Stück.\n\nWie viele Kubikmeter Ware sind das?",
         ]
     )
 
@@ -470,11 +484,13 @@ def task_price_per_running_meter(level):
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = width_m * height_m * m3_price
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter, ist {format_cm(width_m)} cm breit, {format_decimal(height_m * 1000, 0)} mm stark und die Bretter sind {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
-            f"Für ein Angebot liegt {display_name} vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Ein Brett ist {format_m(board_length)} m lang und hat {format_cm(width_m)} cm x {format_decimal(height_m * 1000, 0)} mm Querschnitt.\n\nWie teuer ist 1 Laufmeter?",
+            f"{request_intro()}: {display_name}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter, ist {width_text} breit, {thickness_text} stark und die Bretter sind {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
+            f"Für ein Angebot liegt {display_name} vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Ein Brett ist {format_m(board_length)} m lang und hat {width_text} x {thickness_text} Querschnitt.\n\nWie teuer ist 1 Laufmeter?",
         ]
     )
 
@@ -522,11 +538,12 @@ def task_price_per_square_meter(level):
     thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = thickness_m * m3_price
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {format_cm(thickness_m)} cm dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie teuer ist 1 Quadratmeter dieser Platte?",
-            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie teuer ist 1 Quadratmeter?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie teuer ist 1 Quadratmeter dieser Platte?",
+            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {thickness_text} dick.\n\nWie teuer ist 1 Quadratmeter?",
         ]
     )
 
@@ -572,11 +589,12 @@ def task_square_meters_from_volume(level):
         square_meters = Decimal(random.choice([14, 22, 28, 34, 42, 54]))
     total_volume = square_meters * thickness_m
     result = square_meters
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Es liegt eine Ware von {format_decimal(total_volume, 3)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, 3)} Kubikmeter bei {format_cm(thickness_m)} cm Dicke.\n\nWie viele Quadratmeter ergeben sich?",
+            f"Es liegt eine Ware von {format_decimal(total_volume, 3)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {thickness_text} dick.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, 3)} Kubikmeter bei {thickness_text} Dicke.\n\nWie viele Quadratmeter ergeben sich?",
         ]
     )
 
@@ -628,11 +646,12 @@ def task_volume_from_square_meters(level):
     else:
         square_meters = Decimal(random.choice([14, 22, 28, 34, 42]))
     result = square_meters * thickness_m
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, 0)} Quadratmeter vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie viele Kubikmeter sind das?",
-            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter bei {format_cm(thickness_m)} cm Dicke.\n\nWie viele Kubikmeter ergeben sich?",
+            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, 0)} Quadratmeter vor. Die Platte ist {thickness_text} dick.\n\nWie viele Kubikmeter sind das?",
+            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter bei {thickness_text} Dicke.\n\nWie viele Kubikmeter ergeben sich?",
         ]
     )
 
@@ -717,11 +736,13 @@ def task_square_meters_from_running_meters(level):
     board_count = random.choice([4, 6, 8, 10, 12])
     running_meters = board_length * Decimal(board_count)
     result = running_meters * width_m
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {format_decimal(running_meters, 0)} Laufmeter {display_name}. Ein Brett ist {format_m(board_length)} m lang, die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Quadratmeter {display_name} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Bretter sind {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
+            f"{request_intro()}: {format_decimal(running_meters, 0)} Laufmeter {display_name}. Ein Brett ist {format_m(board_length)} m lang, die Ware ist {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Quadratmeter {display_name} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
         ]
     )
 
@@ -768,11 +789,13 @@ def task_running_meters_from_volume(level):
     else:
         running_meters = Decimal(random.choice([21, 27, 35, 41, 45, 55]))
     total_volume = width_m * height_m * running_meters
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Insgesamt liegen {format_decimal(total_volume, 3)} Kubikmeter vor. Die Bretter sind {format_m(board_length)} m lang und haben {format_cm(width_m)} cm Breite bei {format_decimal(height_m * 1000, 0)} mm Stärke.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Laufmeter {display_name} in {format_decimal(total_volume, 3)} Kubikmeter enthalten sind. Ein Brett ist {format_m(board_length)} m lang, die Ware hat {format_cm(width_m)} cm Breite und {format_decimal(height_m * 1000, 0)} mm Stärke.\n\nWie viele Laufmeter sind das?",
+            f"{request_intro()}: {display_name}. Insgesamt liegen {format_decimal(total_volume, 3)} Kubikmeter vor. Die Bretter sind {format_m(board_length)} m lang und haben {width_text} Breite bei {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Laufmeter {display_name} in {format_decimal(total_volume, 3)} Kubikmeter enthalten sind. Ein Brett ist {format_m(board_length)} m lang, die Ware hat {width_text} Breite und {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
         ]
     )
 
@@ -824,11 +847,13 @@ def task_running_meters_from_square_meters(level):
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
     result = square_meters / width_m
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Bretter sind {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde fragt nach den Laufmetern einer {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_m(board_length)} m lang, {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter ergeben sich?",
+            f"{request_intro()}: {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde fragt nach den Laufmetern einer {display_name}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWie viele Laufmeter ergeben sich?",
         ]
     )
 
@@ -881,11 +906,13 @@ def task_db_sale_price(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     result = total_ek / divisor
+    width_text = display_measure(width_m, ("cm", "m"))
+    height_text = display_measure(height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. Ein Kubikmeter kostet im EK {format_decimal(ek_price_m3, 0)} Euro, bei diesem Querschnitt liegen {package_count} Stück im Paket. Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der gesamte VK für diese Position?",
-            f"Für eine Anfrage liegen {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm vor. Der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, der Ziel-DB bei {format_decimal(db_percent, 0)} %. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte VK?",
+            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Ein Kubikmeter kostet im EK {format_decimal(ek_price_m3, 0)} Euro, bei diesem Querschnitt liegen {package_count} Stück im Paket. Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der gesamte VK für diese Position?",
+            f"Für eine Anfrage liegen {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} vor. Der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, der Ziel-DB bei {format_decimal(db_percent, 0)} %. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte VK?",
         ]
     )
 
@@ -947,11 +974,13 @@ def task_volume_from_running_meters(level):
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
     result = width_m * height_m * running_meters
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Ein Kunde plant {format_decimal(running_meters, 0)} Laufmeter {product['name']} mit einem Querschnitt von {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie viele Kubikmeter sind das?",
-            f"Für eine Position {product['name']} liegen {format_decimal(running_meters, 0)} Laufmeter bei {format_cm(width_m)} cm x {format_cm(height_m)} cm Querschnitt vor.\n\nWie viele Kubikmeter ergeben sich daraus?",
+            f"Ein Kunde plant {format_decimal(running_meters, 0)} Laufmeter {product['name']} mit einem Querschnitt von {width_text} x {thickness_text}.\n\nWie viele Kubikmeter sind das?",
+            f"Für eine Position {product['name']} liegen {format_decimal(running_meters, 0)} Laufmeter bei {width_text} x {thickness_text} Querschnitt vor.\n\nWie viele Kubikmeter ergeben sich daraus?",
         ]
     )
 
@@ -1032,11 +1061,13 @@ def task_m3_price_from_running_meter(level):
     price_per_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
     cross_section = width_m * height_m
     result = price_per_lfm / cross_section
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"Ein Laufmeter {product['name']} kostet {format_decimal(price_per_lfm, 2)} Euro. Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie hoch ist der Preis pro Kubikmeter?",
-            f"Für {product['name']} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Der Querschnitt beträgt {format_cm(width_m)} cm x {format_cm(height_m)} cm.\n\nWie hoch ist der Preis pro Kubikmeter?",
+            f"Ein Laufmeter {product['name']} kostet {format_decimal(price_per_lfm, 2)} Euro. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Preis pro Kubikmeter?",
+            f"Für {product['name']} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Preis pro Kubikmeter?",
         ]
     )
 
@@ -1092,11 +1123,13 @@ def task_ek_from_vk_db(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     total_vk = total_ek / divisor
+    width_text = display_measure(width_m, ("cm", "m"))
+    height_text = display_measure(height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. Der VK liegt bei {format_decimal(total_vk, 2)} Euro, kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte EK?",
-            f"Ein Angebot über {count} Stück {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm endet bei {format_decimal(total_vk, 2)} Euro VK. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie hoch ist der gesamte EK?",
+            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Der VK liegt bei {format_decimal(total_vk, 2)} Euro, kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte EK?",
+            f"Ein Angebot über {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} endet bei {format_decimal(total_vk, 2)} Euro VK. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie hoch ist der gesamte EK?",
         ]
     )
 
@@ -1146,11 +1179,13 @@ def task_package_price(level):
     package_count = structural_package_count(width_m, height_m)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = length_m * width_m * height_m * Decimal(package_count) * m3_price
+    width_text = display_measure(width_m, ("cm", "m"))
+    height_text = display_measure(height_m, ("cm", "m"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: ein volles Paket {product['name']} im Format {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm. In diesem Querschnitt liegen {package_count} Stück im Paket. Der EK liegt bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis im EK?",
-            f"Für ein Angebot liegt ein volles Paket {product['name']} vor. Das Maß beträgt {format_m(length_m)} m x {format_cm(width_m)} cm x {format_cm(height_m)} cm, im Paket liegen {package_count} Stück und der EK beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis?",
+            f"{request_intro()}: ein volles Paket {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. In diesem Querschnitt liegen {package_count} Stück im Paket. Der EK liegt bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis im EK?",
+            f"Für ein Angebot liegt ein volles Paket {product['name']} vor. Das Maß beträgt {format_m(length_m)} m x {width_text} x {height_text}, im Paket liegen {package_count} Stück und der EK beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Paketpreis?",
         ]
     )
 
@@ -1369,8 +1404,8 @@ def progressive_main_hint(task, answer_value, attempt):
         return generate_hint(task, answer_value, False)
     if attempt == 2:
         first_step = task.get("guided_steps", [{}])[0]
-        return f"{task['correction']} {first_step.get('formula_hint', '')}".strip()
-    return "Wenn du magst, geh die Aufgabe jetzt unten Schritt für Schritt durch. So lässt sich der Rechenweg sauber aufbauen."
+        return f"{generate_hint(task, answer_value, False)} {first_step.get('formula_hint', '')}".strip()
+    return "Wenn du magst, geh die Aufgabe jetzt Schritt für Schritt durch. So lässt sich der Rechenweg sauber aufbauen."
 
 
 def progressive_step_hint(task, step, answer_value, step_attempt):
@@ -1391,43 +1426,26 @@ def progressive_step_hint(task, step, answer_value, step_attempt):
 
 def fallback_hint(task, is_correct):
     if is_correct:
-        return (
-            "Das passt fachlich. Geh den Rechenweg noch einmal kurz durch und prüfe, "
-            "welche Größe du zuerst umgerechnet hast und warum das Ergebnis in dieser Einheit stimmig ist."
-        )
+        return "Passt. Das Ergebnis stimmt fachlich."
     diagnostic = st.session_state.get("last_diagnostic_hint", "")
-    return (
-        f"{diagnostic} {task['correction']} Prüfe danach noch einmal, welche Eingangsgröße gegeben ist "
-        "und auf welche Zielgröße du tatsächlich kommen sollst."
-    ).strip()
+    return f"{diagnostic} {task['correction']}".strip()
 
 
 def generate_hint(task, answer_value, is_correct):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
+    formula_line = solution_lines(task)[0] if solution_lines(task) else ""
     prompt = (
-        "Du bist ein Lernassistent für die Holzbranche. "
-        "Gib auf Deutsch einen hilfreichen Hinweis mit drei bis fünf kurzen Sätzen. "
-        "Sprich klar, ruhig und fachlich. "
-        "Wenn die Antwort richtig ist, bestätige das knapp, benenne den richtigen Rechenansatz und gib einen kurzen Merksatz für ähnliche Aufgaben. "
-        "Wenn die Antwort falsch ist, erkläre knapp, an welcher Stelle der Denkweg wahrscheinlich abgebogen ist, "
-        "welche Zwischenrechnung als Nächstes sinnvoll wäre und worauf bei der Einheit geachtet werden muss. "
-        "Beginne bei Umrechnungsaufgaben immer zuerst mit der passenden Grundformel und gehe erst danach auf die eingesetzten Zahlen ein. "
-        "Prüfe dabei ausdrücklich auf typische Fehler wie Zahlendreher, falschen Preiswert, falsche Einheit, "
-        "mal statt geteilt, geteilt statt mal, falsche Reihenfolge im Rechenweg oder eine passende Formel mit der falschen Eingabezahl. "
-        "Wenn so ein Muster wahrscheinlich ist, benenne es ausdrücklich und ordne es einer passenden Fehlerkategorie zu. "
-        "Nutze dafür diese Fehlerkategorien aus der Ausbildungspraxis im Holzhandel: "
-        f"{ERROR_PATTERN_GUIDE} "
-        f"Nutze außerdem diese Formellogik als fachliche Basis: {FORMULA_GUIDE} "
-        f"Aufgabenspezifischer Fokus: {likely_error_focus(task)} "
-        "Gib nicht die komplette Musterlösung Wort für Wort aus. "
-        f"Aufgabentext: {task['prompt']} "
-        f"Aufgabentyp: {task['task_type']}. "
-        f"Nutzerergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
+        "Du bist ein Lernassistent für den Holzhandel. "
+        "Antworte auf Deutsch kurz und konkret in maximal 3 Sätzen. "
+        "Wenn die Antwort richtig ist, bestätige das knapp. "
+        "Wenn die Antwort falsch ist, nenne kurz den wahrscheinlichsten Fehler und genau den nächsten Rechenschritt. "
+        "Keine Floskeln, keine lange Musterlösung. "
+        f"Aufgabe: {task['prompt']} "
+        f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
-        f"Bewertung: {'richtig' if is_correct else 'falsch'}. "
-        f"Lokaler Korrekturhinweis: {task['correction']} "
-        f"Lokale Voranalyse zu einem möglichen Fehlerbild: {local_diagnostic or 'Kein klarer lokaler Musterhinweis.'} "
-        "Wenn die Antwort falsch ist, nenne zuerst kurz die wahrscheinlichste Fehlerquelle und erst danach den nächsten sinnvollen Rechenschritt."
+        f"Formel: {formula_line} "
+        f"Typische Fehler: {local_diagnostic or likely_error_focus(task)} "
+        f"Zusatzhinweis: {task['correction']}"
     )
 
     try:
@@ -1436,7 +1454,7 @@ def generate_hint(task, answer_value, is_correct):
             st.session_state.hint_backend_error = ""
             return fallback_hint(task, is_correct)
 
-        text = call_openai_responses_api(prompt, 160)
+        text = call_openai_responses_api(prompt, 100)
         if text:
             st.session_state.hint_backend = "api_rest"
             st.session_state.hint_backend_error = ""
@@ -1555,7 +1573,7 @@ def generate_step_explanation(task, question_text):
             st.session_state.explanation_backend_error = ""
             return fallback_step_explanation(task, question_text)
 
-        text = call_openai_responses_api(prompt, 320)
+        text = call_openai_responses_api(prompt, 220)
         if text:
             st.session_state.explanation_backend = "api_rest"
             st.session_state.explanation_backend_error = ""
@@ -1595,6 +1613,7 @@ def create_next_task():
     st.session_state.feedback_kind = None
     st.session_state.feedback_text = ""
     st.session_state.result_text = ""
+    st.session_state.last_answer_display = ""
     st.session_state.solution_visible = False
     st.session_state.task_finished = False
     st.session_state.answer_input = ""
@@ -1647,25 +1666,27 @@ def handle_submission():
         return
 
     task = st.session_state.task
+    st.session_state.last_answer_display = format_user_result(answer_value, task)
     st.session_state.result_text = f"Dein Ergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}"
     st.session_state.last_diagnostic_hint = diagnose_common_mistake(task, answer_value, task["expected"])
 
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = "Sehr gut gerechnet. Wenn du magst, schau dir noch den detaillierten Rechenweg an oder geh direkt zur nächsten Aufgabe."
-        st.session_state.solution_visible = True
+        st.session_state.hint_text = generate_hint(task, answer_value, True)
+        st.session_state.solution_visible = False
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
         st.session_state.guided_step_feedback = []
+        st.session_state.explanation_text = ""
         return
 
     if st.session_state.attempt < 4:
         st.session_state.feedback_kind = "warning"
         st.session_state.feedback_text = ""
         st.session_state.hint_text = progressive_main_hint(task, answer_value, st.session_state.attempt)
-        st.session_state.guided_visible = True
+        st.session_state.guided_visible = st.session_state.attempt >= 2
         st.session_state.guided_summary = ""
         st.session_state.guided_step_feedback = []
         st.session_state.attempt += 1
@@ -1673,7 +1694,7 @@ def handle_submission():
 
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.hint_text = f"{task['correction']} Die Aufgabe wird jetzt aufgelöst."
+    st.session_state.hint_text = generate_hint(task, answer_value, False)
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
     st.session_state.guided_visible = False
@@ -1715,10 +1736,11 @@ def handle_guided_submission():
         if current_index == len(guided_steps) - 1:
             st.session_state.feedback_kind = "success"
             st.session_state.feedback_text = ""
-            st.session_state.hint_text = "Sehr gut gerechnet. Wenn du magst, schau dir noch den detaillierten Rechenweg an oder geh direkt zur nächsten Aufgabe."
+            st.session_state.hint_text = "Sehr gut gerechnet. Auf zur nächsten Aufgabe."
             st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
-            st.session_state.solution_visible = True
+            st.session_state.solution_visible = False
             st.session_state.task_finished = True
+            st.session_state.explanation_text = ""
             return
 
         st.session_state.guided_step_index = current_index + 1
@@ -1825,10 +1847,10 @@ if st.session_state.feedback_text:
     else:
         st.error(st.session_state.feedback_text)
 
-if st.session_state.result_text:
+if st.session_state.result_text and not st.session_state.solution_visible:
     st.write(st.session_state.result_text)
 
-if st.session_state.hint_text:
+if st.session_state.hint_text and not st.session_state.solution_visible:
     if st.session_state.feedback_kind == "success":
         st.success(f"Hinweis: {st.session_state.hint_text}")
     else:
@@ -1862,7 +1884,12 @@ if st.session_state.guided_visible and not st.session_state.task_finished:
             st.warning(st.session_state.guided_summary)
 
 if st.session_state.solution_visible:
-    st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
+    st.warning(
+        "Nicht ganz. "
+        f"Dein Ergebnis: {st.session_state.last_answer_display} {unit_label(st.session_state.task['unit'])}. "
+        f"Richtig wäre: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}. "
+        f"{st.session_state.hint_text}"
+    )
     st.code(st.session_state.task["solution"])
     with st.form("solution_explanation_form", clear_on_submit=False):
         st.text_input(
