@@ -1,5 +1,4 @@
 import ast
-import html
 import json
 import os
 import random
@@ -2126,19 +2125,6 @@ def render_musterloesung(task):
     st.code(task["solution"])
 
 
-def render_sticky_task_header():
-    prompt_html = html.escape(st.session_state.task["prompt"]).replace("\n", "<br>")
-    st.markdown(
-        f"""
-        <section class="sticky-task">
-            <h2>Aufgabe {st.session_state.task_number}</h2>
-            <div class="sticky-task-text">{prompt_html}</div>
-        </section>
-        """,
-        unsafe_allow_html=True,
-    )
-
-
 def render_theory_section():
     st.markdown("#### Einheiten")
     st.markdown(
@@ -2932,29 +2918,6 @@ st.markdown(
             border-color: #b91c1c !important;
             color: white !important;
         }
-
-        .sticky-task {
-            position: sticky;
-            top: 0;
-            z-index: 50;
-            margin: 1.4rem 0 1rem;
-            padding: 0.65rem 0 0.85rem;
-            background: var(--background-color);
-            border-bottom: 1px solid rgba(128, 128, 128, 0.22);
-        }
-
-        .sticky-task h2 {
-            margin: 0 0 0.8rem;
-            font-size: 2rem;
-            line-height: 1.15;
-            font-weight: 700;
-        }
-
-        .sticky-task-text {
-            font-size: 1.05rem;
-            line-height: 1.55;
-            color: var(--text-color);
-        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -2982,7 +2945,8 @@ if st.button(
 if st.session_state.show_theory:
     render_theory_section()
 
-render_sticky_task_header()
+st.subheader(f"Aufgabe {st.session_state.task_number}")
+st.write(st.session_state.task["prompt"])
 st.caption("Du kannst deinen Rechenweg als Formel oder direkt das Endergebnis eintragen.")
 
 with st.form("answer_form", clear_on_submit=False):
