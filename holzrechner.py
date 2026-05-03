@@ -7,28 +7,55 @@ import streamlit as st
 
 
 PRODUCTS = [
-    {"name": "KVH", "kind": "beam"},
-    {"name": "BSH", "kind": "beam"},
-    {"name": "Konstruktionslatte", "kind": "beam"},
-    {"name": "OSB-Platte", "kind": "panel"},
-    {"name": "Siebdruckplatte", "kind": "panel"},
-    {"name": "3-Schicht-Platte", "kind": "panel"},
+    {"name": "KVH", "kind": "structural_beam"},
+    {"name": "BSH", "kind": "structural_beam"},
+    {"name": "Hobelware", "kind": "hobelware"},
+    {
+        "name": "OSB-Platte",
+        "kind": "panel",
+        "formats": ["250 x 62,5 cm", "250 x 67,5 cm"],
+    },
+    {
+        "name": "Siebdruckplatte",
+        "kind": "panel",
+        "formats": ["125 x 250 cm"],
+    },
+    {
+        "name": "3-Schicht-Platte",
+        "kind": "panel",
+        "formats": ["125 x 205 cm", "125 x 250 cm"],
+    },
 ]
 
-BEAM_WIDTHS_BY_LEVEL = {
+STRUCTURAL_WIDTHS_BY_LEVEL = {
     1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12")],
     2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14")],
     3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
 }
-BEAM_HEIGHTS_BY_LEVEL = {
+STRUCTURAL_HEIGHTS_BY_LEVEL = {
     1: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.16"), Decimal("0.20")],
     2: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.20")],
     3: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
 }
-BEAM_LENGTHS_BY_LEVEL = {
+STRUCTURAL_LENGTHS_BY_LEVEL = {
+    1: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0")],
+    2: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0"), Decimal("9.0"), Decimal("10.0")],
+    3: [Decimal("6.0"), Decimal("7.0"), Decimal("8.0"), Decimal("9.0"), Decimal("10.0"), Decimal("11.0"), Decimal("12.0"), Decimal("13.0")],
+}
+HOBEL_WIDTHS_BY_LEVEL = {
+    1: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
+    2: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18")],
+    3: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+}
+HOBEL_THICKNESSES_BY_LEVEL = {
+    1: [Decimal("0.019"), Decimal("0.023")],
+    2: [Decimal("0.019"), Decimal("0.023")],
+    3: [Decimal("0.019"), Decimal("0.023"), Decimal("0.027")],
+}
+HOBEL_LENGTHS_BY_LEVEL = {
     1: [Decimal("3.0"), Decimal("4.0"), Decimal("5.0"), Decimal("6.0")],
-    2: [Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("6.0"), Decimal("7.0")],
-    3: [Decimal("3.5"), Decimal("4.5"), Decimal("5.5"), Decimal("6.0"), Decimal("6.5"), Decimal("7.5")],
+    2: [Decimal("3.0"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("6.0")],
+    3: [Decimal("3.0"), Decimal("4.0"), Decimal("5.0"), Decimal("6.0")],
 }
 COUNTS_BY_LEVEL = {
     1: [4, 6, 8, 10, 12],
@@ -201,8 +228,8 @@ def evaluate_ast_node(node):
     raise InvalidOperation
 
 
-def generate_beam_product():
-    choices = [p for p in PRODUCTS if p["kind"] == "beam"]
+def generate_structural_product():
+    choices = [p for p in PRODUCTS if p["kind"] == "structural_beam"]
     return random.choice(choices)
 
 
@@ -211,11 +238,21 @@ def generate_panel_product():
     return random.choice(choices)
 
 
+def generate_hobelware_product():
+    choices = [p for p in PRODUCTS if p["kind"] == "hobelware"]
+    return random.choice(choices)
+
+
+def panel_format_text(product):
+    formats = product.get("formats", [])
+    return random.choice(formats) if formats else ""
+
+
 def task_volume_beam(level):
-    product = generate_beam_product()
-    length_m = choice_for_level(BEAM_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     result = length_m * width_m * height_m * Decimal(count)
 
@@ -266,9 +303,9 @@ def task_volume_beam(level):
 
 
 def task_price_per_running_meter(level):
-    product = generate_beam_product()
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = width_m * height_m * m3_price
 
@@ -319,14 +356,15 @@ def task_price_per_running_meter(level):
 
 def task_price_per_square_meter(level):
     product = generate_panel_product()
+    panel_format = panel_format_text(product)
     thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
     m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
     result = thickness_m * m3_price
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} ist {format_cm(thickness_m)} cm dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie teuer ist 1 Quadratmeter dieser Platte?",
-            f"Für eine {product['name']} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie teuer ist 1 Quadratmeter?",
+            f"Eine {product['name']} im Format {panel_format} ist {format_cm(thickness_m)} cm dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie teuer ist 1 Quadratmeter dieser Platte?",
+            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie teuer ist 1 Quadratmeter?",
         ]
     )
 
@@ -362,6 +400,7 @@ def task_price_per_square_meter(level):
 
 def task_square_meters_from_volume(level):
     product = generate_panel_product()
+    panel_format = panel_format_text(product)
     thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
     if level == 1:
         square_meters = Decimal(random.choice([12, 18, 24, 30, 36, 48]))
@@ -374,8 +413,8 @@ def task_square_meters_from_volume(level):
 
     prompt = random.choice(
         [
-            f"Es liegt eine Ware von {format_decimal(total_volume, 3)} Kubikmeter {product['name']} vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde fragt nach der Fläche einer {product['name']}. Verfügbar sind {format_decimal(total_volume, 3)} Kubikmeter bei {format_cm(thickness_m)} cm Dicke.\n\nWie viele Quadratmeter ergeben sich?",
+            f"Es liegt eine Ware von {format_decimal(total_volume, 3)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, 3)} Kubikmeter bei {format_cm(thickness_m)} cm Dicke.\n\nWie viele Quadratmeter ergeben sich?",
         ]
     )
 
@@ -411,6 +450,55 @@ def task_square_meters_from_volume(level):
                 0,
                 False,
                 "Teile das Volumen durch die Dicke.",
+            ),
+        ],
+    }
+
+
+def task_volume_from_square_meters(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
+    if level == 1:
+        square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
+    elif level == 2:
+        square_meters = Decimal(random.choice([15, 21, 27, 33, 39]))
+    else:
+        square_meters = Decimal(random.choice([14, 22, 28, 34, 42]))
+    result = square_meters * thickness_m
+
+    prompt = random.choice(
+        [
+            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, 0)} Quadratmeter vor. Die Platte ist {format_cm(thickness_m)} cm dick.\n\nWie viele Kubikmeter sind das?",
+            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter bei {format_cm(thickness_m)} cm Dicke.\n\nWie viele Kubikmeter ergeben sich?",
+        ]
+    )
+
+    solution = (
+        "Rechenweg:\n"
+        "1. Formel: Kubikmeter = Quadratmeter x Dicke\n"
+        f"2. Kubikmeter = {format_decimal(square_meters, 0)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
+        f"{format_decimal(result, 3)} Kubikmeter"
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.normalize(),
+        "unit": "m3",
+        "display_places": 3,
+        "round_for_check": False,
+        "task_type": "volume_from_square_meters",
+        "correction": "Multipliziere die Quadratmeter mit der Dicke in Meter, um auf das Volumen zu kommen.",
+        "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Kubikmeter",
+                result.normalize(),
+                "m3",
+                3,
+                False,
+                "Rechne hier direkt Quadratmeter x Dicke in Meter.",
+                "Formel: Quadratmeter x Dicke",
             ),
         ],
     }
@@ -458,10 +546,54 @@ def task_total_price_from_volume(level):
     }
 
 
+def task_square_meters_from_running_meters(level):
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
+    result = running_meters * width_m
+
+    prompt = random.choice(
+        [
+            f"Für {product['name']} mit {format_cm(width_m)} cm Breite und {format_decimal(thickness_m * 1000, 0)} mm Stärke liegen {format_decimal(running_meters, 0)} Laufmeter vor.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Quadratmeter {product['name']} aus {format_decimal(running_meters, 0)} Laufmetern ergeben. Die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Quadratmeter sind das?",
+        ]
+    )
+
+    solution = (
+        "Rechenweg:\n"
+        "1. Formel: Quadratmeter = Laufmeter x Breite\n"
+        f"2. Quadratmeter = {format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter = "
+        f"{format_decimal(result, 3)} Quadratmeter"
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.normalize(),
+        "unit": "m2",
+        "display_places": 3,
+        "round_for_check": False,
+        "task_type": "square_meters_from_running_meters",
+        "correction": "Für Hobelware rechnest du die Laufmeter mit der Breite in Meter zu Quadratmetern um.",
+        "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Quadratmeter",
+                result.normalize(),
+                "m2",
+                3,
+                False,
+                "Rechne hier direkt Laufmeter x Breite in Meter.",
+                "Formel: Laufmeter x Breite",
+            ),
+        ],
+    }
+
+
 def task_running_meters_from_volume(level):
-    product = generate_beam_product()
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     if level == 1:
         running_meters = Decimal(random.choice([20, 24, 30, 36, 40, 48]))
     elif level == 2:
@@ -517,11 +649,55 @@ def task_running_meters_from_volume(level):
     }
 
 
+def task_running_meters_from_square_meters(level):
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    thickness_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
+    result = square_meters / width_m
+
+    prompt = random.choice(
+        [
+            f"Für {product['name']} mit {format_cm(width_m)} cm Breite und {format_decimal(thickness_m * 1000, 0)} mm Stärke liegen {format_decimal(square_meters, 0)} Quadratmeter vor.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde fragt nach den Laufmetern einer {product['name']}. Verfügbar sind {format_decimal(square_meters, 0)} Quadratmeter. Die Ware ist {format_cm(width_m)} cm breit und {format_decimal(thickness_m * 1000, 0)} mm stark.\n\nWie viele Laufmeter ergeben sich?",
+        ]
+    )
+
+    solution = (
+        "Rechenweg:\n"
+        "1. Formel: Laufmeter = Quadratmeter / Breite\n"
+        f"2. Laufmeter = {format_decimal(square_meters, 0)} Quadratmeter / {format_decimal(width_m, 2)} Meter = "
+        f"{format_decimal(result, 0)} Laufmeter"
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.normalize(),
+        "unit": "lfm",
+        "display_places": 0,
+        "round_for_check": False,
+        "task_type": "running_meters_from_square_meters",
+        "correction": "Für Hobelware teilst du die Quadratmeter durch die Breite in Meter, um die Laufmeter zu erhalten.",
+        "solution": solution,
+        "guided_steps": [
+            make_guided_step(
+                "Laufmeter",
+                result.normalize(),
+                "lfm",
+                0,
+                False,
+                "Rechne hier direkt Quadratmeter / Breite in Meter.",
+                "Formel: Quadratmeter / Breite",
+            ),
+        ],
+    }
+
+
 def task_db_sale_price(level):
-    product = generate_beam_product()
-    length_m = choice_for_level(BEAM_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
     if level == 1:
@@ -596,9 +772,9 @@ def task_db_sale_price(level):
 
 
 def task_volume_from_running_meters(level):
-    product = generate_beam_product()
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
     result = width_m * height_m * running_meters
 
@@ -680,9 +856,9 @@ def task_volume_from_total_price(level):
 
 
 def task_m3_price_from_running_meter(level):
-    product = generate_beam_product()
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_hobelware_product()
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     price_per_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
     cross_section = width_m * height_m
     result = price_per_lfm / cross_section
@@ -733,10 +909,10 @@ def task_m3_price_from_running_meter(level):
 
 
 def task_ek_from_vk_db(level):
-    product = generate_beam_product()
-    length_m = choice_for_level(BEAM_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(BEAM_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(BEAM_HEIGHTS_BY_LEVEL, level)
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     db_percent = Decimal(random.choice([25, 30, 35]) if level == 1 else random.choice([27, 30, 33, 35]) if level == 2 else random.choice([28, 31, 34, 37]))
     ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
@@ -794,12 +970,15 @@ def task_ek_from_vk_db(level):
 TASK_GENERATORS = [
     task_volume_beam,
     task_volume_from_running_meters,
+    task_volume_from_square_meters,
     task_volume_from_total_price,
     task_running_meters_from_volume,
+    task_running_meters_from_square_meters,
     task_price_per_running_meter,
     task_m3_price_from_running_meter,
     task_price_per_square_meter,
     task_square_meters_from_volume,
+    task_square_meters_from_running_meters,
     task_total_price_from_volume,
     task_db_sale_price,
     task_ek_from_vk_db,
@@ -809,8 +988,10 @@ TASKS_BY_LEVEL = {
     1: [
         task_volume_beam,
         task_volume_from_running_meters,
+        task_square_meters_from_running_meters,
         task_running_meters_from_volume,
         task_total_price_from_volume,
+        task_volume_from_square_meters,
         task_volume_from_total_price,
         task_price_per_running_meter,
         task_price_per_square_meter,
@@ -819,11 +1000,14 @@ TASKS_BY_LEVEL = {
     2: [
         task_volume_beam,
         task_volume_from_running_meters,
+        task_volume_from_square_meters,
         task_volume_from_total_price,
         task_total_price_from_volume,
         task_price_per_square_meter,
         task_square_meters_from_volume,
+        task_square_meters_from_running_meters,
         task_running_meters_from_volume,
+        task_running_meters_from_square_meters,
         task_price_per_running_meter,
         task_db_sale_price,
         task_ek_from_vk_db,
@@ -887,7 +1071,15 @@ def diagnose_common_mistake(task, answer_value, expected_value):
                 "Prüfe die Umrechnung der Dicke sehr genau. Hier liegt sehr wahrscheinlich ein Fehler beim Sprung von Zentimeter oder Millimeter auf Meter vor."
             )
 
-    if task["task_type"] in {"square_meters_from_volume", "volume_from_running_meters", "running_meters_from_volume", "volume_beam"}:
+    if task["task_type"] in {
+        "square_meters_from_volume",
+        "volume_from_square_meters",
+        "volume_from_running_meters",
+        "running_meters_from_volume",
+        "square_meters_from_running_meters",
+        "running_meters_from_square_meters",
+        "volume_beam",
+    }:
         if is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100")) or is_close_factor(ratio, Decimal("1000")):
             return (
                 "Dein Ergebnis weicht ungefähr um den Faktor 10, 100 oder 1000 ab. "
@@ -928,8 +1120,11 @@ def likely_error_focus(task):
         "price_per_running_meter": "Achte besonders auf Querschnitt, Volumen von 1 Laufmeter und die richtige Preisbasis.",
         "price_per_square_meter": "Achte besonders auf die Dicke der Platte und auf die Preisbasis pro Kubikmeter.",
         "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
+        "volume_from_square_meters": "Achte besonders auf die Richtung der Umrechnung von Quadratmeter zu Kubikmeter über die Dicke.",
         "total_price_from_volume": "Achte besonders darauf, ob Volumen und Preisbasis wirklich zur Zielgröße Gesamtpreis passen.",
         "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter und auf den Querschnitt.",
+        "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
+        "running_meters_from_square_meters": "Achte besonders auf die Richtung Quadratmeter zu Laufmeter über die Breite der Hobelware.",
         "db_sale_price": "Achte besonders auf die Reihenfolge Gesamtvolumen, EK und danach VK mit DB.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
