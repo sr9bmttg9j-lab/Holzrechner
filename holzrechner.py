@@ -16,8 +16,8 @@ PRODUCTS = [
 
 BEAM_WIDTHS_BY_LEVEL = {
     1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12")],
-    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.09"), Decimal("0.10"), Decimal("0.12")],
-    3: [Decimal("0.06"), Decimal("0.075"), Decimal("0.08"), Decimal("0.09"), Decimal("0.10"), Decimal("0.12")],
+    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14")],
+    3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
 }
 BEAM_HEIGHTS_BY_LEVEL = {
     1: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.16"), Decimal("0.20")],
@@ -136,10 +136,10 @@ def current_level(task_number):
 def pick_level(task_number):
     base_level = current_level(task_number)
     if base_level == 1:
-        return random.choices([1, 2, 3], weights=[6, 3, 1], k=1)[0]
+        return random.choices([1, 2, 3], weights=[3, 4, 3], k=1)[0]
     if base_level == 2:
-        return random.choices([1, 2, 3], weights=[3, 4, 2], k=1)[0]
-    return random.choices([1, 2, 3], weights=[2, 3, 4], k=1)[0]
+        return random.choices([1, 2, 3], weights=[2, 4, 4], k=1)[0]
+    return random.choices([1, 2, 3], weights=[1, 3, 6], k=1)[0]
 
 
 def choice_for_level(pool_by_level, level):
@@ -795,7 +795,10 @@ TASKS_BY_LEVEL = {
     1: [
         task_volume_beam,
         task_volume_from_running_meters,
+        task_running_meters_from_volume,
         task_total_price_from_volume,
+        task_volume_from_total_price,
+        task_price_per_running_meter,
         task_price_per_square_meter,
         task_db_sale_price,
     ],
@@ -1015,6 +1018,7 @@ def generate_solution_explanation(task):
         "Erkläre auf Deutsch den folgenden Muster-Rechenweg in drei bis fünf kurzen Sätzen. "
         "Sprich ruhig, konkret und fachlich. "
         "Erkläre ausdrücklich, welche Einheit in jedem Schritt gedacht wird und warum der Rechenweg logisch zur Zielgröße führt. "
+        "Gehe sichtbar auf die konkreten Zahlen aus dieser Aufgabe ein und nenne sie auch in der Erklärung. "
         "Gib keine neue alternative Lösung, sondern erläutere genau den vorhandenen Muster-Rechenweg. "
         f"Aufgabentext: {task['prompt']} "
         f"Zielgröße: {unit_label(task['unit'])}. "
@@ -1257,9 +1261,7 @@ st.write(
     "also zum Beispiel mit mal und geteilt."
 )
 
-col1, col2 = st.columns(2)
-col1.metric("Aufgabe", st.session_state.task_number)
-col2.metric("Schwierigkeit", st.session_state.level)
+st.metric("Aufgabe", st.session_state.task_number)
 
 st.subheader("Aufgabe")
 st.write(st.session_state.task["prompt"])
@@ -1329,7 +1331,7 @@ if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
     st.code(st.session_state.task["solution"])
     if st.session_state.solution_explanation:
-        st.info(f"KI-Erklärung: {st.session_state.solution_explanation}")
+        st.info(f"Erklärung: {st.session_state.solution_explanation}")
 
 if st.session_state.task_finished:
     if st.button("Nächste Aufgabe", type="primary"):
