@@ -91,6 +91,24 @@ ERROR_PATTERN_GUIDE = """
 - Das Ergebnis wird nicht auf Größenordnung und fachliche Plausibilität geprüft.
 """
 
+FORMULA_GUIDE = """
+Preisumrechnung:
+- Euro pro Kubikmeter zu Euro pro Quadratmeter: Preis pro Kubikmeter x Dicke
+- Euro pro Kubikmeter zu Euro pro Laufmeter: Preis pro Kubikmeter x Breite x Höhe
+- Euro pro Quadratmeter zu Euro pro Laufmeter: Preis pro Quadratmeter x Breite
+- Euro pro Quadratmeter zu Euro pro Kubikmeter: Preis pro Quadratmeter / Dicke
+- Euro pro Laufmeter zu Euro pro Quadratmeter: Preis pro Laufmeter / Breite
+- Euro pro Laufmeter zu Euro pro Kubikmeter: Preis pro Laufmeter / (Breite x Höhe)
+
+Mengen- und Volumenumrechnung:
+- Kubikmeter zu Quadratmeter: Kubikmeter / Dicke
+- Quadratmeter zu Kubikmeter: Quadratmeter x Dicke
+- Kubikmeter zu Laufmeter: Kubikmeter / (Breite x Höhe)
+- Laufmeter zu Kubikmeter: Laufmeter x Breite x Höhe
+- Quadratmeter zu Laufmeter: Quadratmeter / Breite
+- Laufmeter zu Quadratmeter: Laufmeter x Breite
+"""
+
 
 def q(value_str):
     return Decimal(value_str)
@@ -210,9 +228,9 @@ def task_volume_beam(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen pro Stück = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-        f"{format_decimal(height_m, 2)} Meter = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter\n"
-        f"2. Gesamtvolumen = {format_decimal(length_m * width_m * height_m, 3)} Kubikmeter x {count} Stück = "
+        "1. Formel: Kubikmeter = Länge x Breite x Höhe x Stückzahl\n"
+        f"2. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+        f"{format_decimal(height_m, 2)} Meter x {count} Stück = "
         f"{format_decimal(result, 3)} Kubikmeter"
     )
 
@@ -263,11 +281,8 @@ def task_price_per_running_meter(level):
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
-        f"{format_decimal(cross_section, 4)} Quadratmeter\n"
-        f"2. Volumen von 1 Laufmeter = {format_decimal(cross_section, 4)} Quadratmeter x 1 Laufmeter = "
-        f"{format_decimal(cross_section, 4)} Kubikmeter\n"
-        f"3. Preis je Laufmeter = {format_decimal(cross_section, 4)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+        "1. Formel: Euro pro Laufmeter = Euro pro Kubikmeter x Breite x Höhe\n"
+        f"2. Preis je Laufmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -316,9 +331,8 @@ def task_price_per_square_meter(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Volumen von 1 Quadratmeter Platte = 1 Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
-        f"{format_decimal(thickness_m, 3)} Kubikmeter\n"
-        f"2. Preis je Quadratmeter = {format_decimal(thickness_m, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+        "1. Formel: Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke\n"
+        f"2. Preis je Quadratmeter = {format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -465,10 +479,8 @@ def task_running_meters_from_volume(level):
     cross_section = width_m * height_m
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
-        f"{format_decimal(cross_section, 4)} Quadratmeter\n"
-        "2. Formel: Laufmeter = Kubikmeter / Querschnitt\n"
-        f"3. Laufmeter = {format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(cross_section, 4)} Quadratmeter = "
+        "1. Formel: Laufmeter = Kubikmeter / (Breite x Höhe)\n"
+        f"2. Laufmeter = {format_decimal(total_volume, 3)} Kubikmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter) = "
         f"{format_decimal(running_meters, 0)} Laufmeter"
     )
 
@@ -532,11 +544,12 @@ def task_db_sale_price(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {count} Stück = "
+        "1. Formel: Gesamtvolumen = Länge x Breite x Höhe x Stückzahl\n"
+        f"2. Gesamtvolumen = {format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter x {count} Stück = "
         f"{format_decimal(total_volume, 3)} Kubikmeter\n"
-        f"2. Gesamter EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+        f"3. Gesamter EK = {format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
         f"{format_decimal(total_ek, 2)} Euro\n"
-        f"3. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
+        f"4. VK bei {format_decimal(db_percent, 0)} % DB = {format_decimal(total_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
         f"{format_decimal(result, 2)} Euro"
     )
 
@@ -597,8 +610,8 @@ def task_volume_from_running_meters(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(width_m * height_m, 4)} Quadratmeter\n"
-        f"2. Volumen = {format_decimal(width_m * height_m, 4)} Quadratmeter x {format_decimal(running_meters, 0)} Laufmeter = {format_decimal(result, 3)} Kubikmeter"
+        "1. Formel: Kubikmeter = Laufmeter x Breite x Höhe\n"
+        f"2. Volumen = {format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(result, 3)} Kubikmeter"
     )
 
     return {
@@ -682,8 +695,8 @@ def task_m3_price_from_running_meter(level):
 
     solution = (
         "Rechenweg:\n"
-        f"1. Querschnitt in Quadratmetern = {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = {format_decimal(cross_section, 4)} Quadratmeter\n"
-        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / {format_decimal(cross_section, 4)} Quadratmeter = {format_decimal(result, 2)} Euro pro Kubikmeter"
+        "1. Formel: Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)\n"
+        f"2. Preis pro Kubikmeter = {format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / ({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter) = {format_decimal(result, 2)} Euro pro Kubikmeter"
     )
 
     return {
@@ -972,11 +985,13 @@ def generate_hint(task, answer_value, is_correct):
         "Wenn die Antwort richtig ist, bestätige das knapp, benenne den richtigen Rechenansatz und gib einen kurzen Merksatz für ähnliche Aufgaben. "
         "Wenn die Antwort falsch ist, erkläre knapp, an welcher Stelle der Denkweg wahrscheinlich abgebogen ist, "
         "welche Zwischenrechnung als Nächstes sinnvoll wäre und worauf bei der Einheit geachtet werden muss. "
+        "Beginne bei Umrechnungsaufgaben immer zuerst mit der passenden Grundformel und gehe erst danach auf die eingesetzten Zahlen ein. "
         "Prüfe dabei ausdrücklich auf typische Fehler wie Zahlendreher, falschen Preiswert, falsche Einheit, "
         "mal statt geteilt, geteilt statt mal, falsche Reihenfolge im Rechenweg oder eine passende Formel mit der falschen Eingabezahl. "
         "Wenn so ein Muster wahrscheinlich ist, benenne es ausdrücklich und ordne es einer passenden Fehlerkategorie zu. "
         "Nutze dafür diese Fehlerkategorien aus der Ausbildungspraxis im Holzhandel: "
         f"{ERROR_PATTERN_GUIDE} "
+        f"Nutze außerdem diese Formellogik als fachliche Basis: {FORMULA_GUIDE} "
         f"Aufgabenspezifischer Fokus: {likely_error_focus(task)} "
         "Gib nicht die komplette Musterlösung Wort für Wort aus. "
         f"Aufgabentext: {task['prompt']} "
@@ -1053,8 +1068,10 @@ def generate_step_explanation(task, selected_steps):
         "Du bist ein Lernassistent für die Holzbranche. "
         "Erkläre auf Deutsch nur die ausgewählten Schritte eines Muster-Rechenwegs. "
         "Sprich ruhig, konkret und fachlich. "
+        "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
         "Gehe ausdrücklich auf die konkreten Zahlen dieser Schritte ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
         "Erkläre nur die ausgewählten Schritte und keine anderen. "
+        f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
         f"Zielgröße: {unit_label(task['unit'])}. "
         f"Ausgewählte Schritt-Nummern: {', '.join(str(step) for step in selected_steps)}. "
