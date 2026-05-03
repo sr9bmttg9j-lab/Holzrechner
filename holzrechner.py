@@ -18,6 +18,7 @@ load_dotenv("env")
 PRODUCTS = [
     {"name": "KVH", "kind": "structural_beam"},
     {"name": "BSH", "kind": "structural_beam"},
+    {"name": "KERTO", "kind": "structural_beam"},
     {"name": "Hobelware", "kind": "hobelware"},
     {
         "name": "OSB-Platte",
@@ -34,17 +35,22 @@ PRODUCTS = [
         "kind": "panel",
         "formats": ["125 x 205 cm", "125 x 250 cm"],
     },
+    {
+        "name": "Dekorplatte",
+        "kind": "panel",
+        "formats": ["280 x 207 cm", "410 x 130 cm"],
+    },
 ]
 
 STRUCTURAL_WIDTHS_BY_LEVEL = {
-    1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12")],
-    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14")],
-    3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
+    1: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12")],
+    2: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14")],
+    3: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
 }
 STRUCTURAL_HEIGHTS_BY_LEVEL = {
-    1: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.16"), Decimal("0.20")],
-    2: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.20")],
-    3: [Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+    1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.16"), Decimal("0.20")],
+    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.20"), Decimal("0.24")],
+    3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24"), Decimal("0.28")],
 }
 STRUCTURAL_LENGTHS_BY_LEVEL = {
     1: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0")],
@@ -62,14 +68,14 @@ HOBEL_THICKNESSES_BY_LEVEL = {
     3: [Decimal("0.019"), Decimal("0.023"), Decimal("0.027")],
 }
 HOBEL_LENGTHS_BY_LEVEL = {
-    1: [Decimal("3.0"), Decimal("4.0"), Decimal("5.0"), Decimal("6.0")],
-    2: [Decimal("3.0"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("6.0")],
-    3: [Decimal("3.0"), Decimal("4.0"), Decimal("5.0"), Decimal("6.0")],
+    1: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("6.0")],
+    2: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("5.5"), Decimal("6.0")],
+    3: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("5.5"), Decimal("6.0")],
 }
 COUNTS_BY_LEVEL = {
-    1: [4, 6, 8, 10, 12],
-    2: [5, 6, 8, 10, 12, 14],
-    3: [5, 7, 9, 11, 14, 18],
+    1: [4, 6, 8, 10, 12, 16, 20],
+    2: [5, 6, 8, 10, 12, 14, 18, 24, 30],
+    3: [5, 7, 9, 11, 14, 18, 22, 28, 36],
 }
 THICKNESSES_BY_LEVEL = {
     1: [Decimal("0.018"), Decimal("0.022"), Decimal("0.027"), Decimal("0.040"), Decimal("0.050")],
@@ -94,26 +100,31 @@ RUNNING_METER_PRICES_BY_LEVEL = {
 FLOORING_PRODUCTS = [
     {
         "name": "Eiche-Massivholzdiele",
-        "lengths": [Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
-        "widths": [Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
+        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
+        "widths": [Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
         "thicknesses": [Decimal("0.018"), Decimal("0.020"), Decimal("0.021")],
         "package_counts": [4, 5, 6, 7, 8],
     },
     {
         "name": "Parkett",
-        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80")],
-        "widths": [Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+        "lengths": [Decimal("0.60"), Decimal("0.90"), Decimal("1.20"), Decimal("1.50"), Decimal("1.80")],
+        "widths": [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
         "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014")],
         "package_counts": [6, 7, 8],
     },
     {
         "name": "Vinylboden",
-        "lengths": [Decimal("1.20"), Decimal("1.22"), Decimal("1.50")],
-        "widths": [Decimal("0.18"), Decimal("0.20"), Decimal("0.23")],
+        "lengths": [Decimal("0.90"), Decimal("1.00"), Decimal("1.20"), Decimal("1.22"), Decimal("1.50")],
+        "widths": [Decimal("0.12"), Decimal("0.15"), Decimal("0.18"), Decimal("0.20"), Decimal("0.23")],
         "thicknesses": [Decimal("0.003"), Decimal("0.004"), Decimal("0.005")],
         "package_counts": [10, 12, 16, 20],
     },
 ]
+PANEL_M2_PRICES_BY_LEVEL = {
+    1: [Decimal("8.90"), Decimal("12.50"), Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
+    2: [Decimal("9.80"), Decimal("14.90"), Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
+    3: [Decimal("11.40"), Decimal("17.80"), Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+}
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
@@ -443,6 +454,140 @@ def choice_for_level(pool_by_level, level):
     return random.choice(pool_by_level[level])
 
 
+def product_name(product):
+    if isinstance(product, dict):
+        return product["name"]
+    return str(product)
+
+
+def generate_structural_dimensions(level):
+    first = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
+    second = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    return sorted([first, second])
+
+
+def panel_thickness_for_product(product, level):
+    name = product_name(product)
+    pools = {
+        "OSB-Platte": {
+            1: [Decimal("0.012"), Decimal("0.015"), Decimal("0.018"), Decimal("0.022")],
+            2: [Decimal("0.012"), Decimal("0.015"), Decimal("0.018"), Decimal("0.022"), Decimal("0.025")],
+            3: [Decimal("0.012"), Decimal("0.015"), Decimal("0.018"), Decimal("0.022"), Decimal("0.025"), Decimal("0.030")],
+        },
+        "Siebdruckplatte": {
+            1: [Decimal("0.009"), Decimal("0.012"), Decimal("0.015"), Decimal("0.018")],
+            2: [Decimal("0.009"), Decimal("0.012"), Decimal("0.015"), Decimal("0.018"), Decimal("0.021")],
+            3: [Decimal("0.009"), Decimal("0.012"), Decimal("0.015"), Decimal("0.018"), Decimal("0.021"), Decimal("0.030")],
+        },
+        "3-Schicht-Platte": {
+            1: [Decimal("0.019"), Decimal("0.022"), Decimal("0.027"), Decimal("0.040")],
+            2: [Decimal("0.019"), Decimal("0.022"), Decimal("0.027"), Decimal("0.032"), Decimal("0.040")],
+            3: [Decimal("0.019"), Decimal("0.022"), Decimal("0.027"), Decimal("0.032"), Decimal("0.040"), Decimal("0.050")],
+        },
+        "Dekorplatte": {
+            1: [Decimal("0.008"), Decimal("0.010"), Decimal("0.016"), Decimal("0.019")],
+            2: [Decimal("0.008"), Decimal("0.010"), Decimal("0.016"), Decimal("0.019"), Decimal("0.022")],
+            3: [Decimal("0.008"), Decimal("0.010"), Decimal("0.016"), Decimal("0.019"), Decimal("0.022"), Decimal("0.025")],
+        },
+    }
+    return random.choice(pools.get(name, THICKNESSES_BY_LEVEL)[level])
+
+
+def m3_price_for_product(product, level):
+    name = product_name(product)
+    pools = {
+        "KVH": {
+            1: [Decimal("350"), Decimal("390"), Decimal("420"), Decimal("460")],
+            2: [Decimal("380"), Decimal("420"), Decimal("460"), Decimal("520")],
+            3: [Decimal("398"), Decimal("445"), Decimal("495"), Decimal("560")],
+        },
+        "BSH": {
+            1: [Decimal("560"), Decimal("640"), Decimal("720"), Decimal("780")],
+            2: [Decimal("585"), Decimal("690"), Decimal("760"), Decimal("845")],
+            3: [Decimal("640"), Decimal("760"), Decimal("890"), Decimal("980")],
+        },
+        "KERTO": {
+            1: [Decimal("720"), Decimal("840"), Decimal("960")],
+            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
+            3: [Decimal("890"), Decimal("1050"), Decimal("1180"), Decimal("1320")],
+        },
+        "Hobelware": {
+            1: [Decimal("720"), Decimal("840"), Decimal("960")],
+            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
+            3: [Decimal("890"), Decimal("1050"), Decimal("1180"), Decimal("1320")],
+        },
+        "OSB-Platte": {
+            1: [Decimal("280"), Decimal("320"), Decimal("350")],
+            2: [Decimal("295"), Decimal("337"), Decimal("365")],
+            3: [Decimal("320"), Decimal("365"), Decimal("398")],
+        },
+        "Siebdruckplatte": {
+            1: [Decimal("560"), Decimal("720"), Decimal("840")],
+            2: [Decimal("585"), Decimal("760"), Decimal("890")],
+            3: [Decimal("693"), Decimal("815"), Decimal("980")],
+        },
+        "3-Schicht-Platte": {
+            1: [Decimal("720"), Decimal("840"), Decimal("960")],
+            2: [Decimal("760"), Decimal("890"), Decimal("1050")],
+            3: [Decimal("815"), Decimal("980"), Decimal("1180")],
+        },
+        "Dekorplatte": {
+            1: [Decimal("560"), Decimal("720"), Decimal("840")],
+            2: [Decimal("585"), Decimal("760"), Decimal("890")],
+            3: [Decimal("693"), Decimal("815"), Decimal("980")],
+        },
+    }
+    return random.choice(pools.get(name, M3_PRICES_BY_LEVEL)[level])
+
+
+def panel_m2_price_for_product(product, level):
+    name = product_name(product)
+    pools = {
+        "OSB-Platte": {
+            1: [Decimal("8.90"), Decimal("11.90"), Decimal("14.90")],
+            2: [Decimal("9.80"), Decimal("12.90"), Decimal("16.90")],
+            3: [Decimal("11.40"), Decimal("14.90"), Decimal("18.90")],
+        },
+        "Siebdruckplatte": {
+            1: [Decimal("24.90"), Decimal("32.50"), Decimal("38.50")],
+            2: [Decimal("29.90"), Decimal("38.50"), Decimal("44.50")],
+            3: [Decimal("34.90"), Decimal("44.50"), Decimal("54.90")],
+        },
+        "3-Schicht-Platte": {
+            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
+            2: [Decimal("26.90"), Decimal("34.90"), Decimal("42.50")],
+            3: [Decimal("32.50"), Decimal("39.90"), Decimal("49.90")],
+        },
+        "Dekorplatte": {
+            1: [Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
+            2: [Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
+            3: [Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+        },
+    }
+    return random.choice(pools.get(name, PANEL_M2_PRICES_BY_LEVEL)[level])
+
+
+def panel_format_dimensions(format_text):
+    dimensions = {
+        "250 x 62,5 cm": (Decimal("2.50"), Decimal("0.625")),
+        "250 x 67,5 cm": (Decimal("2.50"), Decimal("0.675")),
+        "125 x 250 cm": (Decimal("1.25"), Decimal("2.50")),
+        "125 x 205 cm": (Decimal("1.25"), Decimal("2.05")),
+        "280 x 207 cm": (Decimal("2.80"), Decimal("2.07")),
+        "410 x 130 cm": (Decimal("4.10"), Decimal("1.30")),
+    }
+    return dimensions.get(format_text, (Decimal("1.25"), Decimal("2.50")))
+
+
+def panel_package_count(product):
+    name = product_name(product)
+    if name == "OSB-Platte":
+        return random.choice([40, 50, 60])
+    if name == "Siebdruckplatte":
+        return random.choice([15, 20, 25])
+    return random.choice([20, 25, 30])
+
+
 def evaluate_expression(text):
     cleaned = text.strip().replace(",", ".")
     cleaned = cleaned.replace("x", "*").replace("X", "*").replace(":", "/")
@@ -518,19 +663,81 @@ def structural_package_count(width_m, height_m):
     return 20
 
 
+def db_percent_for_product(product, level):
+    name = product_name(product)
+    pools = {
+        "KVH": {
+            1: [Decimal("12"), Decimal("13"), Decimal("15")],
+            2: [Decimal("12"), Decimal("13"), Decimal("15"), Decimal("17")],
+            3: [Decimal("13"), Decimal("15"), Decimal("17"), Decimal("19")],
+        },
+        "OSB-Platte": {
+            1: [Decimal("12"), Decimal("13"), Decimal("15")],
+            2: [Decimal("12"), Decimal("13"), Decimal("15"), Decimal("17")],
+            3: [Decimal("13"), Decimal("15"), Decimal("17"), Decimal("19")],
+        },
+        "BSH": {
+            1: [Decimal("22"), Decimal("24"), Decimal("25")],
+            2: [Decimal("23"), Decimal("24"), Decimal("25"), Decimal("27")],
+            3: [Decimal("24"), Decimal("25"), Decimal("27"), Decimal("29")],
+        },
+        "KERTO": {
+            1: [Decimal("24"), Decimal("25"), Decimal("27")],
+            2: [Decimal("24"), Decimal("25"), Decimal("27"), Decimal("29")],
+            3: [Decimal("25"), Decimal("27"), Decimal("29"), Decimal("31")],
+        },
+        "Hobelware": {
+            1: [Decimal("28"), Decimal("30"), Decimal("32")],
+            2: [Decimal("28"), Decimal("30"), Decimal("32"), Decimal("34")],
+            3: [Decimal("30"), Decimal("32"), Decimal("34"), Decimal("37")],
+        },
+        "Dekorplatte": {
+            1: [Decimal("28"), Decimal("30"), Decimal("32")],
+            2: [Decimal("28"), Decimal("30"), Decimal("32"), Decimal("34")],
+            3: [Decimal("30"), Decimal("32"), Decimal("34"), Decimal("37")],
+        },
+        "Siebdruckplatte": {
+            1: [Decimal("20"), Decimal("22"), Decimal("24")],
+            2: [Decimal("22"), Decimal("24"), Decimal("25"), Decimal("27")],
+            3: [Decimal("24"), Decimal("25"), Decimal("27"), Decimal("30")],
+        },
+        "3-Schicht-Platte": {
+            1: [Decimal("24"), Decimal("25"), Decimal("28")],
+            2: [Decimal("25"), Decimal("28"), Decimal("30")],
+            3: [Decimal("28"), Decimal("30"), Decimal("32")],
+        },
+        "Eiche-Massivholzdiele": {
+            1: [Decimal("34"), Decimal("36"), Decimal("38")],
+            2: [Decimal("36"), Decimal("38"), Decimal("40")],
+            3: [Decimal("38"), Decimal("40"), Decimal("42")],
+        },
+        "Parkett": {
+            1: [Decimal("32"), Decimal("34"), Decimal("36")],
+            2: [Decimal("34"), Decimal("36"), Decimal("38")],
+            3: [Decimal("36"), Decimal("38"), Decimal("40")],
+        },
+        "Vinylboden": {
+            1: [Decimal("30"), Decimal("32"), Decimal("34")],
+            2: [Decimal("32"), Decimal("34"), Decimal("36")],
+            3: [Decimal("34"), Decimal("36"), Decimal("38")],
+        },
+    }
+    fallback = {
+        1: [Decimal("23"), Decimal("25"), Decimal("30")],
+        2: [Decimal("23"), Decimal("27"), Decimal("30"), Decimal("33")],
+        3: [Decimal("23"), Decimal("28"), Decimal("31"), Decimal("34"), Decimal("37")],
+    }
+    return random.choice(pools.get(name, fallback)[level])
+
+
 def db_percent_for_level(level):
-    if level == 1:
-        return Decimal(random.choice([23, 25, 30]))
-    if level == 2:
-        return Decimal(random.choice([23, 27, 30, 33]))
-    return Decimal(random.choice([23, 28, 31, 34, 37]))
+    return db_percent_for_product("allgemeine Ware", level)
 
 
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     piece_volume = length_m * width_m * height_m
@@ -711,7 +918,7 @@ def task_price_per_running_meter(level):
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
-    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    m3_price = m3_price_for_product(product, level)
     result = width_m * height_m * m3_price
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
@@ -777,8 +984,8 @@ def task_price_per_running_meter(level):
 def task_price_per_square_meter(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
-    thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
-    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    thickness_m = panel_thickness_for_product(product, level)
+    m3_price = m3_price_for_product(product, level)
     result = thickness_m * m3_price
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
@@ -824,7 +1031,7 @@ def task_price_per_square_meter(level):
 def task_square_meters_from_volume(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
-    thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
+    thickness_m = panel_thickness_for_product(product, level)
     if level == 1:
         square_meters = Decimal(random.choice([12, 18, 24, 30, 36, 48]))
     elif level == 2:
@@ -884,7 +1091,7 @@ def task_square_meters_from_volume(level):
 def task_volume_from_square_meters(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
-    thickness_m = choice_for_level(THICKNESSES_BY_LEVEL, level)
+    thickness_m = panel_thickness_for_product(product, level)
     if level == 1:
         square_meters = Decimal(random.choice([12, 18, 24, 30, 36]))
     elif level == 2:
@@ -937,7 +1144,7 @@ def task_volume_from_square_meters(level):
 def task_total_price_from_volume(level):
     product = random.choice(PRODUCTS)
     total_volume = choice_for_level(TOTAL_VOLUMES_BY_LEVEL, level)
-    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    m3_price = m3_price_for_product(product, level)
     result = total_volume * m3_price
 
     prompt = random.choice(
@@ -1158,12 +1365,11 @@ def task_running_meters_from_square_meters(level):
 def task_db_sale_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
-    ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
-    db_percent = db_percent_for_level(level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
 
     total_volume = length_m * width_m * height_m * Decimal(count)
     total_ek = total_volume * ek_price_m3
@@ -1297,7 +1503,7 @@ def task_volume_from_running_meters(level):
 def task_volume_from_total_price(level):
     product = random.choice(PRODUCTS)
     total_volume = choice_for_level(TOTAL_VOLUMES_BY_LEVEL, level)
-    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    m3_price = m3_price_for_product(product, level)
     total_price = total_volume * m3_price
 
     prompt = random.choice(
@@ -1410,12 +1616,11 @@ def task_m3_price_from_running_meter(level):
 def task_ek_from_vk_db(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
-    db_percent = db_percent_for_level(level)
-    ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    db_percent = db_percent_for_product(product, level)
+    ek_price_m3 = m3_price_for_product(product, level)
 
     total_volume = length_m * width_m * height_m * Decimal(count)
     total_ek = total_volume * ek_price_m3
@@ -1478,10 +1683,9 @@ def task_ek_from_vk_db(level):
 def task_package_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level)
     package_count = structural_package_count(width_m, height_m)
-    m3_price = choice_for_level(M3_PRICES_BY_LEVEL, level)
+    m3_price = m3_price_for_product(product, level)
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(package_count)
     result = total_volume * m3_price
@@ -1562,14 +1766,102 @@ def task_package_price(level):
     }
 
 
+def task_panel_package_price(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
+    package_count = panel_package_count(product)
+    m2_price = panel_m2_price_for_product(product, level)
+
+    sheet_area = length_m * width_m
+    package_area = sheet_area * Decimal(package_count)
+    result = package_area * m2_price
+    sheet_area_places = precise_decimal_places(sheet_area)
+    package_area_places = precise_decimal_places(package_area)
+
+    prompt = random.choice(
+        [
+            f"Für ein Angebot liegt ein Plattenpaket {product['name']} im Format {panel_format} vor. Im Paket liegen {package_count} Platten, der Preis beträgt {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Paketpreis?",
+            f"Ein Kunde fragt ein ganzes Paket {product['name']} an. Eine Platte hat das Format {panel_format}, im Paket sind {package_count} Stück enthalten und kalkuliert wird mit {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Preis für das Paket?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Fläche pro Platte",
+            "Fläche pro Platte = Länge x Breite",
+            f"{format_decimal(length_m, 2)} Meter x {format_decimal(width_m, 3)} Meter = "
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+        ),
+        (
+            "Paketfläche",
+            "Paketfläche = Fläche pro Platte x Plattenanzahl",
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter x {package_count} Stück = "
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter",
+        ),
+        (
+            "Paketpreis",
+            "Paketpreis = Paketfläche x Preis pro Quadratmeter",
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter x {format_decimal(m2_price, 2)} Euro pro Quadratmeter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "panel_package_price",
+        "correction": "Rechne zuerst die Fläche pro Platte, dann die Paketfläche und danach den Paketpreis über den Quadratmeterpreis.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(length_m, 2)} x {format_decimal(width_m, 3)} x "
+            f"{package_count} x {format_decimal(m2_price, 2)}"
+        ),
+        "guided_steps": [
+            make_guided_step(
+                "Fläche pro Platte",
+                sheet_area.normalize(),
+                "m2",
+                sheet_area_places,
+                False,
+                "Rechne zuerst Länge x Breite für eine einzelne Platte.",
+                "Länge x Breite",
+                placeholder="Zum Beispiel 2,50 * 0,625",
+            ),
+            make_guided_step(
+                "Paketfläche",
+                package_area.normalize(),
+                "m2",
+                package_area_places,
+                False,
+                "Multipliziere die Plattenfläche mit der Anzahl der Platten im Paket.",
+                "Fläche pro Platte x Plattenanzahl",
+                placeholder="Zum Beispiel 1,5625 * 40",
+            ),
+            make_guided_step(
+                "Paketpreis",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere die Paketfläche mit dem Quadratmeterpreis.",
+                "Paketfläche x Preis pro Quadratmeter",
+                placeholder="Zum Beispiel 62,50 * 12,90",
+            ),
+        ],
+    }
+
+
 def task_package_db_sale_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
-    height_m = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level)
     package_count = structural_package_count(width_m, height_m)
-    ek_price_m3 = choice_for_level(M3_PRICES_BY_LEVEL, level)
-    db_percent = db_percent_for_level(level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
 
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(package_count)
@@ -1771,17 +2063,18 @@ def task_flooring_packages(level):
 
 
 def task_absolute_db_from_ek_vk(level):
-    product = random.choice(PRODUCTS)["name"]
+    product = random.choice(PRODUCTS + FLOORING_PRODUCTS)
     total_ek = choice_for_level(ORDER_EK_VALUES_BY_LEVEL, level)
-    db_percent = db_percent_for_level(level)
+    db_percent = db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     total_vk = (total_ek / divisor).quantize(q("1.00"), rounding=ROUND_HALF_UP)
     absolute_db = total_vk - total_ek
+    name = product_name(product)
 
     prompt = random.choice(
         [
-            f"Ein Auftrag über {product} hat einen EK von {format_decimal(total_ek, 2)} Euro und einen VK von {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
-            f"Für {product} liegt ein abgeschlossener Auftrag vor: EK {format_decimal(total_ek, 2)} Euro, VK {format_decimal(total_vk, 2)} Euro.\n\nWie viel Euro Deckungsbeitrag bleiben absolut übrig?",
+            f"Ein Auftrag über {name} hat einen EK von {format_decimal(total_ek, 2)} Euro und einen VK von {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
+            f"Für {name} liegt ein abgeschlossener Auftrag vor: EK {format_decimal(total_ek, 2)} Euro, VK {format_decimal(total_vk, 2)} Euro.\n\nWie viel Euro Deckungsbeitrag bleiben absolut übrig?",
         ]
     )
 
@@ -1820,18 +2113,19 @@ def task_absolute_db_from_ek_vk(level):
 
 
 def task_relative_db_from_ek_vk(level):
-    product = random.choice(PRODUCTS)["name"]
+    product = random.choice(PRODUCTS + FLOORING_PRODUCTS)
     total_ek = choice_for_level(ORDER_EK_VALUES_BY_LEVEL, level)
-    db_percent = db_percent_for_level(level)
+    db_percent = db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     total_vk = (total_ek / divisor).quantize(q("1.00"), rounding=ROUND_HALF_UP)
     absolute_db = total_vk - total_ek
     relative_db = ((absolute_db / total_vk) * Decimal("100")).quantize(q("1.00"), rounding=ROUND_HALF_UP)
+    name = product_name(product)
 
     prompt = random.choice(
         [
-            f"Ein Auftrag über {product} wurde mit {format_decimal(total_vk, 2)} Euro VK verkauft. Der EK liegt bei {format_decimal(total_ek, 2)} Euro.\n\nWie hoch ist der DB in Prozent?",
-            f"Für {product} sind VK {format_decimal(total_vk, 2)} Euro und EK {format_decimal(total_ek, 2)} Euro bekannt.\n\nWelcher relative DB-Satz ergibt sich daraus?",
+            f"Ein Auftrag über {name} wurde mit {format_decimal(total_vk, 2)} Euro VK verkauft. Der EK liegt bei {format_decimal(total_ek, 2)} Euro.\n\nWie hoch ist der DB in Prozent?",
+            f"Für {name} sind VK {format_decimal(total_vk, 2)} Euro und EK {format_decimal(total_ek, 2)} Euro bekannt.\n\nWelcher relative DB-Satz ergibt sich daraus?",
         ]
     )
 
@@ -1910,6 +2204,7 @@ TASK_GENERATORS = [
     task_absolute_db_from_ek_vk,
     task_relative_db_from_ek_vk,
     task_package_price,
+    task_panel_package_price,
     task_package_db_sale_price,
 ]
 
@@ -1935,6 +2230,7 @@ TASKS_BY_LEVEL = {
         task_absolute_db_from_ek_vk,
         task_relative_db_from_ek_vk,
         task_package_price,
+        task_panel_package_price,
         task_package_db_sale_price,
     ],
     2: [
@@ -1956,6 +2252,7 @@ TASKS_BY_LEVEL = {
         task_absolute_db_from_ek_vk,
         task_relative_db_from_ek_vk,
         task_package_price,
+        task_panel_package_price,
         task_package_db_sale_price,
     ],
     3: TASK_GENERATORS,
@@ -2362,6 +2659,7 @@ def likely_error_focus(task):
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
+        "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
         "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
         "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
         "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
