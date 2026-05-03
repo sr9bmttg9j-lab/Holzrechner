@@ -168,6 +168,14 @@ def format_decimal(value, places):
     return str(value.quantize(quant, rounding=ROUND_HALF_UP)).replace(".", ",")
 
 
+def precise_decimal_places(value, min_places=3, max_places=5):
+    for places in range(min_places, max_places + 1):
+        quant = q("1." + ("0" * places))
+        if value == value.quantize(quant, rounding=ROUND_HALF_UP):
+            return places
+    return max_places
+
+
 def format_m(value):
     return format_decimal(value, 2).rstrip("0").rstrip(",")
 
@@ -457,6 +465,8 @@ def task_volume_beam(level):
     package_count = structural_package_count(width_m, height_m)
     piece_volume = length_m * width_m * height_m
     result = piece_volume * Decimal(count)
+    piece_volume_places = precise_decimal_places(piece_volume)
+    result_places = precise_decimal_places(result)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -472,13 +482,13 @@ def task_volume_beam(level):
             "Volumen pro Stück",
             "Volumen pro Stück = Länge x Breite x Höhe",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
         (
             "Gesamtvolumen",
             "Gesamtvolumen = Volumen pro Stück x Stückzahl",
-            f"{format_decimal(piece_volume, 3)} Kubikmeter x {count} Stück = "
-            f"{format_decimal(result, 3)} Kubikmeter",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {count} Stück = "
+            f"{format_decimal(result, result_places)} Kubikmeter",
         ),
     )
 
@@ -486,7 +496,7 @@ def task_volume_beam(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "m3",
-        "display_places": 3,
+        "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_beam",
         "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Höhe zu berechnen und danach mit der Stückzahl zu multiplizieren.",
@@ -500,7 +510,7 @@ def task_volume_beam(level):
                 "Volumen pro Stück",
                 piece_volume.normalize(),
                 "m3",
-                3,
+                piece_volume_places,
                 False,
                 "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
             ),
@@ -508,7 +518,7 @@ def task_volume_beam(level):
                 "Gesamtvolumen",
                 result.normalize(),
                 "m3",
-                3,
+                result_places,
                 False,
                 "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
             ),
@@ -812,6 +822,7 @@ def task_volume_from_square_meters(level):
     else:
         square_meters = Decimal(random.choice([14, 22, 28, 34, 42]))
     result = square_meters * thickness_m
+    result_places = precise_decimal_places(result)
     thickness_text = display_measure(thickness_m, ("mm", "cm"))
 
     prompt = random.choice(
@@ -826,7 +837,7 @@ def task_volume_from_square_meters(level):
             "Kubikmeter",
             "Kubikmeter = Quadratmeter x Dicke",
             f"{format_decimal(square_meters, 0)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
-            f"{format_decimal(result, 3)} Kubikmeter",
+            f"{format_decimal(result, result_places)} Kubikmeter",
         ),
     )
 
@@ -834,7 +845,7 @@ def task_volume_from_square_meters(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "m3",
-        "display_places": 3,
+        "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_from_square_meters",
         "correction": "Multipliziere die Quadratmeter mit der Dicke in Meter, um auf das Volumen zu kommen.",
@@ -844,7 +855,7 @@ def task_volume_from_square_meters(level):
                 "Kubikmeter",
                 result.normalize(),
                 "m3",
-                3,
+                result_places,
                 False,
                 "Rechne hier direkt Quadratmeter x Dicke in Meter.",
                 "Formel: Quadratmeter x Dicke",
@@ -961,13 +972,14 @@ def task_running_meters_from_volume(level):
     else:
         running_meters = Decimal(random.choice([21, 27, 35, 41, 45, 55]))
     total_volume = width_m * height_m * running_meters
+    total_volume_places = precise_decimal_places(total_volume)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Insgesamt liegen {format_decimal(total_volume, 3)} Kubikmeter vor. Die Bretter sind {format_m(board_length)} m lang und haben {width_text} Breite bei {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
-            f"Ein Kunde möchte wissen, wie viele Laufmeter {display_name} in {format_decimal(total_volume, 3)} Kubikmeter enthalten sind. Ein Brett ist {format_m(board_length)} m lang, die Ware hat {width_text} Breite und {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
+            f"{request_intro()}: {display_name}. Insgesamt liegen {format_decimal(total_volume, total_volume_places)} Kubikmeter vor. Die Bretter sind {format_m(board_length)} m lang und haben {width_text} Breite bei {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
+            f"Ein Kunde möchte wissen, wie viele Laufmeter {display_name} in {format_decimal(total_volume, total_volume_places)} Kubikmeter enthalten sind. Ein Brett ist {format_m(board_length)} m lang, die Ware hat {width_text} Breite und {thickness_text} Stärke.\n\nWie viele Laufmeter sind das?",
         ]
     )
 
@@ -982,7 +994,7 @@ def task_running_meters_from_volume(level):
         (
             "Laufmeter",
             "Laufmeter = Kubikmeter / Querschnitt",
-            f"{format_decimal(total_volume, 3)} Kubikmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
             f"{format_decimal(running_meters, 0)} Laufmeter",
         ),
     )
@@ -997,7 +1009,7 @@ def task_running_meters_from_volume(level):
         "correction": "Rechne zuerst Breite x Höhe mit Meterwerten und teile dann das Gesamtvolumen durch dieses Ergebnis.",
         "solution": solution,
         "perfect_formula": (
-            f"{format_decimal(total_volume, 3)} / "
+            f"{format_decimal(total_volume, total_volume_places)} / "
             f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
         ),
         "guided_steps": [
@@ -1005,7 +1017,7 @@ def task_running_meters_from_volume(level):
                 "Breite x Höhe",
                 cross_section.normalize(),
                 "m2",
-                4,
+                5,
                 False,
                 "Rechne zuerst Breite x Höhe mit Meterwerten.",
                 "Formel: Breite x Höhe",
@@ -1087,6 +1099,7 @@ def task_db_sale_price(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     result = total_ek / divisor
+    total_volume_places = precise_decimal_places(total_volume)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -1101,12 +1114,12 @@ def task_db_sale_price(level):
             "Gesamtvolumen",
             "Gesamtvolumen = Länge x Breite x Höhe x Stückzahl",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 2)} Meter x {count} Stück = {format_decimal(total_volume, 3)} Kubikmeter",
+            f"{format_decimal(height_m, 2)} Meter x {count} Stück = {format_decimal(total_volume, total_volume_places)} Kubikmeter",
         ),
         (
             "Gesamter EK",
             "Gesamter EK = Gesamtvolumen x EK pro Kubikmeter",
-            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
             f"{format_decimal(total_ek, 2)} Euro",
         ),
         (
@@ -1135,7 +1148,7 @@ def task_db_sale_price(level):
                 "Gesamtvolumen",
                 total_volume.normalize(),
                 "m3",
-                3,
+                total_volume_places,
                 False,
                 "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
                 "Formel: Länge x Breite x Höhe x Stückzahl",
@@ -1168,6 +1181,7 @@ def task_volume_from_running_meters(level):
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     running_meters = Decimal(random.choice([18, 24, 30, 36, 42, 48]))
     result = width_m * height_m * running_meters
+    result_places = precise_decimal_places(result)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
 
@@ -1183,7 +1197,7 @@ def task_volume_from_running_meters(level):
             "Gesamtvolumen",
             "Kubikmeter = Laufmeter x Breite x Höhe",
             f"{format_decimal(running_meters, 0)} Laufmeter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 3)} Meter = {format_decimal(result, 3)} Kubikmeter",
+            f"{format_decimal(height_m, 3)} Meter = {format_decimal(result, result_places)} Kubikmeter",
         ),
     )
 
@@ -1191,7 +1205,7 @@ def task_volume_from_running_meters(level):
         "prompt": prompt,
         "expected": result.normalize(),
         "unit": "m3",
-        "display_places": 3,
+        "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_from_running_meters",
         "correction": "Rechne die Laufmeter direkt mit Breite und Höhe in Meter zu Kubikmeter um.",
@@ -1201,7 +1215,7 @@ def task_volume_from_running_meters(level):
                 "Gesamtvolumen",
                 result.normalize(),
                 "m3",
-                3,
+                result_places,
                 False,
                 "Rechne hier direkt Laufmeter x Breite x Höhe.",
                 "Formel: Laufmeter x Breite x Höhe",
@@ -1401,6 +1415,8 @@ def task_package_price(level):
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(package_count)
     result = total_volume * m3_price
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -1415,18 +1431,18 @@ def task_package_price(level):
             "Volumen pro Stück",
             "Volumen pro Stück = Länge x Breite x Höhe",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
         (
             "Paketvolumen",
             "Paketvolumen = Volumen pro Stück x Stückzahl im Paket",
-            f"{format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = "
-            f"{format_decimal(total_volume, 3)} Kubikmeter",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {package_count} Stück = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
         ),
         (
             "Paketpreis",
             "Paketpreis = Paketvolumen x Preis pro Kubikmeter",
-            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
             f"{format_decimal(result, 2)} Euro",
         ),
     )
@@ -1449,7 +1465,7 @@ def task_package_price(level):
                 "Volumen pro Stück",
                 piece_volume.normalize(),
                 "m3",
-                3,
+                piece_volume_places,
                 False,
                 "Beginne mit dem Volumen eines einzelnen Stücks.",
                 "Länge, Breite und Höhe als Meterwerte einsetzen",
@@ -1458,7 +1474,7 @@ def task_package_price(level):
                 "Paketvolumen",
                 total_volume.normalize(),
                 "m3",
-                3,
+                total_volume_places,
                 False,
                 "Nutze das Volumen pro Stück und die Stückzahl im Paket.",
                 "Volumen pro Stück mit der Paketstückzahl weiterrechnen",
@@ -1490,6 +1506,8 @@ def task_package_db_sale_price(level):
     total_ek = total_volume * ek_price_m3
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     result = total_ek / divisor
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
     width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
 
     prompt = random.choice(
@@ -1504,18 +1522,18 @@ def task_package_db_sale_price(level):
             "Volumen pro Stück",
             "Volumen pro Stück = Länge x Breite x Höhe",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
-            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, 3)} Kubikmeter",
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
         (
             "Paketvolumen",
             "Paketvolumen = Volumen pro Stück x Stückzahl im Paket",
-            f"{format_decimal(piece_volume, 3)} Kubikmeter x {package_count} Stück = "
-            f"{format_decimal(total_volume, 3)} Kubikmeter",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {package_count} Stück = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
         ),
         (
             "Paket-EK",
             "Paket-EK = Paketvolumen x EK pro Kubikmeter",
-            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
             f"{format_decimal(total_ek, 2)} Euro",
         ),
         (
@@ -1544,7 +1562,7 @@ def task_package_db_sale_price(level):
                 "Volumen pro Stück",
                 piece_volume.normalize(),
                 "m3",
-                3,
+                piece_volume_places,
                 False,
                 "Beginne mit dem Volumen eines einzelnen Stücks.",
                 "Länge, Breite und Höhe als Meterwerte einsetzen",
@@ -1553,7 +1571,7 @@ def task_package_db_sale_price(level):
                 "Paketvolumen",
                 total_volume.normalize(),
                 "m3",
-                3,
+                total_volume_places,
                 False,
                 "Nutze das Volumen pro Stück und die Stückzahl im Paket.",
                 "Volumen pro Stück mit der Paketstückzahl weiterrechnen",
@@ -2651,9 +2669,9 @@ if st.session_state.task_finished and not st.session_state.solution_visible:
 if st.session_state.task_finished:
     left_col, right_col = st.columns(2)
     with left_col:
-        repeat_task_type = st.button("Gleicher Aufgabentyp", key="repeat_task_type_button")
+        repeat_task_type = st.button("Weiter mit gleichem Aufgabentyp", key="repeat_task_type_button")
     with right_col:
-        different_task_type = st.button("Anderer Aufgabentyp", type="primary")
+        different_task_type = st.button("Weiter mit anderem Aufgabentyp", type="primary")
 
     if repeat_task_type or different_task_type:
         st.session_state.task_number += 1
