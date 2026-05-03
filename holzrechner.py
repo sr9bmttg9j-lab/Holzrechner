@@ -1055,9 +1055,9 @@ def fallback_step_explanation(task, selected_steps):
     selected_lines = [lines[index - 1] for index in selected_steps]
     joined = " ".join(selected_lines)
     return (
-        f"Gemeint sind hier die Schritte {', '.join(str(step) for step in selected_steps)}. "
-        f"Schau besonders auf diese Rechnung: {joined} "
-        f"Dort wird die gegebene Größe sauber in {unit_label(task['unit'])} weitergeführt."
+        f"Schau dir diesen Teil des Rechenwegs noch einmal in Ruhe an: {joined} "
+        f"Wichtig ist hier zuerst die passende Formelrichtung und dann die Frage, welche Einheit in den Zahlen steckt. "
+        f"So wird die gegebene Größe sauber in {unit_label(task['unit'])} weitergeführt."
     )
 
 
@@ -1070,6 +1070,8 @@ def generate_step_explanation(task, selected_steps):
         "Sprich ruhig, konkret und fachlich. "
         "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
         "Gehe ausdrücklich auf die konkreten Zahlen dieser Schritte ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
+        "Erkläre bildhaft und anschaulich, zum Beispiel so, dass man sich die Ware oder Platte vor dem inneren Auge vorstellen kann. "
+        "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Erkläre nur die ausgewählten Schritte und keine anderen. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
@@ -1182,7 +1184,7 @@ def handle_submission():
     if values_match(answer_value, task["expected"], task["round_for_check"]):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
+        st.session_state.hint_text = "Sehr gut gerechnet. Wenn du magst, schau dir noch den detaillierten Rechenweg an oder geh direkt zur nächsten Aufgabe."
         st.session_state.solution_visible = True
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
@@ -1244,7 +1246,7 @@ def handle_guided_submission():
         if current_index == len(guided_steps) - 1:
             st.session_state.feedback_kind = "success"
             st.session_state.feedback_text = ""
-            st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
+            st.session_state.hint_text = "Sehr gut gerechnet. Wenn du magst, schau dir noch den detaillierten Rechenweg an oder geh direkt zur nächsten Aufgabe."
             st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
             st.session_state.solution_visible = True
             st.session_state.task_finished = True
@@ -1298,15 +1300,15 @@ st.markdown(
             box-shadow: 0 0 0 1px #16a34a;
         }
 
-        div.stButton > button[kind="primary"],
-        div[data-testid="stFormSubmitButton"] > button[kind="primary"] {
+        div.stButton > button,
+        div[data-testid="stFormSubmitButton"] > button {
             background-color: #16a34a;
             border-color: #16a34a;
             color: white;
         }
 
-        div.stButton > button[kind="primary"]:hover,
-        div[data-testid="stFormSubmitButton"] > button[kind="primary"]:hover {
+        div.stButton > button:hover,
+        div[data-testid="stFormSubmitButton"] > button:hover {
             background-color: #15803d;
             border-color: #15803d;
             color: white;
