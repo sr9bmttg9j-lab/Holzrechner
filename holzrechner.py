@@ -113,7 +113,7 @@ def unit_label(unit):
     return UNIT_LABELS.get(unit, unit)
 
 
-def make_guided_step(label, expected, unit, display_places, round_for_check, correction):
+def make_guided_step(label, expected, unit, display_places, round_for_check, correction, formula_hint=None):
     return {
         "label": label,
         "expected": expected,
@@ -121,6 +121,7 @@ def make_guided_step(label, expected, unit, display_places, round_for_check, cor
         "display_places": display_places,
         "round_for_check": round_for_check,
         "correction": correction,
+        "formula_hint": formula_hint or correction,
     }
 
 
@@ -489,12 +490,13 @@ def task_running_meters_from_volume(level):
         "solution": solution,
         "guided_steps": [
             make_guided_step(
-                "Querschnitt",
+                "Breite x Höhe",
                 cross_section.normalize(),
                 "m2",
                 4,
                 False,
                 "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+                "Formel: Breite x Höhe",
             ),
             make_guided_step(
                 "Laufmeter",
@@ -503,6 +505,7 @@ def task_running_meters_from_volume(level):
                 0,
                 False,
                 "Teile danach das Gesamtvolumen durch den Querschnitt.",
+                "Formel: Laufmeter = Kubikmeter / (Breite x Höhe)",
             ),
         ],
     }
@@ -561,6 +564,7 @@ def task_db_sale_price(level):
                 3,
                 False,
                 "Rechne zuerst Länge x Breite x Höhe x Stückzahl.",
+                "Formel: Länge x Breite x Höhe x Stückzahl",
             ),
             make_guided_step(
                 "Gesamter EK",
@@ -569,6 +573,7 @@ def task_db_sale_price(level):
                 2,
                 True,
                 "Multipliziere das Gesamtvolumen mit dem EK pro Kubikmeter.",
+                "Formel: Gesamtvolumen x EK pro Kubikmeter",
             ),
             make_guided_step(
                 "Gesamter VK",
@@ -577,6 +582,7 @@ def task_db_sale_price(level):
                 2,
                 True,
                 "Teile den gesamten EK durch 1 minus DB-Satz.",
+                "Formel: EK / (1 - DB-Satz)",
             ),
         ],
     }
@@ -613,20 +619,13 @@ def task_volume_from_running_meters(level):
         "solution": solution,
         "guided_steps": [
             make_guided_step(
-                "Querschnitt",
-                (width_m * height_m).normalize(),
-                "m2",
-                4,
-                False,
-                "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
-            ),
-            make_guided_step(
                 "Gesamtvolumen",
                 result.normalize(),
                 "m3",
                 3,
                 False,
-                "Multipliziere danach den Querschnitt mit den Laufmetern.",
+                "Rechne hier direkt Laufmeter x Breite x Höhe.",
+                "Formel: Laufmeter x Breite x Höhe",
             ),
         ],
     }
@@ -705,12 +704,13 @@ def task_m3_price_from_running_meter(level):
         "solution": solution,
         "guided_steps": [
             make_guided_step(
-                "Querschnitt",
+                "Breite x Höhe",
                 cross_section.normalize(),
                 "m2",
                 4,
                 False,
                 "Bilde zuerst den Querschnitt in Quadratmetern aus Breite x Höhe.",
+                "Formel: Breite x Höhe",
             ),
             make_guided_step(
                 "Preis pro Kubikmeter",
@@ -719,6 +719,7 @@ def task_m3_price_from_running_meter(level):
                 2,
                 True,
                 "Teile den Laufmeterpreis durch den Querschnitt.",
+                "Formel: Laufmeterpreis / (Breite x Höhe)",
             ),
         ],
     }
@@ -768,6 +769,7 @@ def task_ek_from_vk_db(level):
                 2,
                 False,
                 "Ziehe den DB-Satz von 1 ab, also zum Beispiel 0,70 bei 30 % DB.",
+                "Formel: 1 - DB-Satz",
             ),
             make_guided_step(
                 "Gesamter EK",
@@ -776,6 +778,7 @@ def task_ek_from_vk_db(level):
                 2,
                 True,
                 "Multipliziere den VK mit dem DB-Faktor.",
+                "Formel: VK x DB-Faktor",
             ),
         ],
     }
@@ -852,6 +855,26 @@ def likely_error_focus(task):
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
     }
     return focus.get(task["task_type"], "Achte besonders auf die passende Einheit, die Rechenrichtung und die Preisbasis.")
+
+
+def progressive_main_hint(task, answer_value, attempt):
+    if attempt <= 1:
+        return generate_hint(task, answer_value, False)
+    if attempt == 2:
+        first_step = task.get("guided_steps", [{}])[0]
+        return f"{task['correction']} {first_step.get('formula_hint', '')}".strip()
+    return "Wenn du magst, geh die Aufgabe jetzt unten Schritt für Schritt durch. So lässt sich der Rechenweg sauber aufbauen."
+
+
+def progressive_step_hint(step, step_attempt):
+    if step_attempt <= 1:
+        return step["correction"]
+    if step_attempt == 2:
+        return f"{step['correction']} {step['formula_hint']}"
+    return (
+        f"{step['formula_hint']}. "
+        f"Achte danach noch einmal genau auf die Richtung der Rechnung und auf die richtige Einheit."
+    )
 
 
 def fallback_hint(task, is_correct):
@@ -947,6 +970,9 @@ def create_next_task():
     st.session_state.guided_visible = False
     st.session_state.guided_summary = ""
     st.session_state.guided_step_feedback = []
+    st.session_state.guided_step_index = 0
+    st.session_state.guided_step_attempts = {}
+    st.session_state.guided_completed = []
     st.session_state.pending_next_task = False
     st.session_state.recent_task_types.append(task["task_type"])
     st.session_state.recent_task_types = st.session_state.recent_task_types[-3:]
@@ -996,9 +1022,8 @@ def handle_submission():
 
     if st.session_state.attempt < 4:
         st.session_state.feedback_kind = "warning"
-        rest = 4 - st.session_state.attempt
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Du hast noch {rest} Versuch(e)."
+        st.session_state.hint_text = progressive_main_hint(task, answer_value, st.session_state.attempt)
         st.session_state.guided_visible = True
         st.session_state.guided_summary = ""
         st.session_state.guided_step_feedback = []
@@ -1007,7 +1032,7 @@ def handle_submission():
 
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.hint_text = f"{generate_hint(task, answer_value, False)} Die Aufgabe wird jetzt aufgelöst."
+    st.session_state.hint_text = f"{task['correction']} Die Aufgabe wird jetzt aufgelöst."
     st.session_state.solution_visible = True
     st.session_state.task_finished = True
     st.session_state.guided_visible = False
@@ -1015,70 +1040,59 @@ def handle_submission():
 
 def handle_guided_submission():
     guided_steps = st.session_state.task.get("guided_steps", [])
-    feedback = []
-    all_correct = True
-    has_error = False
-
-    for index, step in enumerate(guided_steps, start=1):
-        raw_value = st.session_state.get(f"guided_input_{index}", "").strip()
-
-        if not raw_value:
-            all_correct = False
-            feedback.append(
-                {
-                    "kind": "warning",
-                    "text": f"{step['label']}: Bitte gib hier einen Rechenweg oder ein Ergebnis ein.",
-                }
-            )
-            continue
-
-        try:
-            answer_value = evaluate_expression(raw_value)
-        except (InvalidOperation, SyntaxError, ZeroDivisionError):
-            all_correct = False
-            has_error = True
-            feedback.append(
-                {
-                    "kind": "error",
-                    "text": f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :",
-                }
-            )
-            continue
-
-        if values_match(answer_value, step["expected"], step["round_for_check"]):
-            feedback.append(
-                {
-                    "kind": "success",
-                    "text": f"{step['label']}: passt. Ergebnis {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}.",
-                }
-            )
-            continue
-
-        all_correct = False
-        feedback.append(
-            {
-                "kind": "warning",
-                "text": (
-                    f"{step['label']}: noch nicht richtig. {step['correction']} "
-                    f"Richtig wären {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}."
-                ),
-            }
-        )
-
-    st.session_state.guided_step_feedback = feedback
-
-    if all_correct:
-        st.session_state.feedback_kind = "success"
-        st.session_state.feedback_text = ""
-        st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
-        st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
-        st.session_state.solution_visible = True
-        st.session_state.task_finished = True
+    if not guided_steps:
         return
 
-    st.session_state.feedback_kind = "error" if has_error else "warning"
+    current_index = st.session_state.guided_step_index
+    step = guided_steps[current_index]
+    raw_value = st.session_state.get(f"guided_input_{current_index + 1}", "").strip()
+
+    if not raw_value:
+        st.session_state.feedback_kind = "warning"
+        st.session_state.feedback_text = ""
+        st.session_state.guided_summary = f"{step['label']}: Bitte gib hier einen Rechenweg oder ein Ergebnis ein."
+        st.session_state.guided_step_feedback = []
+        return
+
+    try:
+        answer_value = evaluate_expression(raw_value)
+    except (InvalidOperation, SyntaxError, ZeroDivisionError):
+        st.session_state.feedback_kind = "error"
+        st.session_state.feedback_text = ""
+        st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :"
+        st.session_state.guided_step_feedback = []
+        return
+
+    if values_match(answer_value, step["expected"], step["round_for_check"]):
+        success_text = f"{step['label']}: passt. Ergebnis {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}."
+        completed = st.session_state.guided_completed
+        completed.append(success_text)
+        st.session_state.guided_completed = completed
+        st.session_state.guided_step_feedback = []
+
+        if current_index == len(guided_steps) - 1:
+            st.session_state.feedback_kind = "success"
+            st.session_state.feedback_text = ""
+            st.session_state.hint_text = "Hey, super gemacht, auf zur nächsten Aufgabe."
+            st.session_state.guided_summary = "Alle Zwischenschritte passen. Damit ist auch die Aufgabe sauber gelöst."
+            st.session_state.solution_visible = True
+            st.session_state.task_finished = True
+            return
+
+        st.session_state.guided_step_index = current_index + 1
+        st.session_state.feedback_kind = "success"
+        st.session_state.feedback_text = ""
+        st.session_state.guided_summary = "Der Schritt passt. Jetzt kannst du mit dem nächsten weitermachen."
+        return
+
+    attempts = st.session_state.guided_step_attempts
+    step_attempt = attempts.get(current_index, 0) + 1
+    attempts[current_index] = step_attempt
+    st.session_state.guided_step_attempts = attempts
+    st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.guided_summary = "Geh die Zwischenschritte noch einmal in Ruhe durch. Du kannst die Felder direkt hier weiterverwenden."
+    st.session_state.guided_summary = progressive_step_hint(step, step_attempt)
+    st.session_state.guided_step_feedback = []
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -1169,14 +1183,19 @@ if st.session_state.guided_visible and not st.session_state.task_finished:
     st.subheader("Geführte Zwischenschritte")
     st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
 
+    for completed_text in st.session_state.guided_completed:
+        st.success(completed_text)
+
+    current_index = st.session_state.guided_step_index
+    current_step = st.session_state.task.get("guided_steps", [])[current_index]
+
     with st.form("guided_steps_form", clear_on_submit=False):
-        for index, step in enumerate(st.session_state.task.get("guided_steps", []), start=1):
-            st.text_input(
-                f"{step['label']} in {unit_label(step['unit'])}",
-                key=f"guided_input_{index}",
-                placeholder="Zum Beispiel 0,96 * 350",
-            )
-        guided_submitted = st.form_submit_button("Zwischenschritte prüfen", type="primary")
+        st.text_input(
+            current_step["label"],
+            key=f"guided_input_{current_index + 1}",
+            placeholder="Zum Beispiel 0,96 * 350",
+        )
+        guided_submitted = st.form_submit_button("Schritt prüfen", type="primary")
 
     if guided_submitted:
         handle_guided_submission()
@@ -1186,14 +1205,6 @@ if st.session_state.guided_visible and not st.session_state.task_finished:
             st.success(st.session_state.guided_summary)
         else:
             st.warning(st.session_state.guided_summary)
-
-    for item in st.session_state.guided_step_feedback:
-        if item["kind"] == "success":
-            st.success(item["text"])
-        elif item["kind"] == "error":
-            st.error(item["text"])
-        else:
-            st.warning(item["text"])
 
 if st.session_state.solution_visible:
     st.info(f"Richtige Lösung: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}")
