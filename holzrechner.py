@@ -3149,6 +3149,31 @@ def fallback_step_explanation(task, question_text):
             "Darum wird das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter multipliziert."
         )
 
+    if "Kubikmeter = Quadratmeter x Dicke" in joined and (
+        "geteilt" in lower_question
+        or "durch" in lower_question
+        or "/" in lower_question
+        or ":" in lower_question
+    ):
+        match = re.search(
+            r"Berechnung: (\d+(?:,\d+)?) Quadratmeter x (\d+(?:,\d+)?) Meter = (\d+(?:,\d+)?) Kubikmeter",
+            joined,
+        )
+        if match:
+            area_value, thickness_value, volume_value = match.groups()
+            return (
+                f"Hier wird nicht durch {thickness_value} Meter geteilt, weil du von einer Fläche zu einem Volumen gehst. "
+                f"Die {area_value} Quadratmeter sind nur die Fläche; mit der Dicke {thickness_value} Meter gibst du dieser Fläche die dritte Dimension. "
+                f"Darum rechnest du {area_value} Quadratmeter x {thickness_value} Meter und kommst auf {volume_value} Kubikmeter. "
+                "Teilen durch die Dicke wäre die Gegenrichtung: Dann hättest du Kubikmeter gegeben und würdest daraus Quadratmeter zurückrechnen."
+            )
+        return (
+            "Hier wird nicht durch die Dicke geteilt, weil du von Quadratmetern zu Kubikmetern gehst. "
+            "Quadratmeter beschreiben nur die Fläche; die Dicke kommt als dritte Dimension dazu. "
+            "Darum wird Fläche mal Dicke gerechnet. "
+            "Geteilt durch die Dicke würdest du nur rechnen, wenn Kubikmeter gegeben wären und Quadratmeter gesucht sind."
+        )
+
     if ("dicke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in joined:
         return (
             "Stell dir einen Kubikmeter Plattenware vor. Ein Quadratmeter dieser Platte hat nur die Dicke als dritte Dimension. "
@@ -3191,16 +3216,19 @@ def generate_step_explanation(task, question_text):
         "Du bist ein Lernassistent für die Holzbranche. "
         "Erkläre auf Deutsch eine freie Rückfrage zu einem Muster-Rechenweg. "
         "Sprich ruhig, konkret und fachlich. "
-        "Beziehe dich direkt auf die gestellte Frage. "
+        "Beantworte zuerst direkt die gestellte Frage, bevor du den Rechenweg allgemein erklärst. "
+        "Wenn die Frage eine Alternative nennt, etwa 'Warum nicht geteilt?', vergleiche diese Alternative ausdrücklich mit der richtigen Rechenrichtung. "
+        "Erkläre dann, in welchem umgekehrten Fall die Alternative richtig wäre. "
         "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
         "Gehe ausdrücklich auf die konkreten Zahlen aus dem Rechenweg ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
         "Erkläre bildhaft und anschaulich, zum Beispiel so, dass man sich die Ware oder Platte vor dem inneren Auge vorstellen kann. "
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
         "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' ohne sie direkt mit der konkreten Formel und den Zahlen zu verbinden. "
-        "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen. "
+        "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen, in maximal 5 Sätzen. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
+        f"Aufgabentyp: {task['task_type']}. "
         f"Zielgröße: {unit_label(task['unit'])}. "
         f"Rechenweg:\n{joined_lines}\n"
         f"Frage: {question_text}"
