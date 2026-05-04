@@ -3301,6 +3301,14 @@ def handle_submission():
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
     st.session_state.hint_text = ""
+    guided_steps = task.get("guided_steps", [])
+    if len(guided_steps) <= 1:
+        st.session_state.solution_visible = True
+        st.session_state.task_finished = True
+        st.session_state.guided_visible = False
+        st.session_state.main_input_locked = False
+        return
+
     st.session_state.solution_visible = False
     st.session_state.task_finished = False
     st.session_state.guided_visible = True
