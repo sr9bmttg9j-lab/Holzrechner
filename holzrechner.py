@@ -135,6 +135,16 @@ PANEL_COUNTS_BY_LEVEL = {
     2: [10, 12, 16, 20, 24, 30],
     3: [14, 18, 22, 28, 32, 40],
 }
+PRODUCT_DENSITIES = {
+    "KVH": [Decimal("430"), Decimal("450"), Decimal("470")],
+    "BSH": [Decimal("450"), Decimal("480"), Decimal("500")],
+    "KERTO": [Decimal("500"), Decimal("510"), Decimal("530")],
+    "Hobelware": [Decimal("470"), Decimal("520"), Decimal("560")],
+    "OSB-Platte": [Decimal("590"), Decimal("620"), Decimal("650")],
+    "Siebdruckplatte": [Decimal("650"), Decimal("700"), Decimal("750")],
+    "3-Schicht-Platte": [Decimal("450"), Decimal("500"), Decimal("550")],
+    "Dekorplatte": [Decimal("620"), Decimal("650"), Decimal("700")],
+}
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
@@ -151,6 +161,7 @@ UNIT_LABELS = {
     "m2": "Quadratmeter",
     "lfm": "Laufmeter",
     "EUR": "Euro",
+    "kg": "Kilogramm",
     "m": "Meter",
     "cm": "Zentimeter",
     "mm": "Millimeter",
@@ -209,6 +220,10 @@ Bodenpakete:
 - Fläche pro Stück: Länge x Breite
 - Paketfläche: Fläche pro Stück x Stückzahl im Paket
 - Benötigte Pakete: Bedarf in Quadratmeter / Paketfläche, danach auf volle Pakete aufrunden
+
+Dichte und Gewicht:
+- Gewicht in Kilogramm: Kubikmeter x Dichte in Kilogramm pro Kubikmeter
+- Dichte in Kilogramm pro Kubikmeter: Gewicht / Kubikmeter
 
 Deckungsbeitrag:
 - Absoluter DB in Euro: VK - EK
@@ -606,8 +621,63 @@ def board_count_for_level(level):
     return random.choice(BOARD_COUNTS_BY_LEVEL[level])
 
 
+def density_for_product(product):
+    return random.choice(PRODUCT_DENSITIES.get(product_name(product), [Decimal("500")]))
+
+
+def generate_whole_volume_position(level):
+    product = random.choice(PRODUCTS)
+    kind = product["kind"]
+
+    if kind == "structural_beam":
+        length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+        width_m, height_m = generate_structural_dimensions(level)
+        count = random.choice(COUNTS_BY_LEVEL[level])
+        total_volume = length_m * width_m * height_m * Decimal(count)
+        width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+        context = (
+            f"{count} Stück {product['name']} im Format {format_m(length_m)} m x "
+            f"{width_text} x {height_text}"
+        )
+        return product, context, total_volume, precise_decimal_places(total_volume)
+
+    if kind == "panel":
+        panel_format = panel_format_text(product)
+        length_m, width_m = panel_format_dimensions(panel_format)
+        thickness_m = panel_thickness_for_product(product, level)
+        panel_count = panel_count_for_level(level)
+        total_volume = length_m * width_m * thickness_m * Decimal(panel_count)
+        thickness_text = display_measure(thickness_m, ("mm", "cm"))
+        context = (
+            f"{panel_count} Platten {product['name']} im Format {panel_format} "
+            f"bei {thickness_text} Dicke"
+        )
+        return product, context, total_volume, precise_decimal_places(total_volume)
+
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    board_count = board_count_for_level(level)
+    running_meters = board_length * Decimal(board_count)
+    total_volume = width_m * height_m * running_meters
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
+    context = (
+        f"{board_count} Bretter {hobelware_display_name(product)} mit je {format_m(board_length)} m Länge, "
+        f"{width_text} Breite und {thickness_text} Stärke"
+    )
+    return product, context, total_volume, precise_decimal_places(total_volume)
+
+
 def evaluate_expression(text):
-    cleaned = text.strip().replace(",", ".")
+    expression = text.strip()
+    if "=" in expression:
+        parts = [part.strip() for part in expression.split("=") if part.strip()]
+        if parts:
+            expression = parts[-1]
+
+    cleaned = expression.replace(",", ".")
+    cleaned = cleaned.replace("×", "*").replace("·", "*")
     cleaned = cleaned.replace("x", "*").replace("X", "*").replace(":", "/")
     parsed = ast.parse(cleaned, mode="eval")
     return evaluate_ast_node(parsed.body)
@@ -1159,15 +1229,14 @@ def task_volume_from_square_meters(level):
 
 
 def task_total_price_from_volume(level):
-    product = random.choice(PRODUCTS)
-    total_volume = choice_for_level(TOTAL_VOLUMES_BY_LEVEL, level)
+    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
     m3_price = m3_price_for_product(product, level)
     result = total_volume * m3_price
 
     prompt = random.choice(
         [
-            f"Eine Position {product['name']} hat insgesamt {format_decimal(total_volume, 3)} Kubikmeter. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Gesamtpreis?",
-            f"Für eine Ware {product['name']} liegt ein Volumen von {format_decimal(total_volume, 3)} Kubikmeter vor. Das Angebot steht bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Gesamtpreis?",
+            f"Eine Position umfasst {context}. Das Volumen liegt bei {format_decimal(total_volume, total_volume_places)} Kubikmeter. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Gesamtpreis?",
+            f"Für {context} liegt ein Volumen von {format_decimal(total_volume, total_volume_places)} Kubikmeter vor. Das Angebot steht bei {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie hoch ist der Gesamtpreis?",
         ]
     )
 
@@ -1175,7 +1244,7 @@ def task_total_price_from_volume(level):
         (
             "Gesamtpreis",
             "Gesamtpreis = Volumen x Preis pro Kubikmeter",
-            f"{format_decimal(total_volume, 3)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
             f"{format_decimal(result, 2)} Euro",
         ),
     )
@@ -1197,6 +1266,7 @@ def task_total_price_from_volume(level):
                 2,
                 True,
                 "Für den Gesamtpreis brauchst du nur Volumen x Preis pro Kubikmeter.",
+                "Volumen x Preis pro Kubikmeter",
             ),
         ],
     }
@@ -1543,15 +1613,14 @@ def task_volume_from_running_meters(level):
 
 
 def task_volume_from_total_price(level):
-    product = random.choice(PRODUCTS)
-    total_volume = choice_for_level(TOTAL_VOLUMES_BY_LEVEL, level)
+    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
     m3_price = m3_price_for_product(product, level)
     total_price = total_volume * m3_price
 
     prompt = random.choice(
         [
-            f"Für {product['name']} liegt ein Gesamtpreis von {format_decimal(total_price, 2)} Euro vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter sind angeboten?",
-            f"Ein Angebot über {product['name']} endet bei {format_decimal(total_price, 2)} Euro. Berechnet wird mit {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter Ware stecken dahinter?",
+            f"Für {context} liegt ein Gesamtpreis von {format_decimal(total_price, 2)} Euro vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter sind angeboten?",
+            f"Ein Angebot über {context} endet bei {format_decimal(total_price, 2)} Euro. Berechnet wird mit {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter Ware stecken dahinter?",
         ]
     )
 
@@ -1560,7 +1629,7 @@ def task_volume_from_total_price(level):
             "Kubikmeter",
             "Volumen = Gesamtpreis / Preis pro Kubikmeter",
             f"{format_decimal(total_price, 2)} Euro / {format_decimal(m3_price, 0)} Euro pro Kubikmeter = "
-            f"{format_decimal(total_volume, 3)} Kubikmeter",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
         ),
     )
 
@@ -1568,7 +1637,7 @@ def task_volume_from_total_price(level):
         "prompt": prompt,
         "expected": total_volume.normalize(),
         "unit": "m3",
-        "display_places": 3,
+        "display_places": total_volume_places,
         "round_for_check": False,
         "task_type": "volume_from_total_price",
         "correction": "Teile den Gesamtpreis durch den Preis pro Kubikmeter.",
@@ -1578,9 +1647,56 @@ def task_volume_from_total_price(level):
                 "Kubikmeter",
                 total_volume.normalize(),
                 "m3",
-                3,
+                total_volume_places,
                 False,
                 "Teile den Gesamtpreis durch den Preis pro Kubikmeter.",
+                "Gesamtpreis / Preis pro Kubikmeter",
+            ),
+        ],
+    }
+
+
+def task_weight_from_volume(level):
+    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
+    density = density_for_product(product)
+    result = total_volume * density
+
+    prompt = random.choice(
+        [
+            f"Für {context} liegt ein Volumen von {format_decimal(total_volume, total_volume_places)} Kubikmeter vor. Die Dichte wird mit {format_decimal(density, 0)} Kilogramm pro Kubikmeter angesetzt.\n\nWie schwer ist die Position ungefähr?",
+            f"Eine Lieferung umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, die Dichte liegt bei {format_decimal(density, 0)} Kilogramm pro Kubikmeter.\n\nWelches Gewicht ergibt sich?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Gewicht",
+            "Gewicht = Volumen x Dichte",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x "
+            f"{format_decimal(density, 0)} Kilogramm pro Kubikmeter = {format_decimal(result, 2)} Kilogramm",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "kg",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "weight_from_volume",
+        "correction": "Beim Gewicht ist die Dichte nur der Faktor pro Kubikmeter. Du rechnest also das Volumen mit Kilogramm pro Kubikmeter weiter.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(total_volume, total_volume_places)} x {format_decimal(density, 0)}",
+        "guided_steps": [
+            make_guided_step(
+                "Gewicht",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "kg",
+                2,
+                True,
+                "Multipliziere das Volumen mit der Dichte.",
+                "Volumen x Dichte",
+                placeholder="Zum Beispiel 1,250 * 620",
             ),
         ],
     }
@@ -2233,6 +2349,7 @@ TASK_GENERATORS = [
     task_volume_from_running_meters,
     task_volume_from_square_meters,
     task_volume_from_total_price,
+    task_weight_from_volume,
     task_running_meters_from_volume,
     task_running_meters_from_square_meters,
     task_price_per_running_meter,
@@ -2282,6 +2399,7 @@ TASKS_BY_LEVEL = {
         task_volume_from_running_meters,
         task_volume_from_square_meters,
         task_volume_from_total_price,
+        task_weight_from_volume,
         task_total_price_from_volume,
         task_price_per_square_meter,
         task_square_meters_from_volume,
@@ -2353,7 +2471,7 @@ def format_user_result(value, task):
     if task.get("match_mode") == "percent_or_factor" and abs(value) <= Decimal("1"):
         return f"{format_decimal(value, 4).rstrip('0').rstrip(',')} -> {format_decimal(value * 100, 2)}"
 
-    if task["unit"] == "EUR":
+    if task["unit"] in {"EUR", "kg"}:
         return format_decimal(value, 2)
 
     if value == value.quantize(q("1"), rounding=ROUND_HALF_UP):
@@ -2400,6 +2518,8 @@ def default_step_placeholder(step):
         return "Zum Beispiel 0,40 * 7"
     if "pakete" in label:
         return "Zum Beispiel 100 / 2,80"
+    if "gewicht" in label:
+        return "Zum Beispiel 1,250 * 620"
     if "absoluter db" in label:
         return "Zum Beispiel 142,86 - 100"
     if "db-satz" in label or "relativer db" in label:
@@ -2514,6 +2634,21 @@ def render_theory_section():
 """
     )
 
+    st.markdown("#### Dichte und Gewicht")
+    st.write(
+        "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
+        "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
+        "verwendest du Kilogramm pro Kubikmeter."
+    )
+    st.markdown(
+        """
+| Gesucht | Rechenweg | Beispiel |
+| --- | --- | --- |
+| Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
+| Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
+"""
+    )
+
     st.markdown("#### Preise")
     st.write(
         "Preise hängen immer an einer Einheit. Darum ist entscheidend, ob ein Preis pro Laufmeter, Quadratmeter "
@@ -2535,7 +2670,12 @@ def render_theory_section():
     st.markdown("#### Deckungsbeitrag")
     st.write(
         "Der Deckungsbeitrag zeigt, was vom Verkaufspreis nach Abzug des Einkaufspreises übrig bleibt. "
-        "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis."
+        "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis. "
+        "Der Gesamt-DB ist die Summe dieser Eurobeträge über mehrere Positionen oder einen Auftrag hinweg; im Handel wird das oft als Rohertrag betrachtet."
+    )
+    st.write(
+        "Ein durchschnittlicher Holzhandel braucht grob etwa 24 Prozent Deckungsbeitrag, damit aus dem Rohertrag die laufenden Kosten bezahlt werden können. "
+        "Der Wareneinsatz ist im EK schon enthalten; vom DB müssen dann zum Beispiel Personal, Lager, Miete, Energie, Fuhrpark, Sprit, Verwaltung, IT, Finanzierung, Schwund und Risiko getragen werden."
     )
     st.markdown(
         """
@@ -2661,6 +2801,12 @@ def diagnose_common_mistake(task, answer_value, expected_value):
             "Für den Prozentwert wird dieser Unterschied anschließend durch den VK geteilt."
         )
 
+    if task["task_type"] == "weight_from_volume":
+        return (
+            "Beim Gewicht wird nicht mit einem Preis gerechnet, sondern mit der Dichte. "
+            "Prüfe, ob du das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter weitergerechnet hast."
+        )
+
     return ""
 
 
@@ -2698,6 +2844,7 @@ def likely_error_focus(task):
         "package_db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen, Paket-EK und VK mit DB.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
+        "weight_from_volume": "Achte besonders darauf, dass die Dichte ein Faktor pro Kubikmeter ist.",
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
@@ -2744,19 +2891,20 @@ def fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     )
 
     if diagnostic:
-        return f"{base} {diagnostic}"
+        return f"{base} {diagnostic} Bleib bei diesem Zwischenschritt und prüfe erst die Einheit, bevor du weiterrechnest."
     if step_attempt == 1:
-        return f"{base} {step['correction']}"
-    return f"{base} {step['formula_hint']}"
+        return f"{base} {step['correction']} Versuche den Schritt noch einmal isoliert, ohne schon den nächsten Schritt mitzunehmen."
+    return f"{base} {step['formula_hint']} Setze nur die Werte ein, die zu diesem Zwischenschritt gehören."
 
 
 def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt):
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein einzelner Zwischenschritt wurde falsch gelöst. "
-        "Antworte auf Deutsch in maximal 3 kurzen Sätzen. "
+        "Antworte auf Deutsch in maximal 4 kurzen Sätzen. "
         "Vergleiche die Nutzereingabe konkret mit dem richtigen Wert. "
-        "Erkläre den wahrscheinlichsten Fehler und nenne nur den nächsten kleinen Korrekturgedanken. "
+        "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
+        "Verrate nicht den vollständigen restlichen Lösungsweg. "
         "Keine lange Musterlösung, kein Bezug auf vorherige Hinweise. "
         f"Aufgabe: {task['prompt']} "
         f"Zwischenschritt: {step['label']}. "
@@ -2772,7 +2920,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         if not get_openai_api_key():
             return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
 
-        text = call_openai_responses_api(prompt, 110)
+        text = call_openai_responses_api(prompt, 160)
         if text:
             return text
     except Exception:
@@ -2792,19 +2940,21 @@ def auto_resolve_guided_step(step, raw_value, answer_value):
 
 def fallback_hint(task, is_correct):
     if is_correct:
-        return "Passt. Das Ergebnis stimmt fachlich."
+        return "Ergebnis ist korrekt. Du kannst dir bei Bedarf noch die Musterlösung ansehen oder direkt zur nächsten Aufgabe weitergehen."
     diagnostic = st.session_state.get("last_diagnostic_hint", "")
-    return f"{diagnostic} {task['correction']}".strip()
+    base = f"{diagnostic} {task['correction']}".strip()
+    return f"{base} Prüfe danach noch einmal, ob die gegebene Einheit wirklich zur gesuchten Einheit passt.".strip()
 
 
 def generate_hint(task, answer_value, is_correct):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
-        "Antworte auf Deutsch kurz und konkret in maximal 3 Sätzen. "
-        "Wenn die Antwort richtig ist, bestätige das knapp. "
-        "Wenn die Antwort falsch ist, nenne kurz den wahrscheinlichsten Fehler und genau den nächsten Rechenschritt. "
+        "Antworte auf Deutsch kurz und konkret in maximal 4 Sätzen. "
+        "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
+        "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
         "Nenne beim ersten Hinweis keine vollständige Formel und rechne die Lösung nicht aus. "
+        "Schreibe nicht 'fachlich korrekt'. "
         "Keine Floskeln, keine lange Musterlösung. "
         f"Aufgabe: {task['prompt']} "
         f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
@@ -2819,7 +2969,7 @@ def generate_hint(task, answer_value, is_correct):
             st.session_state.hint_backend_error = ""
             return fallback_hint(task, is_correct)
 
-        text = call_openai_responses_api(prompt, 100)
+        text = call_openai_responses_api(prompt, 150)
         if text:
             st.session_state.hint_backend = "api_rest"
             st.session_state.hint_backend_error = ""
@@ -2838,7 +2988,7 @@ def fallback_guided_transition(completed_step, completed_value, next_step):
         f"Als Nächstes: {next_step['label']}. "
         f"Nutze {completed_step['label']} = {format_value_for_step(completed_value, completed_step)} "
         f"{unit_label(completed_step['unit'])}. "
-        f"{ensure_sentence(next_step['formula_hint'])}"
+        f"{ensure_sentence(next_step['formula_hint'])} So bleibt der Rechenweg sauber Schritt für Schritt aufgebaut."
     )
 
 
@@ -2846,9 +2996,10 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein Zwischenschritt wurde richtig gelöst. "
-        "Antworte auf Deutsch in maximal 2 kurzen Sätzen. "
+        "Antworte auf Deutsch in maximal 3 kurzen Sätzen. "
         f"Beginne mit dem nächsten Schritt, also: 'Als Nächstes: {next_step['label']}.' "
         "Nenne danach das Zwischenergebnis mit Einheit und erkläre konkret, wie damit im nächsten Schritt weitergerechnet wird. "
+        "Gib einen kurzen Kontext, warum genau dieser nächste Schritt folgt. "
         "Wenn im Muster-Rechenweg eine konkrete Zahl für den nächsten Faktor vorkommt, nenne sie. "
         f"Aufgabe: {task['prompt']} "
         f"Richtiger Zwischenschritt: {completed_step['label']} = "
@@ -2862,7 +3013,7 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
         if not get_openai_api_key():
             return fallback_guided_transition(completed_step, completed_value, next_step)
 
-        text = call_openai_responses_api(prompt, 90)
+        text = call_openai_responses_api(prompt, 130)
         if text:
             return ensure_sentence(text)
     except Exception:
@@ -2932,6 +3083,13 @@ def fallback_step_explanation(task, question_text):
             "Der absolute DB ist der Betrag, der zwischen Verkaufspreis und Einkaufspreis liegt. "
             "Du ziehst also einfach den EK vom VK ab. "
             "Das Ergebnis bleibt ein Eurobetrag, noch kein Prozentwert."
+        )
+
+    if task["task_type"] == "weight_from_volume":
+        return (
+            "Bei der Gewichtsrechnung wird das Volumen mit der Dichte verknüpft. "
+            "Die Dichte sagt, wie viele Kilogramm ein Kubikmeter ungefähr wiegt. "
+            "Darum wird das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter multipliziert."
         )
 
     if ("dicke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in joined:
@@ -3103,7 +3261,7 @@ def handle_submission():
         answer_value = evaluate_expression(answer_text)
     except (InvalidOperation, SyntaxError, ZeroDivisionError):
         st.session_state.feedback_kind = "error"
-        st.session_state.feedback_text = "Die Eingabe konnte nicht als Rechenweg erkannt werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :"
+        st.session_state.feedback_text = "Die Eingabe konnte nicht als Rechenweg erkannt werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, × und optional ein Gleichheitszeichen mit Ergebnis."
         return
 
     task = st.session_state.task
@@ -3169,7 +3327,7 @@ def handle_guided_submission():
     except (InvalidOperation, SyntaxError, ZeroDivisionError):
         st.session_state.feedback_kind = "error"
         st.session_state.feedback_text = ""
-        st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern sowie +, -, *, /, x und :"
+        st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, × und optional ein Gleichheitszeichen mit Ergebnis."
         st.session_state.guided_summary_kind = "error"
         st.session_state.guided_step_feedback = []
         st.rerun()
@@ -3193,7 +3351,7 @@ def handle_guided_submission():
             success_text = (
                 f"{step['label']}: {raw_value} = "
                 f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
-                f"Passt als Rundung; fachlich liegt der Schritt bei "
+                f"Passt als Rundung; der genaue Schritt liegt bei "
                 f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}."
             )
         completed = st.session_state.guided_completed
@@ -3330,8 +3488,8 @@ st.write(
     "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
 st.write(
-    "Du musst hier nichts im Taschenrechner ausrechnen. Es reicht, wenn du deinen Rechenweg als Formel eingibst, "
-    "also zum Beispiel mit mal und geteilt. Du kannst aber auch direkt das Endergebnis eintragen."
+    "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
+    "Für mal funktionieren x, × oder *, für geteilt / oder :. Leerzeichen sind egal."
 )
 
 st.subheader("Theorie auffrischen")
@@ -3348,7 +3506,7 @@ if st.session_state.show_theory:
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
-st.caption("Du kannst deinen Rechenweg als Formel oder direkt das Endergebnis eintragen.")
+st.caption("Du kannst deinen Rechenweg als Formel, direkt das Ergebnis oder beides mit Gleichheitszeichen eintragen.")
 
 with st.form("answer_form", clear_on_submit=False):
     st.text_input(
@@ -3383,9 +3541,12 @@ if st.session_state.hint_text and not st.session_state.solution_visible:
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
 
+if st.session_state.guided_visible and not st.session_state.task_finished and not st.session_state.solution_visible:
+    st.info("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
+
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
-    st.write("Wenn du magst, kannst du die Aufgabe hier Schritt für Schritt auflösen.")
+    st.write("Rechne immer nur den aktuellen Zwischenschritt aus. Sobald er passt, erscheint der nächste Schritt mit dem passenden Hinweis.")
 
     for completed_entry in st.session_state.guided_completed:
         render_guided_completed_entry(completed_entry)
