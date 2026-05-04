@@ -3474,7 +3474,15 @@ st.write(
 )
 st.write(
     "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
-    "Für mal funktionieren x, × oder *, für geteilt / oder :. Leerzeichen sind egal."
+    "Für mal kannst du x, × oder * verwenden; zum Teilen gehen / oder :. Leerzeichen sind egal."
+)
+st.markdown(
+    """
+Beispiele, die funktionieren:
+- `0,4536 / (0,20 x 0,027)`
+- `0,4536 : (0,20 × 0,027) = 84`
+- `0,4536/(0,20*0,027)=84`
+"""
 )
 
 st.subheader("Theorie auffrischen")
