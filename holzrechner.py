@@ -1018,7 +1018,6 @@ def task_price_per_running_meter(level):
         ]
     )
 
-    cross_section = width_m * height_m
     solution = format_solution_steps(
         (
             "Querschnitt",
@@ -1349,15 +1348,10 @@ def task_running_meters_from_volume(level):
     cross_section = width_m * height_m
     solution = format_solution_steps(
         (
-            "Breite x Höhe",
-            "Querschnitt = Breite x Höhe",
-            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
-            f"{format_decimal(cross_section, 5)} Quadratmeter",
-        ),
-        (
             "Laufmeter",
-            "Laufmeter = Kubikmeter / Querschnitt",
-            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / {format_decimal(cross_section, 5)} Quadratmeter = "
+            "Laufmeter = Kubikmeter / (Breite x Höhe)",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / "
+            f"({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter) = "
             f"{format_decimal(running_meters, running_meters_places)} Laufmeter",
         ),
     )
@@ -1369,7 +1363,7 @@ def task_running_meters_from_volume(level):
         "display_places": running_meters_places,
         "round_for_check": False,
         "task_type": "running_meters_from_volume",
-        "correction": "Rechne zuerst Breite x Höhe mit Meterwerten und teile dann das Gesamtvolumen durch dieses Ergebnis.",
+        "correction": "Setze Breite und Stärke in Meter direkt in die Klammer und teile das Gesamtvolumen durch diese Klammer.",
         "solution": solution,
         "perfect_formula": (
             f"{format_decimal(total_volume, total_volume_places)} / "
@@ -1377,21 +1371,12 @@ def task_running_meters_from_volume(level):
         ),
         "guided_steps": [
             make_guided_step(
-                "Breite x Höhe",
-                cross_section.normalize(),
-                "m2",
-                5,
-                False,
-                "Rechne zuerst Breite x Höhe mit Meterwerten.",
-                "Formel: Breite x Höhe",
-            ),
-            make_guided_step(
                 "Laufmeter",
                 running_meters.normalize(),
                 "lfm",
                 running_meters_places,
                 False,
-                "Teile danach das Gesamtvolumen durch den Querschnitt.",
+                "Teile das Gesamtvolumen direkt durch Breite x Stärke in Meter.",
                 "Formel: Laufmeter = Kubikmeter / (Breite x Höhe)",
             ),
         ],
