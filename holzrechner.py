@@ -3,6 +3,7 @@ import json
 import os
 import random
 from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
+from html import escape
 import re
 from urllib import error as urllib_error
 from urllib import request as urllib_request
@@ -2683,6 +2684,26 @@ def guided_completed_entry(text, kind="success"):
     }
 
 
+def render_guided_resolved_entry(entry):
+    next_step = entry.get("next_step_label", "")
+    next_text = f"<div class='resolved-next'>Als Nächstes: {escape(next_step)}.</div>" if next_step else ""
+    message = entry.get("message", "").strip()
+    message_html = f"<div class='resolved-message'>{escape(message)}</div>" if message else ""
+
+    st.markdown(
+        f"""
+<div class="resolved-step-box">
+    <div class="resolved-title">{escape(entry.get("label", "Zwischenschritt"))} wurde aufgelöst</div>
+    <div>Deine Eingabe <span class="resolved-bad">{escape(entry.get("raw_value", ""))}</span> ergab <span class="resolved-bad">{escape(entry.get("user_result", ""))}</span>.</div>
+    {message_html}
+    <div>Weiterrechnen kannst du mit <span class="resolved-good">{escape(entry.get("correct_result", ""))}</span>.</div>
+    {next_text}
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+
 def render_guided_completed_entry(entry):
     if isinstance(entry, dict):
         text = entry.get("text", "")
@@ -2691,6 +2712,9 @@ def render_guided_completed_entry(entry):
         text = str(entry)
         kind = "success"
 
+    if kind == "resolved":
+        render_guided_resolved_entry(entry)
+        return
     if kind == "warning":
         st.warning(text)
     else:
@@ -2713,7 +2737,7 @@ def render_guided_summary():
 
 def guided_has_warning():
     for entry in st.session_state.get("guided_completed", []):
-        if isinstance(entry, dict) and entry.get("kind") == "warning":
+        if isinstance(entry, dict) and entry.get("kind") in {"warning", "resolved"}:
             return True
     return False
 
@@ -2918,12 +2942,27 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
 
 
-def auto_resolve_guided_step(step, raw_value, answer_value):
-    return guided_completed_entry(
-        f"Achtung, aufgelöst: {step['label']} = "
-        f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
-        f"Deine Eingabe {raw_value} ergab {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}.",
-        "warning",
+def auto_resolve_guided_step(step, raw_value, answer_value, message="", next_step=None):
+    return {
+        "kind": "resolved",
+        "label": step["label"],
+        "raw_value": raw_value,
+        "user_result": f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}",
+        "correct_result": f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}",
+        "message": message,
+        "next_step_label": next_step["label"] if next_step else "",
+    }
+
+
+def resolved_step_message(step, next_step=None):
+    if next_step:
+        return (
+            f"Ich habe diesen Zwischenschritt jetzt für dich gelöst. "
+            f"Prüfe kurz den Unterschied und nutze dann den grünen Wert für {next_step['label']}."
+        )
+    return (
+        "Ich habe diesen letzten Zwischenschritt jetzt für dich gelöst. "
+        "Prüfe kurz den Unterschied; danach kannst du den vollständigen Rechenweg in Ruhe ansehen."
     )
 
 
@@ -3400,19 +3439,21 @@ def handle_guided_submission():
     st.session_state.guided_step_attempts = attempts
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    error_hint = generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
 
     if step_attempt >= 3:
-        completed = st.session_state.guided_completed
-        completed.append(auto_resolve_guided_step(step, raw_value, answer_value))
-        st.session_state.guided_completed = completed
-        st.session_state.guided_step_feedback = []
-
         if current_index == len(guided_steps) - 1:
-            st.session_state.guided_summary = (
-                f"{error_hint} Ich habe diesen letzten Zwischenschritt jetzt aufgelöst, "
-                "damit du den vollständigen Rechenweg in Ruhe prüfen kannst."
+            completed = st.session_state.guided_completed
+            completed.append(
+                auto_resolve_guided_step(
+                    step,
+                    raw_value,
+                    answer_value,
+                    resolved_step_message(step),
+                )
             )
+            st.session_state.guided_completed = completed
+            st.session_state.guided_step_feedback = []
+            st.session_state.guided_summary = ""
             st.session_state.guided_summary_kind = "warning"
             st.session_state.guided_visible = True
             st.session_state.solution_visible = False
@@ -3421,14 +3462,24 @@ def handle_guided_submission():
             st.rerun()
 
         next_step = guided_steps[current_index + 1]
-        st.session_state.guided_step_index = current_index + 1
-        st.session_state.guided_summary = (
-            f"{error_hint} Ich habe diesen Zwischenschritt jetzt aufgelöst. "
-            f"Weiter geht es mit {next_step['label']}."
+        completed = st.session_state.guided_completed
+        completed.append(
+            auto_resolve_guided_step(
+                step,
+                raw_value,
+                answer_value,
+                resolved_step_message(step, next_step),
+                next_step,
+            )
         )
+        st.session_state.guided_completed = completed
+        st.session_state.guided_step_feedback = []
+        st.session_state.guided_step_index = current_index + 1
+        st.session_state.guided_summary = ""
         st.session_state.guided_summary_kind = "warning"
         st.rerun()
 
+    error_hint = generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
     st.session_state.guided_summary = error_hint
     st.session_state.guided_summary_kind = "warning"
     st.session_state.guided_step_feedback = []
@@ -3491,6 +3542,41 @@ st.markdown(
             background-color: #b91c1c !important;
             border-color: #b91c1c !important;
             color: white !important;
+        }
+
+        .resolved-step-box {
+            border: 1px solid rgba(234, 179, 8, 0.35);
+            background: rgba(113, 63, 18, 0.34);
+            border-radius: 8px;
+            padding: 1rem 1.15rem;
+            margin: 0.8rem 0;
+            line-height: 1.55;
+        }
+
+        .resolved-title {
+            font-weight: 700;
+            margin-bottom: 0.35rem;
+        }
+
+        .resolved-message {
+            margin-top: 0.45rem;
+            margin-bottom: 0.45rem;
+        }
+
+        .resolved-bad {
+            color: #f87171;
+            font-weight: 700;
+        }
+
+        .resolved-good {
+            color: #4ade80;
+            font-weight: 700;
+        }
+
+        .resolved-next {
+            color: #86efac;
+            font-weight: 700;
+            margin-top: 0.35rem;
         }
     </style>
     """,
