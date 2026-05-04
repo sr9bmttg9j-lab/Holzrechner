@@ -1007,6 +1007,7 @@ def task_price_per_running_meter(level):
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     m3_price = m3_price_for_product(product, level)
+    cross_section = width_m * height_m
     result = width_m * height_m * m3_price
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
@@ -2822,7 +2823,7 @@ def likely_error_focus(task):
         "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
         "volume_from_square_meters": "Achte besonders auf die Richtung der Umrechnung von Quadratmeter zu Kubikmeter über die Dicke.",
         "total_price_from_volume": "Achte besonders darauf, ob Volumen und Preisbasis wirklich zur Zielgröße Gesamtpreis passen.",
-        "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter und auf den Querschnitt.",
+        "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter sowie auf Breite und Stärke in Meter.",
         "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
         "running_meters_from_square_meters": "Achte besonders auf die Richtung Quadratmeter zu Laufmeter über die Breite der Hobelware.",
         "db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Gesamtvolumen, EK und danach VK mit DB.",
@@ -2830,7 +2831,7 @@ def likely_error_focus(task):
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
         "weight_from_volume": "Achte besonders darauf, dass die Dichte ein Faktor pro Kubikmeter ist.",
-        "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis und auf Teilen statt Multiplizieren.",
+        "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis, auf Breite x Stärke in Meter und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
         "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
@@ -2843,10 +2844,10 @@ def likely_error_focus(task):
 
 def progressive_main_hint(task, answer_value, attempt):
     if attempt <= 1:
-        return generate_hint(task, answer_value, False)
+        return generate_hint(task, answer_value, False, attempt)
     if attempt == 2:
         first_step = task.get("guided_steps", [{}])[0]
-        return f"{generate_hint(task, answer_value, False)} {first_step.get('formula_hint', '')}".strip()
+        return f"{generate_hint(task, answer_value, False, attempt)} {first_step.get('formula_hint', '')}".strip()
     return "Wenn du magst, geh die Aufgabe jetzt Schritt für Schritt durch. So lässt sich der Rechenweg sauber aufbauen."
 
 
@@ -2883,12 +2884,15 @@ def fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt
 
 
 def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt):
+    local_step_diagnostic = diagnose_step_mistake(task, step, answer_value) or step["correction"]
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein einzelner Zwischenschritt wurde falsch gelöst. "
-        "Antworte auf Deutsch in maximal 4 kurzen Sätzen. "
+        "Antworte auf Deutsch, kurz und konkret, in maximal 5 Sätzen. "
         "Vergleiche die Nutzereingabe konkret mit dem richtigen Wert. "
         "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
+        "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
+        "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Zwischenschritt, Eingabe und richtigen Wert zusammen. "
         "Verrate nicht den vollständigen restlichen Lösungsweg. "
         "Keine lange Musterlösung, kein Bezug auf vorherige Hinweise. "
         f"Aufgabe: {task['prompt']} "
@@ -2897,7 +2901,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         f"Berechneter Wert der Eingabe: {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
         f"Richtiger Wert für diesen Schritt: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
         f"Versuch im Zwischenschritt: {step_attempt} von 3. "
-        f"Typischer Fehler: {diagnose_step_mistake(task, step, answer_value) or step['correction']} "
+        f"Mögliche Fehlerursache aus lokaler Vorprüfung: {local_step_diagnostic} "
         f"Fachlicher Hinweis: {step['formula_hint']}"
     )
 
@@ -2905,7 +2909,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         if not get_openai_api_key():
             return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
 
-        text = call_openai_responses_api(prompt, 160)
+        text = call_openai_responses_api(prompt, 200)
         if text:
             return text
     except Exception:
@@ -2931,20 +2935,30 @@ def fallback_hint(task, is_correct):
     return f"{base} Prüfe danach noch einmal, ob die gegebene Einheit wirklich zur gesuchten Einheit passt.".strip()
 
 
-def generate_hint(task, answer_value, is_correct):
+def generate_hint(task, answer_value, is_correct, attempt=None):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
+    attempt_text = f"{attempt} von 3" if attempt else "nicht angegeben"
+    error_context = (
+        "Keine Fehleranalyse nötig; die Antwort passt."
+        if is_correct
+        else local_diagnostic or likely_error_focus(task)
+    )
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
-        "Antworte auf Deutsch kurz und konkret in maximal 4 Sätzen. "
+        "Antworte auf Deutsch kurz und konkret in maximal 5 Sätzen. "
         "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
-        "Nenne beim ersten Hinweis keine vollständige Formel und rechne die Lösung nicht aus. "
+        "Passe die Hilfe an den Versuch an: Beim ersten Versuch nur leicht anstoßen, beim zweiten Versuch konkreter werden. "
+        "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
+        "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
+        "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
         "Schreibe nicht 'fachlich korrekt'. "
         "Keine Floskeln, keine lange Musterlösung. "
         f"Aufgabe: {task['prompt']} "
+        f"Versuch in der Aufgabe: {attempt_text}. "
         f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
         f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
-        f"Typische Fehler: {local_diagnostic or likely_error_focus(task)} "
+        f"Mögliche Fehlerursache aus lokaler Vorprüfung: {error_context} "
         f"Zusatzhinweis: {task['correction']}"
     )
 
@@ -2954,7 +2968,7 @@ def generate_hint(task, answer_value, is_correct):
             st.session_state.hint_backend_error = ""
             return fallback_hint(task, is_correct)
 
-        text = call_openai_responses_api(prompt, 150)
+        text = call_openai_responses_api(prompt, 190)
         if text:
             st.session_state.hint_backend = "api_rest"
             st.session_state.hint_backend_error = ""
@@ -3194,6 +3208,7 @@ def create_next_task():
     st.session_state.show_success_solution = False
     st.session_state.show_optional_solution = False
     st.session_state.task_finished = False
+    st.session_state.main_input_locked = False
     st.session_state.answer_input = ""
     st.session_state.hint_text = ""
     st.session_state.last_diagnostic_hint = ""
@@ -3231,6 +3246,9 @@ def init_state():
     if "show_theory" not in st.session_state:
         st.session_state.show_theory = False
 
+    if "main_input_locked" not in st.session_state:
+        st.session_state.main_input_locked = False
+
     if st.session_state.get("pending_next_task"):
         create_next_task()
 
@@ -3257,7 +3275,7 @@ def handle_submission():
     if values_match(answer_value, task["expected"], task["round_for_check"], task.get("match_mode")):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = generate_hint(task, answer_value, True)
+        st.session_state.hint_text = generate_hint(task, answer_value, True, st.session_state.attempt)
         st.session_state.solution_visible = False
         st.session_state.show_success_solution = is_direct_result_input(answer_text)
         st.session_state.show_optional_solution = False
@@ -3269,11 +3287,11 @@ def handle_submission():
         st.session_state.explanation_text = ""
         return
 
-    if st.session_state.attempt < 4:
+    if st.session_state.attempt < 3:
         st.session_state.feedback_kind = "warning"
         st.session_state.feedback_text = ""
         st.session_state.hint_text = progressive_main_hint(task, answer_value, st.session_state.attempt)
-        st.session_state.guided_visible = st.session_state.attempt >= 2
+        st.session_state.guided_visible = False
         st.session_state.guided_summary = ""
         st.session_state.guided_summary_kind = "warning"
         st.session_state.guided_step_feedback = []
@@ -3282,10 +3300,14 @@ def handle_submission():
 
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
-    st.session_state.hint_text = generate_hint(task, answer_value, False)
-    st.session_state.solution_visible = True
-    st.session_state.task_finished = True
-    st.session_state.guided_visible = False
+    st.session_state.hint_text = ""
+    st.session_state.solution_visible = False
+    st.session_state.task_finished = False
+    st.session_state.guided_visible = True
+    st.session_state.main_input_locked = True
+    st.session_state.guided_summary = "Wir gehen jetzt direkt über die Zwischenschritte weiter. Starte unten mit dem ersten Schritt."
+    st.session_state.guided_summary_kind = "warning"
+    st.session_state.guided_step_feedback = []
 
 
 def handle_guided_submission():
@@ -3507,11 +3529,11 @@ with st.form("answer_form", clear_on_submit=False):
         "Deine Eingabe",
         key="answer_input",
         placeholder="",
-        disabled=st.session_state.task_finished,
+        disabled=st.session_state.task_finished or st.session_state.get("main_input_locked", False),
     )
     submitted = st.form_submit_button(
         "Bestätigen",
-        disabled=st.session_state.task_finished,
+        disabled=st.session_state.task_finished or st.session_state.get("main_input_locked", False),
         type="primary",
     )
 
