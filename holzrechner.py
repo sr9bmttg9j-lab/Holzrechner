@@ -2896,25 +2896,33 @@ def fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     diagnostic = diagnose_step_mistake(task, step, answer_value)
     user_result = f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}"
     correct_result = f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}"
-    base = (
-        f"Deine Eingabe {raw_value} ergibt {user_result}. "
-        f"Für {step['label']} sollte hier {correct_result} herauskommen."
-    )
+    base = f"Deine Eingabe {raw_value} ergibt {user_result}. "
+
+    if step_attempt <= 1:
+        if diagnostic:
+            return f"{base}{diagnostic} Bleib bei diesem Zwischenschritt und prüfe erst die Einheit, bevor du weiterrechnest."
+        return f"{base}{step['correction']} Versuche den Schritt noch einmal isoliert, ohne schon den nächsten Schritt mitzunehmen."
+
+    base = f"{base}Für {step['label']} sollte hier {correct_result} herauskommen."
 
     if diagnostic:
         return f"{base} {diagnostic} Bleib bei diesem Zwischenschritt und prüfe erst die Einheit, bevor du weiterrechnest."
-    if step_attempt == 1:
-        return f"{base} {step['correction']} Versuche den Schritt noch einmal isoliert, ohne schon den nächsten Schritt mitzunehmen."
     return f"{base} {step['formula_hint']} Setze nur die Werte ein, die zu diesem Zwischenschritt gehören."
 
 
 def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt):
     local_step_diagnostic = diagnose_step_mistake(task, step, answer_value) or step["correction"]
+    correct_value_context = (
+        f"Richtiger Wert für diesen Schritt: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
+        if step_attempt >= 2
+        else "Richtiger Wert für diesen Schritt: nicht in diesem Tipp nennen und keine konkrete Zielzahl ausgeben. "
+    )
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein einzelner Zwischenschritt wurde falsch gelöst. "
         "Antworte auf Deutsch, kurz und konkret, in maximal 5 Sätzen. "
-        "Vergleiche die Nutzereingabe konkret mit dem richtigen Wert. "
+        "Nutze die Angaben zur Diagnose, aber verrate im Tipp nicht den konkreten richtigen Zielwert. "
+        "Nenne keine richtige Zahl, keine fertige Teilrechnung und kein Ergebnis, solange der Zwischenschritt noch nicht automatisch aufgelöst wurde. "
         "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
         "Beim ersten falschen Versuch bleibst du eher allgemein und gibst nur eine Orientierung. "
         "Beim zweiten falschen Versuch wird der Zwischenschritt automatisch aufgelöst; dafür brauchst du hier keine Musterlösung zu schreiben. "
@@ -2926,7 +2934,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         f"Zwischenschritt: {step['label']}. "
         f"Eingabe des Nutzers: {raw_value}. "
         f"Berechneter Wert der Eingabe: {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
-        f"Richtiger Wert für diesen Schritt: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
+        f"{correct_value_context}"
         f"Versuch im Zwischenschritt: {step_attempt} von 2. "
         f"Mögliche Fehlerursache aus lokaler Vorprüfung: {local_step_diagnostic} "
         f"Fachlicher Hinweis: {step['formula_hint']}"
@@ -2982,6 +2990,11 @@ def fallback_hint(task, is_correct):
 def generate_hint(task, answer_value, is_correct, attempt=None):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
     attempt_text = f"{attempt} von 2" if attempt else "nicht angegeben"
+    correct_solution_context = (
+        f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
+        if is_correct
+        else "Korrekte Lösung: im Tipp nicht nennen und keine konkrete Zielzahl ausgeben. "
+    )
     error_context = (
         "Keine Fehleranalyse nötig; die Antwort passt."
         if is_correct
@@ -2994,6 +3007,7 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
         "Passe die Hilfe an den Versuch an: Beim ersten falschen Versuch nur leicht anstoßen; beim zweiten falschen Versuch wird in die Zwischenschritte gewechselt. "
         "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
+        "Wenn die Antwort falsch ist, verrate nicht die korrekte Zielzahl. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
         "Schreibe nicht 'fachlich korrekt'. "
@@ -3001,7 +3015,7 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         f"Aufgabe: {task['prompt']} "
         f"Versuch in der Aufgabe: {attempt_text}. "
         f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
-        f"Korrekte Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
+        f"{correct_solution_context}"
         f"Mögliche Fehlerursache aus lokaler Vorprüfung: {error_context} "
         f"Zusatzhinweis: {task['correction']}"
     )
