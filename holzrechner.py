@@ -2689,6 +2689,7 @@ def render_guided_resolved_entry(entry):
     next_text = f"<div class='resolved-next'>Als Nächstes: {escape(next_step)}.</div>" if next_step else ""
     message = entry.get("message", "").strip()
     message_html = f"<div class='resolved-message'>{escape(message)}</div>" if message else ""
+    result_label = "Weiterrechnen kannst du mit" if next_step else "Das Ergebnis ist"
 
     st.markdown(
         f"""
@@ -2696,7 +2697,7 @@ def render_guided_resolved_entry(entry):
     <div class="resolved-title">{escape(entry.get("label", "Zwischenschritt"))} wurde aufgelöst</div>
     <div>Deine Eingabe <span class="resolved-bad">{escape(entry.get("raw_value", ""))}</span> ergab <span class="resolved-bad">{escape(entry.get("user_result", ""))}</span>.</div>
     {message_html}
-    <div>Weiterrechnen kannst du mit <span class="resolved-good">{escape(entry.get("correct_result", ""))}</span>.</div>
+    <div>{result_label} <span class="resolved-good">{escape(entry.get("correct_result", ""))}</span>.</div>
     {next_text}
 </div>
 """,
@@ -2915,6 +2916,8 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         "Antworte auf Deutsch, kurz und konkret, in maximal 5 Sätzen. "
         "Vergleiche die Nutzereingabe konkret mit dem richtigen Wert. "
         "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
+        "Beim ersten falschen Versuch bleibst du eher allgemein und gibst nur eine Orientierung. "
+        "Beim zweiten falschen Versuch wird der Zwischenschritt automatisch aufgelöst; dafür brauchst du hier keine Musterlösung zu schreiben. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Zwischenschritt, Eingabe und richtigen Wert zusammen. "
         "Verrate nicht den vollständigen restlichen Lösungsweg. "
@@ -2924,7 +2927,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         f"Eingabe des Nutzers: {raw_value}. "
         f"Berechneter Wert der Eingabe: {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
         f"Richtiger Wert für diesen Schritt: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
-        f"Versuch im Zwischenschritt: {step_attempt} von 3. "
+        f"Versuch im Zwischenschritt: {step_attempt} von 2. "
         f"Mögliche Fehlerursache aus lokaler Vorprüfung: {local_step_diagnostic} "
         f"Fachlicher Hinweis: {step['formula_hint']}"
     )
@@ -2957,12 +2960,14 @@ def auto_resolve_guided_step(step, raw_value, answer_value, message="", next_ste
 def resolved_step_message(step, next_step=None):
     if next_step:
         return (
-            f"Ich habe diesen Zwischenschritt jetzt für dich gelöst. "
-            f"Prüfe kurz den Unterschied und nutze dann den grünen Wert für {next_step['label']}."
+            "Ich habe diesen Zwischenschritt jetzt für dich gelöst. "
+            "Vergleiche deine Eingabe mit dem roten Wert und achte besonders auf Einheit, Rechenrichtung und passende Faktoren. "
+            f"Mit dem grünen Wert kannst du sauber bei {next_step['label']} weiterarbeiten."
         )
     return (
         "Ich habe diesen letzten Zwischenschritt jetzt für dich gelöst. "
-        "Prüfe kurz den Unterschied; danach kannst du den vollständigen Rechenweg in Ruhe ansehen."
+        "Vergleiche deine Eingabe mit dem roten Wert und prüfe, welche Einheit oder Rechenrichtung dich aus dem Tritt gebracht hat. "
+        "Danach kannst du den vollständigen Rechenweg in Ruhe ansehen."
     )
 
 
@@ -2976,7 +2981,7 @@ def fallback_hint(task, is_correct):
 
 def generate_hint(task, answer_value, is_correct, attempt=None):
     local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
-    attempt_text = f"{attempt} von 3" if attempt else "nicht angegeben"
+    attempt_text = f"{attempt} von 2" if attempt else "nicht angegeben"
     error_context = (
         "Keine Fehleranalyse nötig; die Antwort passt."
         if is_correct
@@ -2987,7 +2992,7 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Antworte auf Deutsch kurz und konkret in maximal 5 Sätzen. "
         "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
-        "Passe die Hilfe an den Versuch an: Beim ersten Versuch nur leicht anstoßen, beim zweiten Versuch konkreter werden. "
+        "Passe die Hilfe an den Versuch an: Beim ersten falschen Versuch nur leicht anstoßen; beim zweiten falschen Versuch wird in die Zwischenschritte gewechselt. "
         "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
@@ -3326,7 +3331,7 @@ def handle_submission():
         st.session_state.explanation_text = ""
         return
 
-    if st.session_state.attempt < 3:
+    if st.session_state.attempt < 2:
         st.session_state.feedback_kind = "warning"
         st.session_state.feedback_text = ""
         st.session_state.hint_text = progressive_main_hint(task, answer_value, st.session_state.attempt)
@@ -3440,7 +3445,7 @@ def handle_guided_submission():
     st.session_state.feedback_kind = "warning"
     st.session_state.feedback_text = ""
 
-    if step_attempt >= 3:
+    if step_attempt >= 2:
         if current_index == len(guided_steps) - 1:
             completed = st.session_state.guided_completed
             completed.append(
