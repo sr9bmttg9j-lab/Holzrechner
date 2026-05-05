@@ -3208,9 +3208,9 @@ def normalize_explanation_question(text):
 
 def fallback_focused_block_explanation(task, block, question_text):
     title = block.get("title", "dieser Schritt")
-    formula = block.get("formula", "")
     calculation = block.get("calculation", "")
     lower_title = title.lower()
+    left_side, separator, result_value = calculation.partition(" = ")
 
     if "paketfläche" in lower_title:
         match = re.search(
@@ -3222,47 +3222,97 @@ def fallback_focused_block_explanation(task, block, question_text):
             return (
                 f"In Schritt {block['number']} geht es nur um die Paketfläche, also um die Fläche aller Platten zusammen. "
                 f"Die {area_per_piece} Quadratmeter kommen aus dem vorherigen Schritt und gelten für eine einzelne Platte. "
-                f"Weil im Paket {piece_count} Stück liegen, rechnest du {area_per_piece} Quadratmeter x {piece_count} Stück. "
-                f"So entstehen {package_area} Quadratmeter Paketfläche; erst im nächsten Schritt wird daraus mit dem Quadratmeterpreis der Paketpreis."
+                f"Da im Paket {piece_count} Stück liegen, wird aus der Einzelfläche die gesamte verkaufbare Paketfläche von {package_area} Quadratmetern. "
+                "Aus Handelssicht ist das wichtig, weil der spätere Preis nicht für eine Platte, sondern für das komplette Paket bewertet wird."
             )
 
     if "paketpreis" in lower_title or "gesamtpreis" in lower_title:
+        if separator:
+            return (
+                f"In Schritt {block['number']} wird die bereits ermittelte Menge in einen Warenwert übersetzt. "
+                f"Du hast also nicht mehr die Maße im Blick, sondern fragst: Was kostet diese Menge bei der angegebenen Preisbasis? "
+                f"Mit {left_side} wird die Menge mit dem passenden Preis je Einheit bewertet, daraus ergeben sich {result_value}. "
+                "Geschäftlich ist das der Moment, in dem aus Fläche oder Volumen ein Angebots- oder Paketwert wird."
+            )
         return (
-            f"In Schritt {block['number']} wird aus der Menge jetzt ein Preis. "
-            f"Die Formel lautet: {formula}. "
-            f"Konkret steht im Rechenweg: {calculation}. "
-            "Erst hier kommt also der Preis pro Einheit dazu; vorher wurden nur Mengen oder Flächen aufgebaut."
+            f"In Schritt {block['number']} wird die vorher ermittelte Menge in einen Preis übersetzt. "
+            "Erst hier kommt also die Preisbasis dazu; vorher wurden nur Mengen, Flächen oder Volumen aufgebaut."
         )
 
     if "fläche pro platte" in lower_title:
         return (
-            f"In Schritt {block['number']} wird zuerst die Fläche einer einzelnen Platte berechnet. "
-            f"Die Formel lautet: {formula}. "
-            f"Konkret wird gerechnet: {calculation}. "
-            "Dieser Wert ist noch nicht die Paketfläche, sondern nur die Grundlage für den nächsten Schritt."
+            f"In Schritt {block['number']} wird zuerst nur eine einzelne Platte betrachtet. "
+            "Das trennt die Stücklogik sauber von der Paketlogik: Erst weißt du, wie viel Fläche ein Teil hat, danach kannst du daraus das Paket oder den Auftrag hochrechnen. "
+            f"Der Wert {result_value if separator else 'aus diesem Schritt'} ist also die Flächenbasis pro Platte, noch nicht der komplette Verkaufsposten."
         )
 
     if "volumen pro stück" in lower_title:
         return (
-            f"In Schritt {block['number']} wird zuerst nur ein einzelnes Stück betrachtet. "
-            f"Die Formel lautet: {formula}. "
-            f"Konkret wird gerechnet: {calculation}. "
-            "Erst danach wird dieses Einzelvolumen mit der Stückzahl weitergerechnet."
+            f"In Schritt {block['number']} wird bewusst nur ein einzelnes Stück betrachtet. "
+            "So verhinderst du, dass Stückzahl, Länge, Breite und Höhe durcheinandergeraten. "
+            f"Das Ergebnis {result_value if separator else 'aus diesem Schritt'} beschreibt den Rauminhalt eines Stücks; erst danach wird daraus die Gesamtmenge der Position."
         )
 
     if "db-faktor" in lower_title:
         return (
             f"In Schritt {block['number']} wird aus dem DB-Satz der Rechenfaktor gebildet. "
-            f"Die Formel lautet: {formula}. "
-            f"Konkret steht dort: {calculation}. "
-            "Dieser Faktor zeigt, welcher Anteil des Verkaufspreises auf den EK entfällt."
+            "Aus Geschäftssicht geht es darum, welcher Anteil vom Verkaufspreis nach Abzug des gewünschten Deckungsbeitrags noch für den EK übrig bleibt. "
+            f"Der Faktor {result_value if separator else 'aus diesem Schritt'} zeigt diesen EK-Anteil. "
+            "Damit kann man anschließend sauber zwischen EK und VK umrechnen."
+        )
+
+    if "gesamtvolumen" in lower_title or "paketvolumen" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird aus dem Einzelmaß die tatsächliche Gesamtmenge der Position. "
+            "Im Holzhandel ist das die Mengenbasis, auf der später der Preis berechnet wird. "
+            f"Wenn mehrere Stück oder ein ganzes Paket vorliegen, wird das einzelne Volumen auf diese Menge hochgezogen; hier ergibt sich {result_value if separator else 'das benötigte Gesamtvolumen'}. "
+            "Erst danach ist klar, welche Kubikmeter überhaupt bewertet werden."
+        )
+
+    if "gesamter ek" in lower_title or "paket-ek" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird aus der Holzmenge der Einkaufspreis der Position. "
+            "Bis hier steht fest, wie viel Volumen im Auftrag oder Paket steckt; jetzt wird diese Menge mit dem EK pro Kubikmeter bewertet. "
+            f"So entsteht der Wareneinsatz von {result_value if separator else 'dieser Position'}. "
+            "Das ist geschäftlich die Grundlage, bevor ein Verkaufspreis oder ein Deckungsbeitrag kalkuliert wird."
+        )
+
+    if "gesamter vk" in lower_title or "paket-vk" in lower_title or lower_title.startswith("vk"):
+        return (
+            f"In Schritt {block['number']} wird aus dem EK ein Verkaufspreis. "
+            "Der Verkaufspreis muss höher liegen als der Einkauf, weil daraus der gewünschte Deckungsbeitrag finanziert werden soll. "
+            f"Der Wert {result_value if separator else 'aus diesem Schritt'} ist deshalb nicht nur ein rechnerischer Preis, sondern der kalkulierte Ziel-VK für die Position. "
+            "Hier steckt also die kaufmännische Marge im Rechenweg."
+        )
+
+    if "preis je" in lower_title or "preis pro" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird die Preisbasis gewechselt. "
+            "Das ist im Holzhandel wichtig, weil Ware manchmal pro Kubikmeter eingekauft, aber pro Laufmeter oder Quadratmeter angeboten wird. "
+            f"Der Wert {result_value if separator else 'aus diesem Schritt'} sagt dann, was genau eine gesuchte Verkaufseinheit kostet. "
+            "Damit wird der Preis für den Kunden greifbarer."
+        )
+
+    if "absoluter db" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird der Deckungsbeitrag als Eurobetrag betrachtet. "
+            "Geschäftlich ist das der Rohertrag der Position: also das, was zwischen Verkaufspreis und Einkaufspreis übrig bleibt. "
+            f"Hier bleiben {result_value if separator else 'Euro'} als absoluter DB stehen. "
+            "Dieser Betrag muss später helfen, Personal, Lager, Fuhrpark und weitere Kosten zu tragen."
+        )
+
+    if "db-satz" in lower_title or "relativer db" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird der Deckungsbeitrag ins Verhältnis zum Verkaufspreis gesetzt. "
+            "Dadurch siehst du nicht nur den Eurobetrag, sondern wie stark die Position prozentual kalkuliert ist. "
+            f"Der Wert {result_value if separator else 'aus diesem Schritt'} zeigt also die Marge in Prozent. "
+            "Das macht unterschiedliche Aufträge vergleichbar."
         )
 
     return (
         f"Du fragst nach Schritt {block['number']}: {title}. "
-        f"Die Formel lautet: {formula}. "
-        f"Konkret wird gerechnet: {calculation}. "
-        "Dieser Schritt liefert genau dieses Zwischenergebnis, das danach im nächsten passenden Schritt weiterverwendet wird."
+        "Dieser Teil ist fachlich der Übergang von einer bekannten Größe zur nächsten kaufmännisch relevanten Größe. "
+        f"Der Wert {result_value if separator else 'aus diesem Schritt'} ist deshalb nicht isoliert zu sehen, sondern beantwortet die Frage, welche Menge, Fläche, Preisbasis oder Marge in diesem Moment gebraucht wird."
     )
 
 
@@ -3395,15 +3445,17 @@ def generate_step_explanation(task, question_text):
         "Sprich ruhig, konkret und fachlich. "
         "Beantworte zuerst direkt die gestellte Frage, bevor du den Rechenweg allgemein erklärst. "
         "Wenn ein fokussierter Rechenschritt angegeben ist, erkläre hauptsächlich diesen Schritt und fasse nicht den ganzen Rechenweg zusammen. "
-        "Wenn die Frage einen Schritt, eine Formel oder eine Berechnung enthält, gehe genau auf diesen Inhalt ein. "
+        "Wiederhole nicht einfach die Formel oder die Berechnung, denn diese stehen bereits sichtbar in der Musterlösung. "
+        "Erkläre stattdessen die Geschäftslogik: Welche Größe ist bis zu diesem Schritt bekannt, welche kaufmännische Frage wird jetzt beantwortet, und warum braucht man diesen Schritt im Angebot oder in der Kalkulation? "
+        "Du darfst konkrete Zahlen aus dem Rechenschritt verwenden, aber nur, um die fachliche Bedeutung zu erklären. "
         "Wenn die Frage eine Alternative nennt, etwa 'Warum nicht geteilt?', vergleiche diese Alternative ausdrücklich mit der richtigen Rechenrichtung. "
         "Erkläre dann, in welchem umgekehrten Fall die Alternative richtig wäre. "
-        "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
-        "Gehe ausdrücklich auf die konkreten Zahlen aus dem Rechenweg ein, nenne die Einheit mit und erkläre genau, warum hier multipliziert oder geteilt wird. "
+        "Wenn es eine Umrechnungsaufgabe ist, erkläre die Rechenrichtung aus der Bedeutung der Einheiten heraus, nicht als bloße Formelwiederholung. "
+        "Gehe ausdrücklich auf die konkreten Zahlen aus dem Rechenweg ein, nenne die Einheit mit und erkläre warum hier multipliziert oder geteilt wird. "
         "Erkläre bildhaft und anschaulich, zum Beispiel so, dass man sich die Ware oder Platte vor dem inneren Auge vorstellen kann. "
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
-        "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' ohne sie direkt mit der konkreten Formel und den Zahlen zu verbinden. "
+        "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' oder 'dieses Zwischenergebnis wird im nächsten Schritt verwendet'. "
         "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen, in maximal 5 Sätzen. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
