@@ -3099,30 +3099,90 @@ def solution_lines(task):
     return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
 
 
-def solution_block_for_label(task, label):
-    lines = solution_lines(task)
-    for index, line in enumerate(lines):
-        match = re.match(r"^\d+\.\s+(.+)$", line)
-        if not match or match.group(1).strip() != label:
+def solution_blocks(task):
+    blocks = []
+    current = None
+    for line in solution_lines(task):
+        match = re.match(r"^(\d+)\.\s+(.+)$", line)
+        if match:
+            if current:
+                blocks.append(current)
+            current = {
+                "number": int(match.group(1)),
+                "title": match.group(2).strip(),
+                "formula": "",
+                "calculation": "",
+                "lines": [],
+            }
             continue
 
-        block_lines = []
-        for block_line in lines[index + 1:]:
-            if re.match(r"^\d+\.\s+.+$", block_line):
-                break
-            block_lines.append(block_line)
+        if not current:
+            continue
 
-        formula = ""
-        calculation = ""
-        for block_line in block_lines:
-            if block_line.startswith("Formel:"):
-                formula = block_line.replace("Formel:", "", 1).strip()
-            elif block_line.startswith("Berechnung:"):
-                calculation = block_line.replace("Berechnung:", "", 1).strip()
+        current["lines"].append(line)
+        if line.startswith("Formel:"):
+            current["formula"] = line.replace("Formel:", "", 1).strip()
+        elif line.startswith("Berechnung:"):
+            current["calculation"] = line.replace("Berechnung:", "", 1).strip()
 
-        return {"formula": formula, "calculation": calculation}
+    if current:
+        blocks.append(current)
+    return blocks
+
+
+def format_solution_block(block):
+    lines = [f"{block['number']}. {block['title']}"]
+    if block.get("formula"):
+        lines.append(f"Formel: {block['formula']}")
+    if block.get("calculation"):
+        lines.append(f"Berechnung: {block['calculation']}")
+    return " ".join(lines)
+
+
+def solution_block_for_label(task, label):
+    for block in solution_blocks(task):
+        if block["title"] == label:
+            return {"formula": block["formula"], "calculation": block["calculation"]}
 
     return {}
+
+
+def focused_solution_blocks(task, question_text):
+    lower_question = question_text.lower()
+    blocks = solution_blocks(task)
+    focused_numbers = set()
+
+    for match in re.finditer(r"(?:^|\b)(?:schritt\s*)?(\d+)(?:\.|\b)", lower_question):
+        number = int(match.group(1))
+        if 1 <= number <= len(blocks):
+            focused_numbers.add(number)
+
+    ordinal_map = {
+        "erster": 1,
+        "erste": 1,
+        "zweiter": 2,
+        "zweite": 2,
+        "dritter": 3,
+        "dritte": 3,
+        "vierter": 4,
+        "vierte": 4,
+        "fünfter": 5,
+        "fünfte": 5,
+    }
+    for word, number in ordinal_map.items():
+        if word in lower_question and 1 <= number <= len(blocks):
+            focused_numbers.add(number)
+
+    if focused_numbers:
+        return [block for block in blocks if block["number"] in focused_numbers]
+
+    focused = []
+    for block in blocks:
+        title = block["title"].lower()
+        if title in lower_question:
+            focused.append(block)
+
+    return focused
 
 
 def normalize_explanation_question(text):
@@ -3146,10 +3206,79 @@ def normalize_explanation_question(text):
     return stripped
 
 
+def fallback_focused_block_explanation(task, block, question_text):
+    title = block.get("title", "dieser Schritt")
+    formula = block.get("formula", "")
+    calculation = block.get("calculation", "")
+    lower_title = title.lower()
+
+    if "paketfläche" in lower_title:
+        match = re.search(
+            r"(\d+(?:,\d+)?) Quadratmeter x (\d+) Stück = (\d+(?:,\d+)?) Quadratmeter",
+            calculation,
+        )
+        if match:
+            area_per_piece, piece_count, package_area = match.groups()
+            return (
+                f"In Schritt {block['number']} geht es nur um die Paketfläche, also um die Fläche aller Platten zusammen. "
+                f"Die {area_per_piece} Quadratmeter kommen aus dem vorherigen Schritt und gelten für eine einzelne Platte. "
+                f"Weil im Paket {piece_count} Stück liegen, rechnest du {area_per_piece} Quadratmeter x {piece_count} Stück. "
+                f"So entstehen {package_area} Quadratmeter Paketfläche; erst im nächsten Schritt wird daraus mit dem Quadratmeterpreis der Paketpreis."
+            )
+
+    if "paketpreis" in lower_title or "gesamtpreis" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird aus der Menge jetzt ein Preis. "
+            f"Die Formel lautet: {formula}. "
+            f"Konkret steht im Rechenweg: {calculation}. "
+            "Erst hier kommt also der Preis pro Einheit dazu; vorher wurden nur Mengen oder Flächen aufgebaut."
+        )
+
+    if "fläche pro platte" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird zuerst die Fläche einer einzelnen Platte berechnet. "
+            f"Die Formel lautet: {formula}. "
+            f"Konkret wird gerechnet: {calculation}. "
+            "Dieser Wert ist noch nicht die Paketfläche, sondern nur die Grundlage für den nächsten Schritt."
+        )
+
+    if "volumen pro stück" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird zuerst nur ein einzelnes Stück betrachtet. "
+            f"Die Formel lautet: {formula}. "
+            f"Konkret wird gerechnet: {calculation}. "
+            "Erst danach wird dieses Einzelvolumen mit der Stückzahl weitergerechnet."
+        )
+
+    if "db-faktor" in lower_title:
+        return (
+            f"In Schritt {block['number']} wird aus dem DB-Satz der Rechenfaktor gebildet. "
+            f"Die Formel lautet: {formula}. "
+            f"Konkret steht dort: {calculation}. "
+            "Dieser Faktor zeigt, welcher Anteil des Verkaufspreises auf den EK entfällt."
+        )
+
+    return (
+        f"Du fragst nach Schritt {block['number']}: {title}. "
+        f"Die Formel lautet: {formula}. "
+        f"Konkret wird gerechnet: {calculation}. "
+        "Dieser Schritt liefert genau dieses Zwischenergebnis, das danach im nächsten passenden Schritt weiterverwendet wird."
+    )
+
+
 def fallback_step_explanation(task, question_text):
     lines = solution_lines(task)
     joined = " ".join(lines)
     lower_question = question_text.lower()
+    focused_blocks = focused_solution_blocks(task, question_text)
+
+    if focused_blocks:
+        if len(focused_blocks) == 1:
+            return fallback_focused_block_explanation(task, focused_blocks[0], question_text)
+        return " ".join(
+            fallback_focused_block_explanation(task, block, question_text)
+            for block in focused_blocks[:2]
+        )
 
     if ("db" in lower_question or "0,75" in lower_question or "25" in lower_question) and "VK bei" in joined:
         match = re.search(r"(\d+(?:,\d+)?) % DB = (\d+(?:,\d+)?) Euro / (\d+(?:,\d+)?)", joined)
@@ -3254,11 +3383,19 @@ def fallback_step_explanation(task, question_text):
 def generate_step_explanation(task, question_text):
     lines = solution_lines(task)
     joined_lines = "\n".join(lines)
+    focused_blocks = focused_solution_blocks(task, question_text)
+    focused_text = (
+        "\n".join(format_solution_block(block) for block in focused_blocks)
+        if focused_blocks
+        else "Kein einzelner Schritt wurde eindeutig erkannt; beantworte die Frage anhand des gesamten Rechenwegs."
+    )
     prompt = (
         "Du bist ein Lernassistent für die Holzbranche. "
         "Erkläre auf Deutsch eine freie Rückfrage zu einem Muster-Rechenweg. "
         "Sprich ruhig, konkret und fachlich. "
         "Beantworte zuerst direkt die gestellte Frage, bevor du den Rechenweg allgemein erklärst. "
+        "Wenn ein fokussierter Rechenschritt angegeben ist, erkläre hauptsächlich diesen Schritt und fasse nicht den ganzen Rechenweg zusammen. "
+        "Wenn die Frage einen Schritt, eine Formel oder eine Berechnung enthält, gehe genau auf diesen Inhalt ein. "
         "Wenn die Frage eine Alternative nennt, etwa 'Warum nicht geteilt?', vergleiche diese Alternative ausdrücklich mit der richtigen Rechenrichtung. "
         "Erkläre dann, in welchem umgekehrten Fall die Alternative richtig wäre. "
         "Wenn es eine Umrechnungsaufgabe ist, nenne zuerst die zugrunde liegende Formelrichtung und erst danach die eingesetzten Zahlen. "
@@ -3272,6 +3409,7 @@ def generate_step_explanation(task, question_text):
         f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
         f"Zielgröße: {unit_label(task['unit'])}. "
+        f"Fokussierter Rechenschritt:\n{focused_text}\n"
         f"Rechenweg:\n{joined_lines}\n"
         f"Frage: {question_text}"
     )
