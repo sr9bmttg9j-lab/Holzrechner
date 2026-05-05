@@ -2690,12 +2690,25 @@ def render_guided_resolved_entry(entry):
     message = entry.get("message", "").strip()
     message_html = f"<div class='resolved-message'>{escape(message)}</div>" if message else ""
     result_label = "Weiterrechnen kannst du mit" if next_step else "Das Ergebnis ist"
+    formula = entry.get("formula", "").strip()
+    calculation = entry.get("calculation", "").strip()
+    formula_html = ""
+    if formula or calculation:
+        formula_lines = ["<div class='resolved-formula'>"]
+        formula_lines.append("<div class='resolved-formula-title'>So entsteht der grüne Wert:</div>")
+        if formula:
+            formula_lines.append(f"<div>Formel: <span class='resolved-formula-text'>{escape(formula)}</span></div>")
+        if calculation:
+            formula_lines.append(f"<div>Berechnung: <span class='resolved-good'>{escape(calculation)}</span></div>")
+        formula_lines.append("</div>")
+        formula_html = "\n".join(formula_lines)
 
     st.markdown(
         f"""
 <div class="resolved-step-box">
     <div class="resolved-title">{escape(entry.get("label", "Zwischenschritt"))} wurde aufgelöst</div>
     <div>Deine Eingabe <span class="resolved-bad">{escape(entry.get("raw_value", ""))}</span> ergab <span class="resolved-bad">{escape(entry.get("user_result", ""))}</span>.</div>
+    {formula_html}
     {message_html}
     <div>{result_label} <span class="resolved-good">{escape(entry.get("correct_result", ""))}</span>.</div>
     {next_text}
@@ -2953,13 +2966,16 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     return fallback_guided_error_hint(task, step, raw_value, answer_value, step_attempt)
 
 
-def auto_resolve_guided_step(step, raw_value, answer_value, message="", next_step=None):
+def auto_resolve_guided_step(task, step, raw_value, answer_value, message="", next_step=None):
+    solution_block = solution_block_for_label(task, step["label"])
     return {
         "kind": "resolved",
         "label": step["label"],
         "raw_value": raw_value,
         "user_result": f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}",
         "correct_result": f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}",
+        "formula": solution_block.get("formula", step.get("formula_hint", "")),
+        "calculation": solution_block.get("calculation", ""),
         "message": message,
         "next_step_label": next_step["label"] if next_step else "",
     }
@@ -2969,12 +2985,12 @@ def resolved_step_message(step, next_step=None):
     if next_step:
         return (
             "Ich habe diesen Zwischenschritt jetzt für dich gelöst. "
-            "Vergleiche deine Eingabe mit dem roten Wert und achte besonders auf Einheit, Rechenrichtung und passende Faktoren. "
-            f"Mit dem grünen Wert kannst du sauber bei {next_step['label']} weiterarbeiten."
+            "Schau dir vor allem die Berechnung zum grünen Wert an: Dort siehst du, welche Maße und Faktoren in genau diesem Schritt gebraucht werden. "
+            f"Diesen grünen Wert nutzt du anschließend für {next_step['label']}."
         )
     return (
         "Ich habe diesen letzten Zwischenschritt jetzt für dich gelöst. "
-        "Vergleiche deine Eingabe mit dem roten Wert und prüfe, welche Einheit oder Rechenrichtung dich aus dem Tritt gebracht hat. "
+        "Schau dir vor allem die Berechnung zum grünen Wert an und prüfe, welche Einheit oder Rechenrichtung dich aus dem Tritt gebracht hat. "
         "Danach kannst du den vollständigen Rechenweg in Ruhe ansehen."
     )
 
@@ -3081,6 +3097,32 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
 
 def solution_lines(task):
     return [line for line in task["solution"].splitlines() if line and line != "Rechenweg:"]
+
+
+def solution_block_for_label(task, label):
+    lines = solution_lines(task)
+    for index, line in enumerate(lines):
+        match = re.match(r"^\d+\.\s+(.+)$", line)
+        if not match or match.group(1).strip() != label:
+            continue
+
+        block_lines = []
+        for block_line in lines[index + 1:]:
+            if re.match(r"^\d+\.\s+.+$", block_line):
+                break
+            block_lines.append(block_line)
+
+        formula = ""
+        calculation = ""
+        for block_line in block_lines:
+            if block_line.startswith("Formel:"):
+                formula = block_line.replace("Formel:", "", 1).strip()
+            elif block_line.startswith("Berechnung:"):
+                calculation = block_line.replace("Berechnung:", "", 1).strip()
+
+        return {"formula": formula, "calculation": calculation}
+
+    return {}
 
 
 def normalize_explanation_question(text):
@@ -3492,6 +3534,7 @@ def handle_guided_submission():
             completed = st.session_state.guided_completed
             completed.append(
                 auto_resolve_guided_step(
+                    task,
                     step,
                     raw_value,
                     answer_value,
@@ -3512,6 +3555,7 @@ def handle_guided_submission():
         completed = st.session_state.guided_completed
         completed.append(
             auto_resolve_guided_step(
+                task,
                 step,
                 raw_value,
                 answer_value,
@@ -3544,6 +3588,25 @@ def handle_explanation_request():
 
     st.session_state.explanation_error = ""
     st.session_state.explanation_text = generate_step_explanation(st.session_state.task, normalized_question)
+
+
+def render_solution_explanation_form():
+    with st.form("solution_explanation_form", clear_on_submit=False):
+        st.text_input(
+            "Was möchtest du zum Rechenweg wissen?",
+            key="explanation_request",
+            placeholder="Zum Beispiel: Warum muss ich hier durch 0,75 teilen?",
+        )
+        explanation_submitted = st.form_submit_button("Schritte erklären", type="primary")
+
+    if explanation_submitted:
+        handle_explanation_request()
+
+    if st.session_state.explanation_error:
+        st.warning(st.session_state.explanation_error)
+
+    if st.session_state.explanation_text:
+        st.info(f"Erklärung: {st.session_state.explanation_text}")
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -3608,6 +3671,25 @@ st.markdown(
         .resolved-message {
             margin-top: 0.45rem;
             margin-bottom: 0.45rem;
+        }
+
+        .resolved-formula {
+            margin-top: 0.65rem;
+            margin-bottom: 0.65rem;
+            padding: 0.7rem 0.8rem;
+            border-radius: 6px;
+            background: rgba(21, 128, 61, 0.16);
+        }
+
+        .resolved-formula-title {
+            color: #bbf7d0;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .resolved-formula-text {
+            color: #d9f99d;
+            font-weight: 700;
         }
 
         .resolved-bad {
@@ -3735,26 +3817,12 @@ if st.session_state.solution_visible:
         f"{st.session_state.hint_text}"
     )
     render_musterloesung(st.session_state.task)
-    with st.form("solution_explanation_form", clear_on_submit=False):
-        st.text_input(
-            "Was möchtest du zum Rechenweg wissen?",
-            key="explanation_request",
-            placeholder="Zum Beispiel: Warum muss ich hier durch 0,75 teilen?",
-        )
-        explanation_submitted = st.form_submit_button("Schritte erklären", type="primary")
-
-    if explanation_submitted:
-        handle_explanation_request()
-
-    if st.session_state.explanation_error:
-        st.warning(st.session_state.explanation_error)
-
-    if st.session_state.explanation_text:
-        st.info(f"Erklärung: {st.session_state.explanation_text}")
+    render_solution_explanation_form()
 
 if st.session_state.task_finished and not st.session_state.solution_visible:
     if st.session_state.get("show_optional_solution"):
         render_musterloesung(st.session_state.task)
+        render_solution_explanation_form()
     elif st.button("Musterlösung anzeigen"):
         st.session_state.show_optional_solution = True
         st.rerun()
