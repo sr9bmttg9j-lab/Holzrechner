@@ -3909,7 +3909,7 @@ st.write(
 )
 st.write(
     "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
-    "Für mal kannst du x, × oder * verwenden; zum Teilen gehen / oder :. Leerzeichen sind egal."
+    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal."
 )
 st.markdown(
     """
@@ -3919,6 +3919,10 @@ Beispiele, die funktionieren:
 - `6 x 0,08 x 0,12`
 - `6*0,08*0,12=0,0576`
 """
+)
+st.write(
+    "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
+    "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
 )
 
 st.subheader("Theorie auffrischen")
@@ -3932,6 +3936,9 @@ if st.button(
 
 if st.session_state.show_theory:
     render_theory_section()
+    if st.button("Theorie ausblenden", key="theory_hide_bottom_button"):
+        st.session_state.show_theory = False
+        st.rerun()
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
