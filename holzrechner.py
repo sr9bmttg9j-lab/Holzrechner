@@ -3845,17 +3845,20 @@ st.markdown(
         }
 
         .resolved-step-box {
-            border: 1px solid rgba(234, 179, 8, 0.35);
-            background: rgba(113, 63, 18, 0.34);
+            border: 1px solid rgba(148, 163, 184, 0.28);
+            background: #111827;
             border-radius: 8px;
-            padding: 1rem 1.15rem;
+            color: #e5e7eb;
+            padding: 1.05rem 1.15rem;
             margin: 0.8rem 0;
             line-height: 1.55;
+            box-shadow: 0 1px 2px rgba(15, 23, 42, 0.08);
         }
 
         .resolved-title {
             font-weight: 700;
             margin-bottom: 0.35rem;
+            color: #f9fafb;
         }
 
         .resolved-message {
@@ -3866,29 +3869,31 @@ st.markdown(
         .resolved-formula {
             margin-top: 0.65rem;
             margin-bottom: 0.65rem;
-            padding: 0.7rem 0.8rem;
+            padding: 0.85rem 0.9rem;
             border-radius: 6px;
-            background: rgba(21, 128, 61, 0.16);
+            border: 1px solid rgba(148, 163, 184, 0.18);
+            background: rgba(2, 6, 23, 0.45);
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
         }
 
         .resolved-formula-title {
-            color: #bbf7d0;
+            color: #cbd5e1;
             font-weight: 700;
             margin-bottom: 0.25rem;
         }
 
         .resolved-formula-text {
-            color: #d9f99d;
+            color: #d1fae5;
             font-weight: 700;
         }
 
         .resolved-bad {
-            color: #f87171;
+            color: #fb7185;
             font-weight: 700;
         }
 
         .resolved-good {
-            color: #4ade80;
+            color: #34d399;
             font-weight: 700;
         }
 
