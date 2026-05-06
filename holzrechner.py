@@ -2,7 +2,7 @@ import ast
 import json
 import os
 import random
-from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_HALF_UP
+from decimal import Decimal, InvalidOperation, ROUND_CEILING, ROUND_DOWN, ROUND_HALF_UP
 from html import escape
 import re
 from urllib import error as urllib_error
@@ -249,6 +249,11 @@ def q(value_str):
 def format_decimal(value, places):
     quant = q("1") if places == 0 else q("1." + ("0" * places))
     return str(value.quantize(quant, rounding=ROUND_HALF_UP)).replace(".", ",")
+
+
+def truncate_decimal(value, places):
+    quant = q("1") if places == 0 else q("1." + ("0" * places))
+    return value.quantize(quant, rounding=ROUND_DOWN)
 
 
 def precise_decimal_places(value, min_places=3, max_places=5):
@@ -2419,7 +2424,7 @@ def values_match(user_value, expected_value, round_for_check, match_mode=None):
 
     if round_for_check:
         return user_value.quantize(q("1.00"), rounding=ROUND_HALF_UP) == expected_value
-    return user_value == expected_value
+    return truncate_decimal(user_value, 3) == truncate_decimal(expected_value, 3)
 
 
 def guided_values_match(user_value, expected_value, round_for_check, current_index, unit, match_mode=None):
@@ -2607,17 +2612,17 @@ def render_theory_section():
     )
     st.markdown(
         """
-| Von | Nach | Rechenweg |
-| --- | --- | --- |
-| Laufmeter | Quadratmeter | Laufmeter x Breite |
-| Quadratmeter | Laufmeter | Quadratmeter / Breite |
-| Quadratmeter | Kubikmeter | Quadratmeter x Dicke |
-| Kubikmeter | Quadratmeter | Kubikmeter / Dicke |
-| Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe |
-| Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) |
-| Bodenstück | Quadratmeter pro Stück | Länge x Breite |
-| Bodenpaket | Quadratmeter pro Paket | Quadratmeter pro Stück x Stückzahl im Paket |
-| Bedarf | Pakete | Bedarf / Paketfläche, danach auf volle Pakete aufrunden |
+| Von | Nach | Rechenweg | Beispiel |
+| --- | --- | --- | --- |
+| Laufmeter | Quadratmeter | Laufmeter x Breite | 24 Laufmeter x 0,16 Meter = 3,84 Quadratmeter |
+| Quadratmeter | Laufmeter | Quadratmeter / Breite | 3,84 Quadratmeter / 0,16 Meter = 24 Laufmeter |
+| Quadratmeter | Kubikmeter | Quadratmeter x Dicke | 51,25 Quadratmeter x 0,04 Meter = 2,05 Kubikmeter |
+| Kubikmeter | Quadratmeter | Kubikmeter / Dicke | 2,05 Kubikmeter / 0,04 Meter = 51,25 Quadratmeter |
+| Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe | 30 Laufmeter x 0,08 Meter x 0,10 Meter = 0,240 Kubikmeter |
+| Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) | 0,240 Kubikmeter / (0,08 Meter x 0,10 Meter) = 30 Laufmeter |
+| Bodenstück | Quadratmeter pro Stück | Länge x Breite | 1,20 Meter x 0,18 Meter = 0,216 Quadratmeter |
+| Bodenpaket | Quadratmeter pro Paket | Quadratmeter pro Stück x Stückzahl im Paket | 0,216 Quadratmeter x 20 Stück = 4,320 Quadratmeter |
+| Bedarf | Pakete | Bedarf / Paketfläche, danach auf volle Pakete aufrunden | 90 Quadratmeter / 4,320 Quadratmeter = 20,833, also 21 Pakete |
 """
     )
 
@@ -2643,14 +2648,14 @@ def render_theory_section():
     )
     st.markdown(
         """
-| Von | Nach | Rechenweg |
-| --- | --- | --- |
-| Euro pro Laufmeter | Euro pro Quadratmeter | Euro pro Laufmeter / Breite |
-| Euro pro Quadratmeter | Euro pro Laufmeter | Euro pro Quadratmeter x Breite |
-| Euro pro Quadratmeter | Euro pro Kubikmeter | Euro pro Quadratmeter / Dicke |
-| Euro pro Kubikmeter | Euro pro Quadratmeter | Euro pro Kubikmeter x Dicke |
-| Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Höhe) |
-| Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Höhe |
+| Von | Nach | Rechenweg | Beispiel |
+| --- | --- | --- | --- |
+| Euro pro Laufmeter | Euro pro Quadratmeter | Euro pro Laufmeter / Breite | 4,80 Euro pro Laufmeter / 0,16 Meter = 30,00 Euro pro Quadratmeter |
+| Euro pro Quadratmeter | Euro pro Laufmeter | Euro pro Quadratmeter x Breite | 30,00 Euro pro Quadratmeter x 0,16 Meter = 4,80 Euro pro Laufmeter |
+| Euro pro Quadratmeter | Euro pro Kubikmeter | Euro pro Quadratmeter / Dicke | 12,00 Euro pro Quadratmeter / 0,04 Meter = 300,00 Euro pro Kubikmeter |
+| Euro pro Kubikmeter | Euro pro Quadratmeter | Euro pro Kubikmeter x Dicke | 300,00 Euro pro Kubikmeter x 0,04 Meter = 12,00 Euro pro Quadratmeter |
+| Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Höhe) | 4,80 Euro pro Laufmeter / (0,08 Meter x 0,10 Meter) = 600,00 Euro pro Kubikmeter |
+| Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Höhe | 600,00 Euro pro Kubikmeter x 0,08 Meter x 0,10 Meter = 4,80 Euro pro Laufmeter |
 """
     )
 
@@ -3799,6 +3804,59 @@ def render_solution_explanation_form():
         st.info(f"Erklärung: {st.session_state.explanation_text}")
 
 
+def keypad_append(input_key, token):
+    st.session_state[input_key] = f"{st.session_state.get(input_key, '')}{token}"
+
+
+def keypad_backspace(input_key):
+    st.session_state[input_key] = st.session_state.get(input_key, "")[:-1]
+
+
+def keypad_clear(input_key):
+    st.session_state[input_key] = ""
+
+
+def render_mobile_keypad(input_key, instance_key, disabled=False):
+    st.markdown("<div class='mobile-keypad-note'>Mobile Eingabehilfe</div>", unsafe_allow_html=True)
+    rows = [
+        [("7", "7"), ("8", "8"), ("9", "9"), ("/", "/")],
+        [("4", "4"), ("5", "5"), ("6", "6"), ("x", "x")],
+        [("1", "1"), ("2", "2"), ("3", "3"), (":", ":")],
+        [("0", "0"), (",", ","), ("=", "="), ("-", "-")],
+        [("(", "("), (")", ")"), ("*", "*"), ("⌫", "backspace")],
+    ]
+
+    for row_index, row in enumerate(rows):
+        columns = st.columns(len(row))
+        for col_index, (label, token) in enumerate(row):
+            key = f"mobile_keypad_{instance_key}_{row_index}_{col_index}"
+            if token == "backspace":
+                columns[col_index].button(
+                    label,
+                    key=key,
+                    disabled=disabled,
+                    on_click=keypad_backspace,
+                    args=(input_key,),
+                )
+            else:
+                columns[col_index].button(
+                    label,
+                    key=key,
+                    disabled=disabled,
+                    on_click=keypad_append,
+                    args=(input_key, token),
+                )
+
+    if st.button(
+        "Eingabe leeren",
+        key=f"mobile_keypad_{instance_key}_clear",
+        disabled=disabled,
+        on_click=keypad_clear,
+        args=(input_key,),
+    ):
+        pass
+
+
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
 init_state()
 
@@ -3902,6 +3960,32 @@ st.markdown(
             font-weight: 700;
             margin-top: 0.35rem;
         }
+
+        .mobile-keypad-note,
+        div[class*="st-key-mobile_keypad_"] {
+            display: none;
+        }
+
+        @media (max-width: 720px) {
+            .mobile-keypad-note {
+                display: block;
+                color: #6b7280;
+                font-size: 0.9rem;
+                font-weight: 600;
+                margin: -0.2rem 0 0.35rem 0;
+            }
+
+            div[class*="st-key-mobile_keypad_"] {
+                display: block;
+            }
+
+            div[class*="st-key-mobile_keypad_"] button {
+                width: 100%;
+                min-height: 2.65rem;
+                padding: 0.35rem 0.2rem;
+                border-radius: 7px;
+            }
+        }
     </style>
     """,
     unsafe_allow_html=True,
@@ -3915,6 +3999,10 @@ st.write(
 st.write(
     "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
     "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal."
+)
+st.write(
+    "Den Taschenrechner kannst du dabei zur Seite legen: Alle Rechenwege und Ergebnisse können direkt hier eingegeben "
+    "und geprüft werden."
 )
 st.markdown(
     """
@@ -3962,6 +4050,12 @@ with st.form("answer_form", clear_on_submit=False):
         type="primary",
     )
 
+render_mobile_keypad(
+    "answer_input",
+    "answer",
+    disabled=st.session_state.task_finished or st.session_state.get("main_input_locked", False),
+)
+
 if submitted:
     handle_submission()
 
@@ -4007,6 +4101,8 @@ if st.session_state.guided_visible:
                 placeholder=step_placeholder(current_step),
             )
             guided_submitted = st.form_submit_button("Schritt prüfen", type="primary")
+
+        render_mobile_keypad(f"guided_input_{current_index + 1}", f"guided_{current_index + 1}")
 
         if guided_submitted:
             handle_guided_submission()
