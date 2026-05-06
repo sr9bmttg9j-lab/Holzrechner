@@ -208,14 +208,9 @@ ERROR_PATTERN_GUIDE = """
 
 AI_ERROR_EVALUATION_GUIDE = """
 Typische Fehlerquellen, die du bei falschen Eingaben zusätzlich prüfen sollst:
-- Prüfe zuerst die konkreten Faktoren der Nutzereingabe: Fehlt ein notwendiger Faktor, ist ein Faktor zu viel enthalten, ist ein 10/100/1000-Faktor durch Komma- oder Maßeinheitenfehler falsch, oder wurde multiplizieren und dividieren vertauscht?
-- Faktorfehler durch Maßeinheiten: Häufig liegt das Ergebnis ungefähr um Faktor 10, 100 oder 1000 daneben, weil Millimeter, Zentimeter und Meter falsch umgerechnet wurden.
-- Fehlender oder überflüssiger Faktor: Manchmal wurde ein notwendiger Faktor wie Breite, Dicke, Höhe, Stückzahl oder Paketmenge weggelassen; manchmal wurde ein Faktor verwendet, der für die gesuchte Zielgröße gar nicht gebraucht wird.
-- Wenn die Abweichung ungefähr dem Kehrwert eines konkreten Maßes entspricht, zum Beispiel 1 / 0,24, ist ein fehlender Faktor wie 0,24 Meter besonders wahrscheinlich. Weise dann möglichst konkret auf diesen fehlenden Faktor hin.
-- Vertauschte Rechenrichtung: Häufig wurde multipliziert, obwohl geteilt werden müsste, oder geteilt, obwohl multipliziert werden müsste.
-- Bei DB-Aufgaben ist ein häufiger Fehler: Der EK wurde berechnet, aber der Ziel-DB wurde noch nicht berücksichtigt. Dann fehlt der Schritt über den DB-Faktor 1 minus DB-Satz, zum Beispiel 0,73 bei 27 % DB.
-- Sprich nur dann von falscher Reihenfolge oder fehlender Struktur, wenn kein plausibler Faktorfehler, kein fehlender/überflüssiger Faktor, kein Kommafehler und keine vertauschte Rechenrichtung erkennbar ist. Bei reinen Multiplikationen ist die Reihenfolge selten die eigentliche Ursache.
-Diese Punkte sind nur mögliche typische Fehlerquellen, keine feste Diagnose. Prüfe immer anhand der konkreten Aufgabe, der Nutzereingabe, des berechneten Eingabewerts und der gesuchten Zielgröße, welcher Fehler wirklich plausibel ist.
+Prüfe zuerst konkrete Faktoren: fehlt etwas, ist etwas zu viel enthalten, liegt ein 10/100/1000- oder Kommafehler vor, oder wurde multiplizieren und dividieren vertauscht?
+Wenn eine lokale Python-Diagnose mitgegeben wird, behandle sie als starken Hinweis, aber prüfe sie anhand von Aufgabe, Eingabe und Zielgröße noch einmal selbst.
+Sprich nur dann von falscher Reihenfolge oder fehlender Struktur, wenn kein plausibler Faktor-, Einheiten- oder Richtungsfehler erkennbar ist.
 """
 
 FORMULA_GUIDE = """
@@ -864,6 +859,23 @@ def db_factor_check(db_percent, divisor):
     }
 
 
+def factor_check(label, value):
+    return {
+        "label": label,
+        "value": value,
+    }
+
+
+def wrong_value_check(value, message, unit=None, round_for_check=None, match_mode=None):
+    return {
+        "value": value,
+        "message": message,
+        "unit": unit,
+        "round_for_check": round_for_check,
+        "match_mode": match_mode,
+    }
+
+
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
@@ -917,6 +929,16 @@ def task_volume_beam(level):
             {"label": f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", "value": width_m},
             {"label": f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", "value": height_m},
             {"label": f"Stückzahl {count}", "value": Decimal(count)},
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                piece_volume * Decimal(package_count),
+                (
+                    f"Deine Eingabe passt eher zu einem vollen Paket mit {package_count} Stück. "
+                    f"Gefragt sind hier aber die tatsächlich genannten {count} Stück."
+                ),
+                "m3",
+            ),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1095,6 +1117,21 @@ def task_price_per_running_meter(level):
             f"{format_decimal(m3_price, 0)} x {format_decimal(width_m, 2)} x "
             f"{format_decimal(height_m, 3)}"
         ),
+        "factor_checks": [
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                m3_price / cross_section,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Kubikmeterpreis offenbar durch den Querschnitt geteilt. "
+                    "Für Euro pro Laufmeter wird aus dem Kubikmeterpreis aber der Preis des Volumens von einem Laufmeter gebildet."
+                ),
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Querschnitt",
@@ -1150,6 +1187,20 @@ def task_price_per_square_meter(level):
         "task_type": "price_per_square_meter",
         "correction": "Hier brauchst du nur die Dicke der Platte. Ein Quadratmeter mal Dicke ergibt das Volumen, und dieses Volumen wird mit dem Kubikmeterpreis multipliziert.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                m3_price / thickness_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Kubikmeterpreis offenbar durch die Dicke geteilt. "
+                    "Bei Euro pro Quadratmeter wird aus einem Quadratmeter Platte erst das kleine Volumen über die Dicke gebildet."
+                ),
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Preis pro Quadratmeter",
@@ -1203,6 +1254,20 @@ def task_square_meters_from_volume(level):
         "task_type": "square_meters_from_volume",
         "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_volume * thickness_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar mit der Dicke multipliziert. "
+                    "Wenn Kubikmeter in Quadratmeter zurückgeführt werden, muss die Dicke herausgerechnet werden."
+                ),
+                "m2",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Dicke in Meter",
@@ -1262,6 +1327,20 @@ def task_volume_from_square_meters(level):
         "task_type": "volume_from_square_meters",
         "correction": "Multipliziere die Quadratmeter mit der Dicke in Meter, um auf das Volumen zu kommen.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                square_meters / thickness_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Quadratmeter offenbar durch die Dicke geteilt. "
+                    "Für Kubikmeter muss die Fläche mit der Dicke in Meter weitergerechnet werden."
+                ),
+                "m3",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Kubikmeter",
@@ -1306,6 +1385,20 @@ def task_total_price_from_volume(level):
         "task_type": "total_price_from_volume",
         "correction": "Für den Gesamtpreis reicht Volumen x Preis pro Kubikmeter.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_volume / m3_price,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar durch den Preis geteilt. "
+                    "Für den Gesamtpreis wird das vorhandene Volumen mit dem Preis pro Kubikmeter bewertet."
+                ),
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Gesamtpreis",
@@ -1359,6 +1452,21 @@ def task_square_meters_from_running_meters(level):
         "task_type": "square_meters_from_running_meters",
         "correction": "Für Hobelware rechnest du die Laufmeter mit der Breite in Meter zu Quadratmetern um.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Laufmeter {format_decimal(running_meters, running_meters_places)}", running_meters),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                running_meters / width_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Laufmeter offenbar durch die Breite geteilt. "
+                    "Wenn aus Laufmetern Quadratmeter werden sollen, wird die Breite als Flächenfaktor genutzt."
+                ),
+                "m2",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Quadratmeter",
@@ -1418,6 +1526,21 @@ def task_running_meters_from_volume(level):
             f"{format_decimal(total_volume, total_volume_places)} / "
             f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
         ),
+        "factor_checks": [
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_volume * cross_section,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar mit dem Querschnitt multipliziert. "
+                    "Wenn Kubikmeter in Laufmeter zurückgeführt werden, muss der Querschnitt herausgeteilt werden."
+                ),
+                "lfm",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Laufmeter",
@@ -1471,6 +1594,21 @@ def task_running_meters_from_square_meters(level):
         "task_type": "running_meters_from_square_meters",
         "correction": "Für Hobelware teilst du die Quadratmeter durch die Breite in Meter, um die Laufmeter zu erhalten.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Quadratmeter {format_decimal(square_meters, square_meters_places)}", square_meters),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                square_meters * width_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Quadratmeter offenbar mit der Breite multipliziert. "
+                    "Wenn Quadratmeter in Laufmeter zurückgeführt werden, muss die Breite herausgeteilt werden."
+                ),
+                "lfm",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Laufmeter",
@@ -1551,7 +1689,54 @@ def task_db_sale_price(level):
             f"{count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
         ),
         "factor_checks": [
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stückzahl {count}", Decimal(count)),
+            factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_ek * divisor,
+                (
+                    f"Deine Eingabe wirkt so, als hättest du den EK mit dem DB-Faktor {format_decimal(divisor, 2)} multipliziert. "
+                    "Bei der VK-Kalkulation mit Ziel-DB wird der EK aber auf den VK hochgerechnet."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek * (Decimal("1") + db_percent / Decimal("100")),
+                (
+                    f"Deine Eingabe wirkt wie ein Aufschlag von {format_decimal(db_percent, 0)} % auf den EK. "
+                    "Ein Ziel-DB ist aber keine einfache Aufschlagsrechnung auf den EK, sondern wird vom Verkaufspreis aus betrachtet."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek / db_percent,
+                (
+                    f"Deine Eingabe wirkt so, als wäre mit {format_decimal(db_percent, 0)} statt mit dem DB-Faktor {format_decimal(divisor, 2)} gerechnet worden. "
+                    "Prozentwerte müssen zuerst als Faktor verstanden werden."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek * db_percent,
+                (
+                    f"Deine Eingabe wirkt so, als wäre der Prozentwert {format_decimal(db_percent, 0)} direkt als Faktor verwendet worden. "
+                    "Für den Ziel-DB brauchst du den Kostenanteil 1 minus DB-Satz."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                piece_volume * Decimal(package_count) * ek_price_m3 / divisor,
+                (
+                    f"Deine Eingabe passt eher zu einem vollen Paket mit {package_count} Stück. "
+                    f"Gefragt sind hier aber die tatsächlich genannten {count} Stück."
+                ),
+                "EUR",
+            ),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1635,6 +1820,22 @@ def task_volume_from_running_meters(level):
         "task_type": "volume_from_running_meters",
         "correction": "Rechne die Laufmeter direkt mit Breite und Höhe in Meter zu Kubikmeter um.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Laufmeter {format_decimal(running_meters, running_meters_places)}", running_meters),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                running_meters / (width_m * height_m),
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Laufmeter offenbar durch den Querschnitt geteilt. "
+                    "Für Kubikmeter werden Laufmeter, Breite und Stärke gemeinsam multipliziert."
+                ),
+                "m3",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Gesamtvolumen",
@@ -1679,6 +1880,21 @@ def task_volume_from_total_price(level):
         "task_type": "volume_from_total_price",
         "correction": "Teile den Gesamtpreis durch den Preis pro Kubikmeter.",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"Gesamtpreis {format_decimal(total_price, 2)} Euro", total_price),
+            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_price * m3_price,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Gesamtpreis offenbar mit dem Kubikmeterpreis multipliziert. "
+                    "Wenn aus einem Preis ein Volumen werden soll, muss die Preisbasis herausgeteilt werden."
+                ),
+                "m3",
+                round_for_check=False,
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Kubikmeter",
@@ -1724,6 +1940,20 @@ def task_weight_from_volume(level):
         "correction": "Beim Gewicht ist die Dichte nur der Faktor pro Kubikmeter. Du rechnest also das Volumen mit Kilogramm pro Kubikmeter weiter.",
         "solution": solution,
         "perfect_formula": f"{format_decimal(total_volume, total_volume_places)} x {format_decimal(density, 0)}",
+        "factor_checks": [
+            factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            factor_check(f"Dichte {format_decimal(density, 0)} Kilogramm pro Kubikmeter", density),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_volume / density,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar durch die Dichte geteilt. "
+                    "Für das Gewicht wird das Volumen mit Kilogramm pro Kubikmeter multipliziert."
+                ),
+                "kg",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Gewicht",
@@ -1784,6 +2014,21 @@ def task_m3_price_from_running_meter(level):
             f"{format_decimal(price_per_lfm, 2)} / "
             f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
         ),
+        "factor_checks": [
+            factor_check(f"Laufmeterpreis {format_decimal(price_per_lfm, 2)} Euro", price_per_lfm),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                price_per_lfm * cross_section,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Laufmeterpreis offenbar mit dem Querschnitt multipliziert. "
+                    "Für Euro pro Kubikmeter muss der Laufmeterpreis auf einen ganzen Kubikmeter hochgerechnet werden."
+                ),
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Breite x Höhe",
@@ -1852,6 +2097,32 @@ def task_ek_from_vk_db(level):
         "task_type": "ek_from_vk_db",
         "correction": "Wenn der VK und der DB bekannt sind, rechnest du den EK mit VK x (1 - DB-Satz).",
         "solution": solution,
+        "factor_checks": [
+            factor_check(f"DB-Faktor {format_decimal(divisor, 2)} bei {format_decimal(db_percent, 0)} % DB", divisor),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_vk,
+                "Deine Eingabe entspricht auffällig dem VK. Gefragt ist aber der EK, also der Anteil, der nach Abzug des DB-Anteils als Kostenanteil übrig bleibt.",
+                "EUR",
+            ),
+            wrong_value_check(
+                total_vk / divisor,
+                (
+                    f"Deine Eingabe wirkt so, als hättest du den VK durch den DB-Faktor {format_decimal(divisor, 2)} geteilt. "
+                    "Bei der Rückwärtsrechnung vom VK zum EK wird der VK mit diesem Faktor multipliziert."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_vk * db_percent,
+                (
+                    f"Deine Eingabe wirkt so, als wäre der Prozentwert {format_decimal(db_percent, 0)} direkt als Faktor verwendet worden. "
+                    f"Für die Rückwärtsrechnung brauchst du den DB-Faktor {format_decimal(divisor, 2)}."
+                ),
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "DB-Faktor",
@@ -1929,6 +2200,13 @@ def task_package_price(level):
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
             f"{package_count} x {format_decimal(m3_price, 0)}"
         ),
+        "factor_checks": [
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Paketstückzahl {package_count}", Decimal(package_count)),
+            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -2015,6 +2293,12 @@ def task_panel_package_price(level):
             f"{format_decimal(length_m, 2)} x {format_decimal(width_m, 3)} x "
             f"{package_count} x {format_decimal(m2_price, 2)}"
         ),
+        "factor_checks": [
+            factor_check(f"Länge {format_decimal(length_m, 2)} Meter", length_m),
+            factor_check(f"Breite {format_decimal(width_m, 3)} Meter", width_m),
+            factor_check(f"Plattenanzahl {package_count}", Decimal(package_count)),
+            factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Fläche pro Platte",
@@ -2115,7 +2399,46 @@ def task_package_db_sale_price(level):
             f"{package_count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
         ),
         "factor_checks": [
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Paketstückzahl {package_count}", Decimal(package_count)),
+            factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_ek * divisor,
+                (
+                    f"Deine Eingabe wirkt so, als hättest du den Paket-EK mit dem DB-Faktor {format_decimal(divisor, 2)} multipliziert. "
+                    "Bei der VK-Kalkulation mit Ziel-DB wird der EK aber auf den Verkaufspreis hochgerechnet."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek * (Decimal("1") + db_percent / Decimal("100")),
+                (
+                    f"Deine Eingabe wirkt wie ein Aufschlag von {format_decimal(db_percent, 0)} % auf den Paket-EK. "
+                    "Ein Ziel-DB ist aber keine einfache Aufschlagsrechnung auf den EK, sondern wird vom Verkaufspreis aus betrachtet."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek / db_percent,
+                (
+                    f"Deine Eingabe wirkt so, als wäre mit {format_decimal(db_percent, 0)} statt mit dem DB-Faktor {format_decimal(divisor, 2)} gerechnet worden. "
+                    "Prozentwerte müssen zuerst als Faktor verstanden werden."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_ek * db_percent,
+                (
+                    f"Deine Eingabe wirkt so, als wäre der Prozentwert {format_decimal(db_percent, 0)} direkt als Faktor verwendet worden. "
+                    "Für den Ziel-DB brauchst du den Kostenanteil 1 minus DB-Satz."
+                ),
+                "EUR",
+            ),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2387,6 +2710,17 @@ def task_absolute_db_from_ek_vk(level):
         "correction": "Der absolute DB ist der Eurobetrag zwischen VK und EK.",
         "solution": solution,
         "perfect_formula": f"{format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}",
+        "factor_checks": [
+            factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+            factor_check(f"EK {format_decimal(total_ek, 2)} Euro", total_ek),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_vk + total_ek,
+                "Deine Eingabe wirkt so, als hättest du VK und EK addiert. Beim absoluten DB geht es aber um den Betrag, der zwischen VK und EK übrig bleibt.",
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Absoluter DB",
@@ -2448,6 +2782,24 @@ def task_relative_db_from_ek_vk(level):
             f"({format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}) / "
             f"{format_decimal(total_vk, 2)} * 100"
         ),
+        "factor_checks": [
+            factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+            factor_check(f"EK {format_decimal(total_ek, 2)} Euro", total_ek),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                (absolute_db / total_ek * Decimal("100")).quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "Deine Eingabe wirkt so, als hättest du den absoluten DB ins Verhältnis zum EK gesetzt. Der relative DB wird hier aber auf den VK bezogen.",
+                "Prozent",
+                round_for_check=True,
+                match_mode="percent_or_factor",
+            ),
+            wrong_value_check(
+                total_vk - total_ek,
+                "Deine Eingabe entspricht auffällig dem absoluten DB in Euro. Gefragt ist aber der relative DB-Satz in Prozent.",
+                "EUR",
+            ),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Absoluter DB",
@@ -2908,6 +3260,25 @@ def is_close_factor(value, target):
     return abs(value - target) <= tolerance
 
 
+def diagnostic_values_match(user_value, expected_value, round_for_check=False, match_mode=None):
+    if expected_value is None:
+        return False
+
+    if values_match(user_value, expected_value, round_for_check, match_mode):
+        return True
+
+    if round_for_check:
+        return user_value.quantize(q("1.00"), rounding=ROUND_HALF_UP) == expected_value.quantize(
+            q("1.00"), rounding=ROUND_HALF_UP
+        )
+
+    if expected_value == 0:
+        return user_value == 0
+
+    tolerance = abs(expected_value) * Decimal("0.003")
+    return abs(user_value - expected_value) <= tolerance
+
+
 def diagnose_factor_check(answer_value, expected_value, factor_checks):
     if expected_value == 0:
         return ""
@@ -2949,13 +3320,65 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
     return ""
 
 
-def diagnose_common_mistake(task, answer_value, expected_value):
+def diagnose_wrong_value_check(task, answer_value):
+    for check in task.get("wrong_value_checks", []):
+        value = check.get("value")
+        if value is None:
+            continue
+        value = Decimal(value)
+        round_for_check = check.get("round_for_check")
+        if round_for_check is None:
+            round_for_check = check.get("unit") in {"EUR", "kg"}
+        if diagnostic_values_match(answer_value, value, round_for_check, check.get("match_mode")):
+            return check.get("message", "")
+    return ""
+
+
+def diagnose_intermediate_value(task, answer_value, expected_value):
+    guided_steps = task.get("guided_steps", [])
+    if len(guided_steps) <= 1:
+        return ""
+
+    if values_match(answer_value, expected_value, task.get("round_for_check", False), task.get("match_mode")):
+        return ""
+
+    final_label = guided_steps[-1].get("label", "Endergebnis")
+    for step in guided_steps[:-1]:
+        if diagnostic_values_match(
+            answer_value,
+            step["expected"],
+            step["round_for_check"],
+            step.get("match_mode"),
+        ):
+            step_value = f"{format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}"
+            return (
+                f"Deine Eingabe passt auffällig zum Zwischenschritt {step['label']} ({step_value}), "
+                f"aber gefragt ist {final_label} als {unit_label(task['unit'])}. "
+                "Wahrscheinlich hast du einen späteren Faktor oder den nächsten Rechenschritt noch nicht berücksichtigt."
+            )
+    return ""
+
+
+def diagnose_common_mistake(task, answer_value, expected_value, include_task_wrong_values=True, include_intermediates=True):
     if expected_value == 0:
         return ""
+
+    if values_match(answer_value, expected_value, task.get("round_for_check", False), task.get("match_mode")):
+        return ""
+
+    if include_task_wrong_values:
+        wrong_value_diagnostic = diagnose_wrong_value_check(task, answer_value)
+        if wrong_value_diagnostic:
+            return wrong_value_diagnostic
 
     factor_diagnostic = diagnose_factor_check(answer_value, expected_value, task.get("factor_checks", []))
     if factor_diagnostic:
         return factor_diagnostic
+
+    if include_intermediates:
+        intermediate_diagnostic = diagnose_intermediate_value(task, answer_value, expected_value)
+        if intermediate_diagnostic:
+            return intermediate_diagnostic
 
     try:
         ratio = (answer_value / expected_value).copy_abs()
@@ -3027,7 +3450,13 @@ def diagnose_common_mistake(task, answer_value, expected_value):
 
 
 def diagnose_step_mistake(task, step, answer_value):
-    message = diagnose_common_mistake(task, answer_value, step["expected"])
+    message = diagnose_common_mistake(
+        task,
+        answer_value,
+        step["expected"],
+        include_task_wrong_values=False,
+        include_intermediates=False,
+    )
     if message:
         return message
 
