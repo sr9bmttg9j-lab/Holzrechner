@@ -896,6 +896,18 @@ def wrong_value_check(value, message, unit=None, round_for_check=None, match_mod
     }
 
 
+def ignored_board_length_checks(correct_value, board_length, unit, target_label):
+    length_text = format_m(board_length)
+    message = (
+        f"Die Abweichung passt auffällig dazu, dass die Brettlänge von {length_text} Meter in die Rechnung einbezogen wurde. "
+        f"Bei {target_label} ist die Laufmeterangabe bereits die relevante Länge; die einzelne Brettlänge ist hier nur Zusatzinformation."
+    )
+    return [
+        wrong_value_check(correct_value * board_length, message, unit),
+        wrong_value_check(correct_value / board_length, message, unit),
+    ]
+
+
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
@@ -1150,6 +1162,12 @@ def task_price_per_running_meter(level):
                     "Für Euro pro Laufmeter wird aus dem Kubikmeterpreis aber der Preis des Volumens von einem Laufmeter gebildet."
                 ),
                 "EUR",
+            ),
+            *ignored_board_length_checks(
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                board_length,
+                "EUR",
+                "dem Preis je Laufmeter",
             ),
         ],
         "guided_steps": [
@@ -1486,6 +1504,7 @@ def task_square_meters_from_running_meters(level):
                 "m2",
                 round_for_check=False,
             ),
+            *ignored_board_length_checks(result.normalize(), board_length, "m2", "Quadratmetern aus Laufmetern"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1560,6 +1579,7 @@ def task_running_meters_from_volume(level):
                 "lfm",
                 round_for_check=False,
             ),
+            *ignored_board_length_checks(running_meters.normalize(), board_length, "lfm", "Laufmetern aus Kubikmetern"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1628,6 +1648,7 @@ def task_running_meters_from_square_meters(level):
                 "lfm",
                 round_for_check=False,
             ),
+            *ignored_board_length_checks(result.normalize(), board_length, "lfm", "Laufmetern aus Quadratmetern"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1855,6 +1876,7 @@ def task_volume_from_running_meters(level):
                 "m3",
                 round_for_check=False,
             ),
+            *ignored_board_length_checks(result.normalize(), board_length, "m3", "Kubikmetern aus Laufmetern"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2736,6 +2758,11 @@ def task_absolute_db_from_ek_vk(level):
         ],
         "wrong_value_checks": [
             wrong_value_check(
+                total_ek - total_vk,
+                "Deine Eingabe wirkt so, als hättest du EK minus VK gerechnet. Beim absoluten DB ist die Richtung andersherum: VK minus EK.",
+                "EUR",
+            ),
+            wrong_value_check(
                 total_vk + total_ek,
                 "Deine Eingabe wirkt so, als hättest du VK und EK addiert. Beim absoluten DB geht es aber um den Betrag, der zwischen VK und EK übrig bleibt.",
                 "EUR",
@@ -3341,6 +3368,34 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
                 f"Die Abweichung passt auffällig dazu, dass der Faktor {label} zu viel verwendet wurde. "
                 "Prüfe, ob dieser Wert für die gesuchte Zielgröße wirklich gebraucht wird."
             )
+
+    for index, (_first_factor, first_label, first_value) in enumerate(normalized_factors):
+        for _second_factor, second_label, second_value in normalized_factors[index + 1 :]:
+            product = first_value * second_value
+            if product and product != 1 and is_close_factor(abs_ratio, Decimal("1") / product):
+                return (
+                    "Die Abweichung passt auffällig zu zwei gleichzeitig fehlenden Faktoren: "
+                    f"{first_label} und {second_label}. Prüfe, ob beide Werte im Rechenweg wirklich vorkommen."
+                )
+            if product != 1 and is_close_factor(abs_ratio, product):
+                return (
+                    "Die Abweichung passt auffällig dazu, dass zwei Faktoren zu viel verwendet wurden: "
+                    f"{first_label} und {second_label}. Prüfe, ob beide Werte für die gesuchte Zielgröße wirklich gebraucht werden."
+                )
+
+            first_over_second = first_value / second_value
+            if first_over_second != 1 and is_close_factor(abs_ratio, first_over_second):
+                return (
+                    "Die Abweichung passt auffällig zu einer Kombination aus zwei Faktorfehlern: "
+                    f"{first_label} wurde eher zu viel verwendet, während {second_label} fehlen könnte."
+                )
+
+            second_over_first = second_value / first_value
+            if second_over_first != 1 and is_close_factor(abs_ratio, second_over_first):
+                return (
+                    "Die Abweichung passt auffällig zu einer Kombination aus zwei Faktorfehlern: "
+                    f"{second_label} wurde eher zu viel verwendet, während {first_label} fehlen könnte."
+                )
 
     return ""
 
