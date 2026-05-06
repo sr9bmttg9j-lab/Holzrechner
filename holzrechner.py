@@ -507,7 +507,27 @@ def product_name(product):
     return str(product)
 
 
-def generate_structural_dimensions(level):
+def structural_cm_number(value_m):
+    return format_cm(value_m)
+
+
+def generate_structural_dimensions(level, length_m=None):
+    forbidden_numbers = {format_m(length_m)} if length_m is not None else set()
+    valid_pairs = []
+
+    for first in STRUCTURAL_WIDTHS_BY_LEVEL[level]:
+        first_number = structural_cm_number(first)
+        if first_number in forbidden_numbers:
+            continue
+        for second in STRUCTURAL_HEIGHTS_BY_LEVEL[level]:
+            second_number = structural_cm_number(second)
+            if second_number in forbidden_numbers or second_number == first_number:
+                continue
+            valid_pairs.append(tuple(sorted([first, second])))
+
+    if valid_pairs:
+        return list(random.choice(valid_pairs))
+
     first = choice_for_level(STRUCTURAL_WIDTHS_BY_LEVEL, level)
     second = choice_for_level(STRUCTURAL_HEIGHTS_BY_LEVEL, level)
     return sorted([first, second])
@@ -653,7 +673,7 @@ def generate_whole_volume_position(level):
 
     if kind == "structural_beam":
         length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-        width_m, height_m = generate_structural_dimensions(level)
+        width_m, height_m = generate_structural_dimensions(level, length_m)
         count = random.choice(COUNTS_BY_LEVEL[level])
         total_volume = length_m * width_m * height_m * Decimal(count)
         width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
@@ -879,7 +899,7 @@ def wrong_value_check(value, message, unit=None, round_for_check=None, match_mod
 def task_volume_beam(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     piece_volume = length_m * width_m * height_m
@@ -1626,7 +1646,7 @@ def task_running_meters_from_square_meters(level):
 def task_db_sale_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
@@ -2056,7 +2076,7 @@ def task_m3_price_from_running_meter(level):
 def task_ek_from_vk_db(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     db_percent = db_percent_for_product(product, level)
@@ -2149,7 +2169,7 @@ def task_ek_from_vk_db(level):
 def task_package_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
     package_count = structural_package_count(width_m, height_m)
     m3_price = m3_price_for_product(product, level)
     piece_volume = length_m * width_m * height_m
@@ -2337,7 +2357,7 @@ def task_panel_package_price(level):
 def task_package_db_sale_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = db_percent_for_product(product, level)
@@ -2605,7 +2625,7 @@ def task_running_meter_piece_count(level):
         product = {"name": "KVH", "kind": "structural_beam"}
         display_name = product["name"]
         length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-        width_m, height_m = generate_structural_dimensions(level)
+        width_m, height_m = generate_structural_dimensions(level, length_m)
         width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
         extra_context = f"Der Querschnitt beträgt {width_text} x {height_text}."
 
@@ -3289,6 +3309,7 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
         return ""
 
     abs_ratio = ratio.copy_abs()
+    normalized_factors = []
     for factor in factor_checks or []:
         label = factor.get("label", "ein Faktor")
         value = factor.get("value")
@@ -3297,7 +3318,9 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
         value = Decimal(value)
         if value == 0:
             continue
+        normalized_factors.append((factor, label, value))
 
+    for factor, label, value in normalized_factors:
         if factor.get("missing_when_ratio_is_value") and is_close_factor(abs_ratio, value):
             return factor.get(
                 "missing_message",
@@ -3311,6 +3334,8 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
                 f"Die Abweichung passt auffällig dazu, dass der Faktor {label} fehlen könnte. "
                 "Prüfe, ob dieser Wert in deinem Rechenweg wirklich vorkommt."
             )
+
+    for _factor, label, value in normalized_factors:
         if is_close_factor(abs_ratio, value):
             return (
                 f"Die Abweichung passt auffällig dazu, dass der Faktor {label} zu viel verwendet wurde. "
