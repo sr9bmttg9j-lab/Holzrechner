@@ -3834,6 +3834,7 @@ def render_mobile_keypad(input_key, instance_key, disabled=False):
                     disabled=disabled,
                     on_click=keypad_backspace,
                     args=(input_key,),
+                    use_container_width=True,
                 )
             else:
                 columns[col_index].button(
@@ -3842,6 +3843,7 @@ def render_mobile_keypad(input_key, instance_key, disabled=False):
                     disabled=disabled,
                     on_click=keypad_append,
                     args=(input_key, token),
+                    use_container_width=True,
                 )
 
     if st.button(
@@ -3850,8 +3852,19 @@ def render_mobile_keypad(input_key, instance_key, disabled=False):
         disabled=disabled,
         on_click=keypad_clear,
         args=(input_key,),
+        use_container_width=True,
     ):
         pass
+
+
+def go_to_next_task(same_task_type=False):
+    st.session_state.task_number += 1
+    if same_task_type:
+        st.session_state.next_task_type_override = st.session_state.task["task_type"]
+    else:
+        st.session_state.next_task_type_override = None
+    st.session_state.pending_next_task = True
+    st.rerun()
 
 
 st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
@@ -3887,13 +3900,15 @@ st.markdown(
             color: white;
         }
 
-        .st-key-repeat_task_type_button button {
+        .st-key-repeat_task_type_button button,
+        .st-key-switch_task_type_button button {
             background-color: #dc2626 !important;
             border-color: #dc2626 !important;
             color: white !important;
         }
 
-        .st-key-repeat_task_type_button button:hover {
+        .st-key-repeat_task_type_button button:hover,
+        .st-key-switch_task_type_button button:hover {
             background-color: #b91c1c !important;
             border-color: #b91c1c !important;
             color: white !important;
@@ -3969,34 +3984,42 @@ st.markdown(
                 color: #6b7280;
                 font-size: 0.9rem;
                 font-weight: 600;
-                margin: -0.15rem 0 0.45rem 0;
+                margin: -0.15rem 0 0.3rem 0;
             }
 
             div[class*="st-key-mobile_keypad_"] {
                 display: block;
+                margin: 0 !important;
+                padding: 0 !important;
             }
 
             div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-mobile_keypad_"]) {
                 display: grid !important;
                 grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-                gap: 0.4rem !important;
+                gap: 0.25rem !important;
                 width: 100%;
-                margin-bottom: 0.4rem;
+                margin: 0 0 0.25rem 0 !important;
             }
 
             div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-mobile_keypad_"]) > div {
                 width: 100% !important;
                 min-width: 0 !important;
                 flex: unset !important;
+                padding: 0 !important;
             }
 
             div[class*="st-key-mobile_keypad_"] button {
                 width: 100%;
-                min-height: 3rem;
-                padding: 0.35rem 0.2rem;
-                border-radius: 7px;
-                font-size: 1.08rem;
+                min-height: 2.45rem;
+                height: 2.45rem;
+                padding: 0.2rem 0.15rem;
+                border-radius: 8px;
+                font-size: 1.05rem;
                 font-weight: 700;
+            }
+
+            div[class*="st-key-mobile_keypad_"] button p {
+                line-height: 1;
             }
 
             div[class*="st-key-mobile_keypad_"] + div[class*="st-key-mobile_keypad_"] {
@@ -4066,6 +4089,10 @@ with st.form("answer_form", clear_on_submit=False):
         disabled=st.session_state.task_finished or st.session_state.get("main_input_locked", False),
         type="primary",
     )
+
+if not st.session_state.task_finished:
+    if st.button("Aufgabentyp wechseln", key="switch_task_type_button", use_container_width=True):
+        go_to_next_task(same_task_type=False)
 
 render_mobile_keypad(
     "answer_input",
@@ -4150,10 +4177,4 @@ if st.session_state.task_finished:
         different_task_type = st.button("Weiter mit anderem Aufgabentyp", type="primary")
 
     if repeat_task_type or different_task_type:
-        st.session_state.task_number += 1
-        if repeat_task_type:
-            st.session_state.next_task_type_override = st.session_state.task["task_type"]
-        else:
-            st.session_state.next_task_type_override = None
-        st.session_state.pending_next_task = True
-        st.rerun()
+        go_to_next_task(same_task_type=repeat_task_type)
