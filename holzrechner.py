@@ -208,10 +208,13 @@ ERROR_PATTERN_GUIDE = """
 
 AI_ERROR_EVALUATION_GUIDE = """
 Typische Fehlerquellen, die du bei falschen Eingaben zusätzlich prüfen sollst:
+- Prüfe zuerst die konkreten Faktoren der Nutzereingabe: Fehlt ein notwendiger Faktor, ist ein Faktor zu viel enthalten, ist ein 10/100/1000-Faktor durch Komma- oder Maßeinheitenfehler falsch, oder wurde multiplizieren und dividieren vertauscht?
 - Faktorfehler durch Maßeinheiten: Häufig liegt das Ergebnis ungefähr um Faktor 10, 100 oder 1000 daneben, weil Millimeter, Zentimeter und Meter falsch umgerechnet wurden.
 - Fehlender oder überflüssiger Faktor: Manchmal wurde ein notwendiger Faktor wie Breite, Dicke, Höhe, Stückzahl oder Paketmenge weggelassen; manchmal wurde ein Faktor verwendet, der für die gesuchte Zielgröße gar nicht gebraucht wird.
 - Wenn die Abweichung ungefähr dem Kehrwert eines konkreten Maßes entspricht, zum Beispiel 1 / 0,24, ist ein fehlender Faktor wie 0,24 Meter besonders wahrscheinlich. Weise dann möglichst konkret auf diesen fehlenden Faktor hin.
 - Vertauschte Rechenrichtung: Häufig wurde multipliziert, obwohl geteilt werden müsste, oder geteilt, obwohl multipliziert werden müsste.
+- Bei DB-Aufgaben ist ein häufiger Fehler: Der EK wurde berechnet, aber der Ziel-DB wurde noch nicht berücksichtigt. Dann fehlt der Schritt über den DB-Faktor 1 minus DB-Satz, zum Beispiel 0,73 bei 27 % DB.
+- Sprich nur dann von falscher Reihenfolge oder fehlender Struktur, wenn kein plausibler Faktorfehler, kein fehlender/überflüssiger Faktor, kein Kommafehler und keine vertauschte Rechenrichtung erkennbar ist. Bei reinen Multiplikationen ist die Reihenfolge selten die eigentliche Ursache.
 Diese Punkte sind nur mögliche typische Fehlerquellen, keine feste Diagnose. Prüfe immer anhand der konkreten Aufgabe, der Nutzereingabe, des berechneten Eingabewerts und der gesuchten Zielgröße, welcher Fehler wirklich plausibel ist.
 """
 
@@ -844,6 +847,21 @@ def db_percent_for_product(product, level):
 
 def db_percent_for_level(level):
     return db_percent_for_product("allgemeine Ware", level)
+
+
+def db_factor_check(db_percent, divisor):
+    divisor_text = format_decimal(divisor, 2)
+    percent_text = format_decimal(db_percent, 0)
+    return {
+        "label": f"DB-Faktor {divisor_text} bei {percent_text} % DB",
+        "value": divisor,
+        "missing_when_ratio_is_value": True,
+        "missing_message": (
+            f"Die Abweichung passt auffällig dazu, dass der DB-Schritt fehlt. "
+            f"Bei {percent_text} % DB bleibt der Faktor {divisor_text}; "
+            f"für den VK wird der EK durch {divisor_text} geteilt."
+        ),
+    }
 
 
 def task_volume_beam(level):
@@ -1532,6 +1550,9 @@ def task_db_sale_price(level):
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
             f"{count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
         ),
+        "factor_checks": [
+            db_factor_check(db_percent, divisor),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -2093,6 +2114,9 @@ def task_package_db_sale_price(level):
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
             f"{package_count} x {format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
         ),
+        "factor_checks": [
+            db_factor_check(db_percent, divisor),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -2903,6 +2927,14 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
         if value == 0:
             continue
 
+        if factor.get("missing_when_ratio_is_value") and is_close_factor(abs_ratio, value):
+            return factor.get(
+                "missing_message",
+                (
+                    f"Die Abweichung passt auffällig dazu, dass der Faktor {label} fehlt. "
+                    "Prüfe, ob dieser Schritt in deinem Rechenweg wirklich vorkommt."
+                ),
+            )
         if is_close_factor(abs_ratio, Decimal("1") / value):
             return (
                 f"Die Abweichung passt auffällig dazu, dass der Faktor {label} fehlen könnte. "
@@ -3024,8 +3056,8 @@ def likely_error_focus(task):
         "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter sowie auf Breite und Stärke in Meter.",
         "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
         "running_meters_from_square_meters": "Achte besonders auf die Richtung Quadratmeter zu Laufmeter über die Breite der Hobelware.",
-        "db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Gesamtvolumen, EK und danach VK mit DB.",
-        "package_db_sale_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen, Paket-EK und VK mit DB.",
+        "db_sale_price": "Achte besonders darauf, ob nach dem gesamten EK noch der Ziel-DB berücksichtigt wurde; häufig fehlt die Division durch den DB-Faktor.",
+        "package_db_sale_price": "Achte besonders darauf, ob nach dem Paket-EK noch der Ziel-DB berücksichtigt wurde; häufig fehlt die Division durch den DB-Faktor.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
         "weight_from_volume": "Achte besonders darauf, dass die Dichte ein Faktor pro Kubikmeter ist.",
@@ -3234,6 +3266,9 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Wenn der Zusatzhinweis eine Formel oder konkrete Rechenrichtung enthält, abstrahiere ihn beim ersten falschen Versuch zu einem allgemeinen Denkhinweis. "
         "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
         "Wenn die Antwort falsch ist, verrate nicht die korrekte Zielzahl. "
+        "Prüfe bei falschen Antworten zuerst die Faktoren der Nutzereingabe: Sind alle notwendigen Faktoren enthalten, ist ein Faktor zu viel drin, liegt ein 10/100/1000- oder Kommafehler vor, oder wurde multiplizieren und dividieren vertauscht? "
+        "Sprich nur dann von falscher Reihenfolge, wenn diese Faktor- und Richtungsprüfung keinen plausibleren Grund liefert. "
+        "Bei reinen Multiplikationsketten ist die Reihenfolge normalerweise nicht der Grund für ein falsches Endergebnis. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
         "Schreibe nicht 'fachlich korrekt'. "
