@@ -3068,6 +3068,9 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
         "Passe die Hilfe an den Versuch an: Beim ersten falschen Versuch nur leicht anstoßen; beim zweiten falschen Versuch wird in die Zwischenschritte gewechselt. "
+        "Beim ersten falschen Versuch verzichtest du ausdrücklich auf konkrete Multiplikationen, Divisionen, fertige Formeln und konkrete Rechenergebnisse. "
+        "Schreibe beim ersten falschen Versuch also nicht 'multipliziere A mit B', 'teile durch C' oder eine ausformulierte Formel mit konkreten Größen. "
+        "Wenn der Zusatzhinweis eine Formel oder konkrete Rechenrichtung enthält, abstrahiere ihn beim ersten falschen Versuch zu einem allgemeinen Denkhinweis. "
         "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
         "Wenn die Antwort falsch ist, verrate nicht die korrekte Zielzahl. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
@@ -3725,7 +3728,9 @@ def handle_submission():
     if values_match(answer_value, task["expected"], task["round_for_check"], task.get("match_mode")):
         st.session_state.feedback_kind = "success"
         st.session_state.feedback_text = ""
-        st.session_state.hint_text = generate_hint(task, answer_value, True, st.session_state.attempt)
+        st.session_state.hint_text = fallback_hint(task, True)
+        st.session_state.hint_backend = "local_correct"
+        st.session_state.hint_backend_error = ""
         st.session_state.solution_visible = False
         st.session_state.show_success_solution = is_direct_result_input(answer_text)
         st.session_state.show_optional_solution = False
