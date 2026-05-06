@@ -2586,7 +2586,7 @@ def render_musterloesung(task):
 
 
 def render_theory_section():
-    st.markdown("#### Einheiten")
+    st.markdown("#### Maßeinheiten")
     st.write(
         "Einheiten sind die Grundlage für jede saubere Rechnung. Besonders bei Zentimeter, Millimeter und Meter "
         "entstehen schnell Faktor-10-, Faktor-100- oder Faktor-1000-Fehler."
@@ -2605,7 +2605,22 @@ def render_theory_section():
     )
     st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
 
-    st.markdown("#### Volumen und Mengen")
+    st.markdown("#### Dichte und Gewicht")
+    st.write(
+        "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
+        "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
+        "verwendest du Kilogramm pro Kubikmeter."
+    )
+    st.markdown(
+        """
+| Gesucht | Rechenweg | Beispiel |
+| --- | --- | --- |
+| Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
+| Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
+"""
+    )
+
+    st.markdown("#### Volumen/Menge")
     st.write(
         "Volumen und Mengen brauchst du, um Ware fachlich vergleichbar zu machen. Je nach Produkt wird in Laufmetern, "
         "Quadratmetern, Kubikmetern, Stück oder ganzen Paketen gedacht."
@@ -2620,24 +2635,6 @@ def render_theory_section():
 | Kubikmeter | Quadratmeter | Kubikmeter / Dicke | 2,05 Kubikmeter / 0,04 Meter = 51,25 Quadratmeter |
 | Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe | 30 Laufmeter x 0,08 Meter x 0,10 Meter = 0,240 Kubikmeter |
 | Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) | 0,240 Kubikmeter / (0,08 Meter x 0,10 Meter) = 30 Laufmeter |
-| Bodenstück | Quadratmeter pro Stück | Länge x Breite | 1,20 Meter x 0,18 Meter = 0,216 Quadratmeter |
-| Bodenpaket | Quadratmeter pro Paket | Quadratmeter pro Stück x Stückzahl im Paket | 0,216 Quadratmeter x 20 Stück = 4,320 Quadratmeter |
-| Bedarf | Pakete | Bedarf / Paketfläche, danach auf volle Pakete aufrunden | 90 Quadratmeter / 4,320 Quadratmeter = 20,833, also 21 Pakete |
-"""
-    )
-
-    st.markdown("#### Dichte und Gewicht")
-    st.write(
-        "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
-        "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
-        "verwendest du Kilogramm pro Kubikmeter."
-    )
-    st.markdown(
-        """
-| Gesucht | Rechenweg | Beispiel |
-| --- | --- | --- |
-| Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
-| Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
 """
     )
 
