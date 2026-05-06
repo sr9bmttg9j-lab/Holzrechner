@@ -151,6 +151,11 @@ FLOORING_NEEDS_BY_LEVEL = {
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
     3: [Decimal("65"), Decimal("95"), Decimal("125"), Decimal("150"), Decimal("180")],
 }
+RUNNING_METER_NEEDS_BY_LEVEL = {
+    1: [Decimal("30"), Decimal("45"), Decimal("60"), Decimal("75")],
+    2: [Decimal("80"), Decimal("100"), Decimal("120"), Decimal("150")],
+    3: [Decimal("125"), Decimal("150"), Decimal("180"), Decimal("220"), Decimal("260")],
+}
 ORDER_EK_VALUES_BY_LEVEL = {
     1: [Decimal("280"), Decimal("420"), Decimal("560"), Decimal("750"), Decimal("900")],
     2: [Decimal("365"), Decimal("585"), Decimal("760"), Decimal("980"), Decimal("1250")],
@@ -168,6 +173,7 @@ UNIT_LABELS = {
     "mm": "Millimeter",
     "Faktor": "Faktor",
     "Pakete": "Pakete",
+    "Stück": "Stück",
     "Prozent": "Prozent",
 }
 
@@ -204,6 +210,7 @@ AI_ERROR_EVALUATION_GUIDE = """
 Typische Fehlerquellen, die du bei falschen Eingaben zusätzlich prüfen sollst:
 - Faktorfehler durch Maßeinheiten: Häufig liegt das Ergebnis ungefähr um Faktor 10, 100 oder 1000 daneben, weil Millimeter, Zentimeter und Meter falsch umgerechnet wurden.
 - Fehlender oder überflüssiger Faktor: Manchmal wurde ein notwendiger Faktor wie Breite, Dicke, Höhe, Stückzahl oder Paketmenge weggelassen; manchmal wurde ein Faktor verwendet, der für die gesuchte Zielgröße gar nicht gebraucht wird.
+- Wenn die Abweichung ungefähr dem Kehrwert eines konkreten Maßes entspricht, zum Beispiel 1 / 0,24, ist ein fehlender Faktor wie 0,24 Meter besonders wahrscheinlich. Weise dann möglichst konkret auf diesen fehlenden Faktor hin.
 - Vertauschte Rechenrichtung: Häufig wurde multipliziert, obwohl geteilt werden müsste, oder geteilt, obwohl multipliziert werden müsste.
 Diese Punkte sind nur mögliche typische Fehlerquellen, keine feste Diagnose. Prüfe immer anhand der konkreten Aufgabe, der Nutzereingabe, des berechneten Eingabewerts und der gesuchten Zielgröße, welcher Fehler wirklich plausibel ist.
 """
@@ -229,6 +236,9 @@ Bodenpakete:
 - Fläche pro Stück: Länge x Breite
 - Paketfläche: Fläche pro Stück x Stückzahl im Paket
 - Benötigte Pakete: Bedarf in Quadratmeter / Paketfläche, danach auf volle Pakete aufrunden
+
+Laufende Ware:
+- Benötigte Stückzahl: Bedarf in Laufmeter / Länge pro Stück, danach auf volle Stück aufrunden
 
 Dichte und Gewicht:
 - Gewicht in Kilogramm: Kubikmeter x Dichte in Kilogramm pro Kubikmeter
@@ -884,6 +894,12 @@ def task_volume_beam(level):
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x "
             f"{format_decimal(height_m, 2)} x {count}"
         ),
+        "factor_checks": [
+            {"label": f"Länge {format_m(length_m)} Meter", "value": length_m},
+            {"label": f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", "value": width_m},
+            {"label": f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", "value": height_m},
+            {"label": f"Stückzahl {count}", "value": Decimal(count)},
+        ],
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -2220,6 +2236,98 @@ def task_flooring_packages(level):
     }
 
 
+def task_running_meter_piece_count(level):
+    needed_lfm = choice_for_level(RUNNING_METER_NEEDS_BY_LEVEL, level)
+
+    if random.random() < 0.70:
+        product = generate_hobelware_product()
+        display_name = "Glattkantbretter"
+        length_m = random.choice(
+            {
+                1: [Decimal("3.00"), Decimal("3.45"), Decimal("3.50"), Decimal("4.00"), Decimal("4.50")],
+                2: [Decimal("3.45"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00"), Decimal("5.50")],
+                3: [Decimal("3.45"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00"), Decimal("5.50"), Decimal("6.00")],
+            }[level]
+        )
+        width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+        height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+        width_text = display_measure(width_m, ("cm", "m"))
+        height_text = display_measure(height_m, ("mm", "cm"))
+        extra_context = f"Die Bretter sind {width_text} breit und {height_text} stark."
+    else:
+        product = {"name": "KVH", "kind": "structural_beam"}
+        display_name = product["name"]
+        length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+        width_m, height_m = generate_structural_dimensions(level)
+        width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+        extra_context = f"Der Querschnitt beträgt {width_text} x {height_text}."
+
+    raw_pieces = needed_lfm / length_m
+    result = round_up_to_whole(raw_pieces)
+    raw_places = precise_decimal_places(raw_pieces, 3, 4)
+
+    prompt = random.choice(
+        [
+            f"Ein Kunde benötigt {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Ein Stück ist {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück müssen mindestens bestellt werden?",
+            f"Für eine Anfrage sollen {format_decimal(needed_lfm, 0)} Laufmeter {display_name} geliefert werden. Die Ware kommt in {format_m(length_m)} m Länge. {extra_context}\n\nWie viele volle Stück werden benötigt?",
+            f"Eine Kundin möchte {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Die einzelnen Stücke sind jeweils {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück braucht sie mindestens?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Rechnerische Stückzahl",
+            "Rechnerische Stückzahl = benötigte Laufmeter / Länge pro Stück",
+            f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
+            f"{format_decimal(raw_pieces, raw_places)} Stück",
+        ),
+        (
+            "Benötigte Stück",
+            "Stückzahl = rechnerische Stückzahl, danach auf volle Stück aufrunden",
+            f"{format_decimal(raw_pieces, raw_places)} Stück, aufgerundet = {format_decimal(result, 0)} Stück",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result,
+        "unit": "Stück",
+        "display_places": 0,
+        "round_for_check": False,
+        "match_mode": "ceil_integer",
+        "task_type": "running_meter_piece_count",
+        "correction": "Teile den Laufmeterbedarf durch die Länge eines Stücks und runde anschließend auf volle Stück auf.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
+            f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(result, 0)}"
+        ),
+        "guided_steps": [
+            make_guided_step(
+                "Rechnerische Stückzahl",
+                raw_pieces.normalize(),
+                "Stück",
+                raw_places,
+                False,
+                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
+                "Benötigte Laufmeter / Länge pro Stück",
+                placeholder=f"Zum Beispiel {format_decimal(needed_lfm, 0)} / {format_m(length_m)}",
+            ),
+            make_guided_step(
+                "Benötigte Stück",
+                result,
+                "Stück",
+                0,
+                False,
+                "Runde die rechnerische Stückzahl auf volle Stück auf.",
+                "Rechnerische Stückzahl auf volle Stück aufrunden",
+                placeholder=f"Zum Beispiel {format_decimal(raw_pieces, raw_places)}",
+                match_mode="ceil_integer",
+            ),
+        ],
+    }
+
+
 def task_absolute_db_from_ek_vk(level):
     product = random.choice(PRODUCTS + FLOORING_PRODUCTS)
     total_ek = choice_for_level(ORDER_EK_VALUES_BY_LEVEL, level)
@@ -2345,6 +2453,7 @@ def task_relative_db_from_ek_vk(level):
 TASK_GENERATORS = [
     task_unit_conversion,
     task_flooring_packages,
+    task_running_meter_piece_count,
     task_volume_beam,
     task_volume_from_running_meters,
     task_volume_from_square_meters,
@@ -2376,6 +2485,7 @@ TASKS_BY_LEVEL = {
     1: [
         task_unit_conversion,
         task_flooring_packages,
+        task_running_meter_piece_count,
         task_volume_beam,
         task_volume_from_running_meters,
         task_square_meters_from_running_meters,
@@ -2395,6 +2505,7 @@ TASKS_BY_LEVEL = {
     2: [
         task_unit_conversion,
         task_flooring_packages,
+        task_running_meter_piece_count,
         task_volume_beam,
         task_volume_from_running_meters,
         task_volume_from_square_meters,
@@ -2514,6 +2625,8 @@ def default_step_placeholder(step):
         return "Zum Beispiel 6,20 / 0,00304"
     if "fläche pro stück" in label:
         return "Zum Beispiel 2 * 0,20"
+    if "stückzahl" in label or "benötigte stück" in label:
+        return "Zum Beispiel 150 / 3,45"
     if "paketfläche" in label:
         return "Zum Beispiel 0,40 * 7"
     if "pakete" in label:
@@ -2771,9 +2884,46 @@ def is_close_factor(value, target):
     return abs(value - target) <= tolerance
 
 
+def diagnose_factor_check(answer_value, expected_value, factor_checks):
+    if expected_value == 0:
+        return ""
+
+    try:
+        ratio = answer_value / expected_value
+    except (InvalidOperation, ZeroDivisionError):
+        return ""
+
+    abs_ratio = ratio.copy_abs()
+    for factor in factor_checks or []:
+        label = factor.get("label", "ein Faktor")
+        value = factor.get("value")
+        if not value:
+            continue
+        value = Decimal(value)
+        if value == 0:
+            continue
+
+        if is_close_factor(abs_ratio, Decimal("1") / value):
+            return (
+                f"Die Abweichung passt auffällig dazu, dass der Faktor {label} fehlen könnte. "
+                "Prüfe, ob dieser Wert in deinem Rechenweg wirklich vorkommt."
+            )
+        if is_close_factor(abs_ratio, value):
+            return (
+                f"Die Abweichung passt auffällig dazu, dass der Faktor {label} zu viel verwendet wurde. "
+                "Prüfe, ob dieser Wert für die gesuchte Zielgröße wirklich gebraucht wird."
+            )
+
+    return ""
+
+
 def diagnose_common_mistake(task, answer_value, expected_value):
     if expected_value == 0:
         return ""
+
+    factor_diagnostic = diagnose_factor_check(answer_value, expected_value, task.get("factor_checks", []))
+    if factor_diagnostic:
+        return factor_diagnostic
 
     try:
         ratio = (answer_value / expected_value).copy_abs()
@@ -2884,6 +3034,7 @@ def likely_error_focus(task):
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
         "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
         "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
+        "running_meter_piece_count": "Achte besonders darauf, den Laufmeterbedarf durch die Stücklänge zu teilen und anschließend auf volle Stück aufzurunden.",
         "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
         "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
     }
@@ -3496,6 +3647,13 @@ def fallback_step_explanation(task, question_text):
             "Bei Bodenpaketen zählt zuerst die Fläche eines einzelnen Stücks: Länge mal Breite. "
             "Diese Fläche wird mit der Stückzahl im Paket multipliziert, dadurch erhältst du die Quadratmeter pro Paket. "
             "Am Ende teilst du den Bedarf durch die Paketfläche und rundest auf, weil man keine halben Pakete verkaufen kann."
+        )
+
+    if task["task_type"] == "running_meter_piece_count":
+        return (
+            "Bei laufender Ware geht es zuerst darum, wie viele Stücklängen in den gewünschten Laufmeterbedarf passen. "
+            "Dafür wird der Bedarf in Laufmetern durch die Länge eines Stücks geteilt. "
+            "Wenn eine Kommazahl entsteht, wird auf volle Stück aufgerundet, weil kein halbes Brett oder halbes KVH-Stück bestellt werden kann."
         )
 
     if task["task_type"] == "relative_db_from_ek_vk":
