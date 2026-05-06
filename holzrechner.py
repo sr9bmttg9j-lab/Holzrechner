@@ -3127,13 +3127,14 @@ def generate_main_guided_start_hint(task, answer_value):
         "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
         "Die Haupteingabe zur Aufgabe war zum zweiten Mal falsch; jetzt soll der Lernende über geführte Zwischenschritte weiterarbeiten. "
         "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
-        "Nenne, dass die Eingabe noch nicht passt, und vergleiche den berechneten Eingabewert mit der gesuchten Zielgröße, ohne die vollständige Musterlösung auszurechnen. "
-        "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum ersten Zwischenschritt über. "
+        "Nenne, dass die Eingabe noch nicht passt, und beziehe dich auf den berechneten Eingabewert sowie die gesuchte Zielgröße. "
+        "Nenne dabei ausdrücklich nicht die richtige Endlösung, keine konkrete Zielzahl und keine vollständige Musterrechnung. "
+        "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum kommenden Rechenweg über. "
+        "Beschreibe, dass der Rechenweg jetzt in einzelne Zwischenschritte zerlegt wird, damit zuerst nur der nächste kleine Schritt geprüft wird. "
         "Verrate nicht den vollständigen Rechenweg und nicht unnötig alle späteren Schritte. "
         f"Aufgabe: {task['prompt']} "
         f"Gesuchte Zielgröße: {unit_label(task['unit'])}. "
         f"Eingabe des Nutzers ergibt: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
-        f"Korrekter Endwert intern: {format_expected(task)} {unit_label(task['unit'])}. "
         f"Wahrscheinliche Fehlerursache aus lokaler Vorprüfung: {local_diagnostic} "
         f"Erster Zwischenschritt: {first_step.get('label', 'erster Zwischenschritt')}. "
         f"Hinweis zum ersten Zwischenschritt: {first_step.get('formula_hint', first_step.get('correction', ''))}"
@@ -4257,8 +4258,19 @@ if st.session_state.hint_text and not st.session_state.solution_visible:
     else:
         st.warning(f"Hinweis: {st.session_state.hint_text}")
 
-if st.session_state.guided_visible and not st.session_state.task_finished and not st.session_state.solution_visible:
-    st.info("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
+show_initial_guided_hint = (
+    st.session_state.guided_visible
+    and not st.session_state.task_finished
+    and not st.session_state.solution_visible
+    and st.session_state.get("guided_step_index", 0) == 0
+    and not st.session_state.get("guided_completed", [])
+    and bool(st.session_state.get("guided_summary", ""))
+)
+
+if show_initial_guided_hint:
+    render_guided_summary()
+elif st.session_state.guided_visible and not st.session_state.task_finished and not st.session_state.solution_visible:
+    st.warning("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
 
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
@@ -4267,7 +4279,8 @@ if st.session_state.guided_visible:
     for completed_entry in st.session_state.guided_completed:
         render_guided_completed_entry(completed_entry)
 
-    render_guided_summary()
+    if not show_initial_guided_hint:
+        render_guided_summary()
 
     guided_steps = st.session_state.task.get("guided_steps", [])
     current_index = st.session_state.guided_step_index
