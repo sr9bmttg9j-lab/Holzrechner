@@ -405,7 +405,7 @@ def call_openai_responses_api(prompt, max_output_tokens):
         ],
         "max_output_tokens": max_output_tokens,
         "text": {
-            "verbosity": "low",
+            "verbosity": "medium",
         },
     }
 
@@ -2935,7 +2935,8 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein einzelner Zwischenschritt wurde falsch gelöst. "
-        "Antworte auf Deutsch, kurz und konkret, in maximal 5 Sätzen. "
+        "Antworte auf Deutsch, konkret und lernorientiert, in maximal 5 Sätzen. "
+        "Vier bis fünf Sätze sind erwünscht, wenn sie wirklich helfen. "
         "Nutze die Angaben zur Diagnose, aber verrate im Tipp nicht den konkreten richtigen Zielwert. "
         "Nenne keine richtige Zahl, keine fertige Teilrechnung und kein Ergebnis, solange der Zwischenschritt noch nicht automatisch aufgelöst wurde. "
         "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
@@ -2997,6 +2998,48 @@ def resolved_step_message(step, next_step=None):
     )
 
 
+def generate_resolved_step_message(task, step, raw_value, answer_value, next_step=None):
+    solution_block = solution_block_for_label(task, step["label"])
+    formula = solution_block.get("formula", step.get("formula_hint", ""))
+    calculation = solution_block.get("calculation", "")
+    next_context = (
+        f"Nächster Schritt: {next_step['label']}. Nächster fachlicher Hinweis: {next_step['formula_hint']}"
+        if next_step
+        else "Das war der letzte Zwischenschritt; danach folgt kein weiterer Rechenschritt."
+    )
+    prompt = (
+        "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
+        "Ein Zwischenschritt wurde zweimal falsch eingegeben und wird jetzt automatisch aufgelöst. "
+        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Erkläre konkret, warum die Nutzereingabe nicht zum Schritt passt und wie der korrekte Wert fachlich zustande kommt. "
+        "Beziehe dich auf Aufgabe, Eingabe, berechneten Eingabewert, korrekten Wert und den aktuellen Zwischenschritt. "
+        "Nutze die Begriffe 'korrekter Wert' und 'deine Eingabe', nicht 'grüner Wert' oder 'roter Wert'. "
+        "Wenn es einen nächsten Schritt gibt, erkläre kurz, wie mit dem korrekten Wert dort weitergearbeitet wird. "
+        "Wenn es keinen nächsten Schritt gibt, sage klar, dass dieser korrekte Wert das Ergebnis dieses letzten Schritts ist. "
+        "Keine lange Musterlösung, keine Aufzählung. "
+        f"Aufgabe: {task['prompt']} "
+        f"Zwischenschritt: {step['label']}. "
+        f"Eingabe des Nutzers: {raw_value}. "
+        f"Berechneter Wert der Eingabe: {format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. "
+        f"Korrekter Wert: {format_value_for_step(step['expected'], step)} {unit_label(step['unit'])}. "
+        f"Formel dieses Schritts: {formula}. "
+        f"Berechnung dieses Schritts: {calculation}. "
+        f"{next_context}"
+    )
+
+    try:
+        if not get_openai_api_key():
+            return resolved_step_message(step, next_step)
+
+        text = call_openai_responses_api(prompt, 260)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    return resolved_step_message(step, next_step)
+
+
 def fallback_hint(task, is_correct):
     if is_correct:
         return "Ergebnis ist korrekt. Du kannst dir bei Bedarf noch die Musterlösung ansehen oder direkt zur nächsten Aufgabe weitergehen."
@@ -3020,7 +3063,8 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
     )
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
-        "Antworte auf Deutsch kurz und konkret in maximal 5 Sätzen. "
+        "Antworte auf Deutsch konkret und hilfreich in maximal 5 Sätzen. "
+        "Vier bis fünf Sätze sind erwünscht, wenn die Antwort falsch ist. "
         "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
         "Passe die Hilfe an den Versuch an: Beim ersten falschen Versuch nur leicht anstoßen; beim zweiten falschen Versuch wird in die Zwischenschritte gewechselt. "
@@ -3055,7 +3099,92 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
     except Exception:
         st.session_state.hint_backend = "fallback_exception"
         st.session_state.hint_backend_error = ""
-        return fallback_hint(task, is_correct)
+    return fallback_hint(task, is_correct)
+
+
+def fallback_main_guided_start_hint(task, answer_value):
+    diagnostic = diagnose_common_mistake(task, answer_value, task["expected"])
+    first_step = task.get("guided_steps", [{}])[0]
+    base = (
+        f"Nicht ganz. Deine Eingabe ergibt {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
+    )
+    if diagnostic:
+        base += f"{diagnostic} "
+    base += (
+        "Wir gehen deshalb jetzt über die Zwischenschritte, damit der Rechenweg sauber aufgebaut wird. "
+        f"Starte mit {first_step.get('label', 'dem ersten Zwischenschritt')} und rechne wirklich nur diesen einen Schritt."
+    )
+    return base
+
+
+def generate_main_guided_start_hint(task, answer_value):
+    first_step = task.get("guided_steps", [{}])[0]
+    local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"]) or likely_error_focus(task)
+    prompt = (
+        "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
+        "Die Haupteingabe zur Aufgabe war zum zweiten Mal falsch; jetzt soll der Lernende über geführte Zwischenschritte weiterarbeiten. "
+        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Nenne, dass die Eingabe noch nicht passt, und vergleiche den berechneten Eingabewert mit der gesuchten Zielgröße, ohne die vollständige Musterlösung auszurechnen. "
+        "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum ersten Zwischenschritt über. "
+        "Verrate nicht den vollständigen Rechenweg und nicht unnötig alle späteren Schritte. "
+        f"Aufgabe: {task['prompt']} "
+        f"Gesuchte Zielgröße: {unit_label(task['unit'])}. "
+        f"Eingabe des Nutzers ergibt: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
+        f"Korrekter Endwert intern: {format_expected(task)} {unit_label(task['unit'])}. "
+        f"Wahrscheinliche Fehlerursache aus lokaler Vorprüfung: {local_diagnostic} "
+        f"Erster Zwischenschritt: {first_step.get('label', 'erster Zwischenschritt')}. "
+        f"Hinweis zum ersten Zwischenschritt: {first_step.get('formula_hint', first_step.get('correction', ''))}"
+    )
+
+    try:
+        if not get_openai_api_key():
+            return fallback_main_guided_start_hint(task, answer_value)
+
+        text = call_openai_responses_api(prompt, 260)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    return fallback_main_guided_start_hint(task, answer_value)
+
+
+def fallback_solution_reveal_feedback(task, answer_value):
+    diagnostic = diagnose_common_mistake(task, answer_value, task["expected"]) or task["correction"]
+    return (
+        f"Nicht ganz. Deine Eingabe ergibt {format_user_result(answer_value, task)} {unit_label(task['unit'])}, "
+        f"richtig wäre {format_expected(task)} {unit_label(task['unit'])}. "
+        f"{diagnostic} Schau dir jetzt die Musterlösung an und achte besonders auf die Einheit und die Rechenrichtung."
+    )
+
+
+def generate_solution_reveal_feedback(task, answer_value):
+    local_diagnostic = diagnose_common_mistake(task, answer_value, task["expected"]) or likely_error_focus(task)
+    prompt = (
+        "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
+        "Eine Aufgabe ohne sinnvolle geführte Zwischenschritte wurde falsch beantwortet; jetzt wird die Musterlösung eingeblendet. "
+        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Vergleiche die Nutzereingabe mit der richtigen Lösung, erkläre den wahrscheinlichsten Denkfehler und bereite kurz auf die Musterlösung vor. "
+        "Du darfst den richtigen Endwert nennen, weil die Musterlösung direkt angezeigt wird. "
+        "Keine lange Musterlösung, keine Aufzählung. "
+        f"Aufgabe: {task['prompt']} "
+        f"Eingabe des Nutzers ergibt: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
+        f"Richtige Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
+        f"Wahrscheinliche Fehlerursache aus lokaler Vorprüfung: {local_diagnostic} "
+        f"Fachlicher Zusatzhinweis: {task['correction']}"
+    )
+
+    try:
+        if not get_openai_api_key():
+            return fallback_solution_reveal_feedback(task, answer_value)
+
+        text = call_openai_responses_api(prompt, 260)
+        if text:
+            return text
+    except Exception:
+        pass
+
+    return fallback_solution_reveal_feedback(task, answer_value)
 
 
 def fallback_guided_transition(completed_step, completed_value, next_step):
@@ -3071,7 +3200,8 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein Zwischenschritt wurde richtig gelöst. "
-        "Antworte auf Deutsch in maximal 3 kurzen Sätzen. "
+        "Antworte auf Deutsch in maximal 5 Sätzen. "
+        "Drei bis fünf Sätze sind erwünscht, wenn dadurch klarer wird, warum der nächste Schritt folgt. "
         f"Beginne mit dem nächsten Schritt, also: 'Als Nächstes: {next_step['label']}.' "
         "Nenne danach das Zwischenergebnis mit Einheit und erkläre konkret, wie damit im nächsten Schritt weitergerechnet wird. "
         "Gib einen kurzen Kontext, warum genau dieser nächste Schritt folgt. "
@@ -3088,7 +3218,7 @@ def generate_guided_transition_hint(task, completed_step, completed_value, next_
         if not get_openai_api_key():
             return fallback_guided_transition(completed_step, completed_value, next_step)
 
-        text = call_openai_responses_api(prompt, 130)
+        text = call_openai_responses_api(prompt, 220)
         if text:
             return ensure_sentence(text)
     except Exception:
@@ -3458,7 +3588,7 @@ def generate_step_explanation(task, question_text):
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
         "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' oder 'dieses Zwischenergebnis wird im nächsten Schritt verwendet'. "
-        "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen, in maximal 5 Sätzen. "
+        "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen, in 5 bis maximal 6 Sätzen, wenn die Frage das hergibt. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
         f"Aufgabentyp: {task['task_type']}. "
@@ -3474,7 +3604,7 @@ def generate_step_explanation(task, question_text):
             st.session_state.explanation_backend_error = ""
             return fallback_step_explanation(task, question_text)
 
-        text = call_openai_responses_api(prompt, 220)
+        text = call_openai_responses_api(prompt, 340)
         if text:
             st.session_state.explanation_backend = "api_rest"
             st.session_state.explanation_backend_error = ""
@@ -3623,6 +3753,7 @@ def handle_submission():
     st.session_state.hint_text = ""
     guided_steps = task.get("guided_steps", [])
     if len(guided_steps) <= 1:
+        st.session_state.hint_text = generate_solution_reveal_feedback(task, answer_value)
         st.session_state.solution_visible = True
         st.session_state.task_finished = True
         st.session_state.guided_visible = False
@@ -3633,7 +3764,7 @@ def handle_submission():
     st.session_state.task_finished = False
     st.session_state.guided_visible = True
     st.session_state.main_input_locked = True
-    st.session_state.guided_summary = "Wir gehen jetzt direkt über die Zwischenschritte weiter. Starte unten mit dem ersten Schritt."
+    st.session_state.guided_summary = generate_main_guided_start_hint(task, answer_value)
     st.session_state.guided_summary_kind = "warning"
     st.session_state.guided_step_feedback = []
 
@@ -3730,7 +3861,7 @@ def handle_guided_submission():
                     step,
                     raw_value,
                     answer_value,
-                    resolved_step_message(step),
+                    generate_resolved_step_message(task, step, raw_value, answer_value),
                 )
             )
             st.session_state.guided_completed = completed
@@ -3751,7 +3882,7 @@ def handle_guided_submission():
                 step,
                 raw_value,
                 answer_value,
-                resolved_step_message(step, next_step),
+                generate_resolved_step_message(task, step, raw_value, answer_value, next_step),
                 next_step,
             )
         )
@@ -4153,12 +4284,14 @@ if st.session_state.guided_visible:
             handle_guided_submission()
 
 if st.session_state.solution_visible:
-    st.warning(
-        "Nicht ganz. "
-        f"Dein Ergebnis: {st.session_state.last_answer_display} {unit_label(st.session_state.task['unit'])}. "
-        f"Richtig wäre: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}. "
-        f"{st.session_state.hint_text}"
-    )
+    if st.session_state.hint_text:
+        st.warning(st.session_state.hint_text)
+    else:
+        st.warning(
+            "Nicht ganz. "
+            f"Dein Ergebnis: {st.session_state.last_answer_display} {unit_label(st.session_state.task['unit'])}. "
+            f"Richtig wäre: {format_expected(st.session_state.task)} {unit_label(st.session_state.task['unit'])}."
+        )
     render_musterloesung(st.session_state.task)
     render_solution_explanation_form()
 
