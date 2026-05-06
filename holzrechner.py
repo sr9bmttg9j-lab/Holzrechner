@@ -2695,7 +2695,7 @@ def render_guided_resolved_entry(entry):
     formula_html = ""
     if formula or calculation:
         formula_lines = ["<div class='resolved-formula'>"]
-        formula_lines.append("<div class='resolved-formula-title'>So entsteht der grüne Wert:</div>")
+        formula_lines.append("<div class='resolved-formula-title'>So entsteht der korrekte Wert:</div>")
         if formula:
             formula_lines.append(f"<div>Formel: <span class='resolved-formula-text'>{escape(formula)}</span></div>")
         if calculation:
@@ -2985,12 +2985,12 @@ def resolved_step_message(step, next_step=None):
     if next_step:
         return (
             "Ich habe diesen Zwischenschritt jetzt für dich gelöst. "
-            "Schau dir vor allem die Berechnung zum grünen Wert an: Dort siehst du, welche Maße und Faktoren in genau diesem Schritt gebraucht werden. "
-            f"Diesen grünen Wert nutzt du anschließend für {next_step['label']}."
+            "Schau dir vor allem die Berechnung zum korrekten Wert an: Dort siehst du, welche Maße und Faktoren in genau diesem Schritt gebraucht werden. "
+            f"Diesen korrekten Wert nutzt du anschließend für {next_step['label']}."
         )
     return (
         "Ich habe diesen letzten Zwischenschritt jetzt für dich gelöst. "
-        "Schau dir vor allem die Berechnung zum grünen Wert an und prüfe, welche Einheit oder Rechenrichtung dich aus dem Tritt gebracht hat. "
+        "Schau dir vor allem die Berechnung zum korrekten Wert an und prüfe, welche Einheit oder Rechenrichtung dich aus dem Tritt gebracht hat. "
         "Danach kannst du den vollständigen Rechenweg in Ruhe ansehen."
     )
 
