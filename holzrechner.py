@@ -3813,7 +3813,14 @@ def keypad_clear(input_key):
     st.session_state[input_key] = ""
 
 
+MOBILE_KEYPAD_ACTIVE = False
+
+
 def render_mobile_keypad(input_key, instance_key, disabled=False):
+    # Mobile Eingabehilfe ist vorerst deaktiviert; Code bleibt für die nächste UI-Runde erhalten.
+    if not MOBILE_KEYPAD_ACTIVE:
+        return
+
     st.markdown("<div class='mobile-keypad-note'>Mobile Eingabehilfe</div>", unsafe_allow_html=True)
     rows = [
         [("7", "7"), ("8", "8"), ("9", "9"), ("/", "/")],
@@ -3900,15 +3907,13 @@ st.markdown(
             color: white;
         }
 
-        .st-key-repeat_task_type_button button,
-        .st-key-switch_task_type_button button {
+        .st-key-repeat_task_type_button button {
             background-color: #dc2626 !important;
             border-color: #dc2626 !important;
             color: white !important;
         }
 
-        .st-key-repeat_task_type_button button:hover,
-        .st-key-switch_task_type_button button:hover {
+        .st-key-repeat_task_type_button button:hover {
             background-color: #b91c1c !important;
             border-color: #b91c1c !important;
             color: white !important;
@@ -4089,10 +4094,6 @@ with st.form("answer_form", clear_on_submit=False):
         disabled=st.session_state.task_finished or st.session_state.get("main_input_locked", False),
         type="primary",
     )
-
-if not st.session_state.task_finished:
-    if st.button("Aufgabentyp wechseln", key="switch_task_type_button", use_container_width=True):
-        go_to_next_task(same_task_type=False)
 
 render_mobile_keypad(
     "answer_input",
