@@ -44,14 +44,14 @@ PRODUCTS = [
 ]
 
 STRUCTURAL_WIDTHS_BY_LEVEL = {
-    1: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12")],
-    2: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14")],
-    3: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
+    1: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14")],
+    2: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
+    3: [Decimal("0.04"), Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18")],
 }
 STRUCTURAL_HEIGHTS_BY_LEVEL = {
-    1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.16"), Decimal("0.20")],
-    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.20"), Decimal("0.24")],
-    3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24"), Decimal("0.28")],
+    1: [Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.20")],
+    2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24")],
+    3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24"), Decimal("0.28")],
 }
 STRUCTURAL_LENGTHS_BY_LEVEL = {
     1: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0")],
@@ -59,9 +59,9 @@ STRUCTURAL_LENGTHS_BY_LEVEL = {
     3: [Decimal("6.0"), Decimal("7.0"), Decimal("8.0"), Decimal("9.0"), Decimal("10.0"), Decimal("11.0"), Decimal("12.0"), Decimal("13.0")],
 }
 HOBEL_WIDTHS_BY_LEVEL = {
-    1: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16")],
-    2: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18")],
-    3: [Decimal("0.10"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+    1: [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18")],
+    2: [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+    3: [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
 }
 HOBEL_THICKNESSES_BY_LEVEL = {
     1: [Decimal("0.019"), Decimal("0.023")],
@@ -210,6 +210,7 @@ AI_ERROR_EVALUATION_GUIDE = """
 Typische Fehlerquellen, die du bei falschen Eingaben zusätzlich prüfen sollst:
 Prüfe zuerst konkrete Faktoren: fehlt etwas, ist etwas zu viel enthalten, liegt ein 10/100/1000- oder Kommafehler vor, oder wurde multiplizieren und dividieren vertauscht?
 Wenn eine lokale Python-Diagnose mitgegeben wird, behandle sie als starken Hinweis, aber prüfe sie anhand von Aufgabe, Eingabe und Zielgröße noch einmal selbst.
+Wenn die lokale Diagnose sagt, dass ein Faktor fehlt, formuliere das nicht als offene Frage, ob dieser Faktor benötigt wird. Sage dann klar, dass dieser Faktor wahrscheinlich fehlt oder noch einbezogen werden muss.
 Sprich nur dann von falscher Reihenfolge oder fehlender Struktur, wenn kein plausibler Faktor-, Einheiten- oder Richtungsfehler erkennbar ist.
 """
 
@@ -407,7 +408,10 @@ def call_openai_responses_api(prompt, max_output_tokens):
         headers["OpenAI-Project"] = project
 
     payload = {
-        "model": "gpt-4o-mini",
+        "model": "gpt-5.4-nano",
+        "reasoning": {
+            "effort": "low",
+        },
         "input": [
             {
                 "role": "user",
@@ -879,10 +883,11 @@ def db_factor_check(db_percent, divisor):
     }
 
 
-def factor_check(label, value):
+def factor_check(label, value, missing_when_ratio_is_value=False):
     return {
         "label": label,
         "value": value,
+        "missing_when_ratio_is_value": missing_when_ratio_is_value,
     }
 
 
@@ -1293,7 +1298,11 @@ def task_square_meters_from_volume(level):
         "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
         "solution": solution,
         "factor_checks": [
-            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(
+                f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
+                thickness_m,
+                missing_when_ratio_is_value=True,
+            ),
         ],
         "wrong_value_checks": [
             wrong_value_check(
@@ -1566,8 +1575,16 @@ def task_running_meters_from_volume(level):
             f"({format_decimal(width_m, 2)} x {format_decimal(height_m, 3)})"
         ),
         "factor_checks": [
-            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+            factor_check(
+                f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)",
+                width_m,
+                missing_when_ratio_is_value=True,
+            ),
+            factor_check(
+                f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)",
+                height_m,
+                missing_when_ratio_is_value=True,
+            ),
         ],
         "wrong_value_checks": [
             wrong_value_check(
@@ -1635,7 +1652,11 @@ def task_running_meters_from_square_meters(level):
         "correction": "Für Hobelware teilst du die Quadratmeter durch die Breite in Meter, um die Laufmeter zu erhalten.",
         "solution": solution,
         "factor_checks": [
-            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(
+                f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)",
+                width_m,
+                missing_when_ratio_is_value=True,
+            ),
             factor_check(f"Quadratmeter {format_decimal(square_meters, square_meters_places)}", square_meters),
         ],
         "wrong_value_checks": [
@@ -1924,7 +1945,11 @@ def task_volume_from_total_price(level):
         "solution": solution,
         "factor_checks": [
             factor_check(f"Gesamtpreis {format_decimal(total_price, 2)} Euro", total_price),
-            factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+            factor_check(
+                f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro",
+                m3_price,
+                missing_when_ratio_is_value=True,
+            ),
         ],
         "wrong_value_checks": [
             wrong_value_check(
@@ -2058,8 +2083,16 @@ def task_m3_price_from_running_meter(level):
         ),
         "factor_checks": [
             factor_check(f"Laufmeterpreis {format_decimal(price_per_lfm, 2)} Euro", price_per_lfm),
-            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+            factor_check(
+                f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)",
+                width_m,
+                missing_when_ratio_is_value=True,
+            ),
+            factor_check(
+                f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)",
+                height_m,
+                missing_when_ratio_is_value=True,
+            ),
         ],
         "wrong_value_checks": [
             wrong_value_check(
@@ -3292,7 +3325,7 @@ def render_guided_summary():
     elif kind == "error":
         st.error(text)
     else:
-        st.warning(text)
+        st.warning(f"KI-Hinweis: {text}")
 
 
 def guided_has_warning():
@@ -3635,8 +3668,8 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
         "Ein einzelner Zwischenschritt wurde falsch gelöst. "
-        "Antworte auf Deutsch, konkret und lernorientiert, in maximal 5 Sätzen. "
-        "Vier bis fünf Sätze sind erwünscht, wenn sie wirklich helfen. "
+        "Antworte auf Deutsch, konkret und lernorientiert, in maximal 4 Sätzen. "
+        "Drei bis vier Sätze sind erwünscht, wenn sie wirklich helfen. "
         "Nutze die Angaben zur Diagnose, aber verrate im Tipp nicht den konkreten richtigen Zielwert. "
         "Nenne keine richtige Zahl, keine fertige Teilrechnung und kein Ergebnis, solange der Zwischenschritt noch nicht automatisch aufgelöst wurde. "
         "Erkläre den wahrscheinlichsten Fehler mit etwas Kontext und nenne nur den nächsten kleinen Korrekturgedanken. "
@@ -3711,7 +3744,7 @@ def generate_resolved_step_message(task, step, raw_value, answer_value, next_ste
     prompt = (
         "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
         "Ein Zwischenschritt wurde zweimal falsch eingegeben und wird jetzt automatisch aufgelöst. "
-        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Antworte auf Deutsch in 3 bis maximal 4 Sätzen. "
         "Erkläre konkret, warum die Nutzereingabe nicht zum Schritt passt und wie der korrekte Wert fachlich zustande kommt. "
         "Beziehe dich auf Aufgabe, Eingabe, berechneten Eingabewert, korrekten Wert und den aktuellen Zwischenschritt. "
         "Nutze die Begriffe 'korrekter Wert' und 'deine Eingabe', nicht 'grüner Wert' oder 'roter Wert'. "
@@ -3765,8 +3798,8 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
     )
     prompt = (
         "Du bist ein Lernassistent für den Holzhandel. "
-        "Antworte auf Deutsch konkret und hilfreich in maximal 5 Sätzen. "
-        "Vier bis fünf Sätze sind erwünscht, wenn die Antwort falsch ist. "
+        "Antworte auf Deutsch konkret und hilfreich in maximal 4 Sätzen. "
+        "Drei bis vier Sätze sind erwünscht, wenn die Antwort falsch ist. "
         "Wenn die Antwort richtig ist, schreibe sinngemäß 'Ergebnis ist korrekt' und gib einen kurzen nächsten Orientierungssatz. "
         "Wenn die Antwort falsch ist, nenne den wahrscheinlichsten Fehler etwas spezifischer und genau den nächsten Rechenschritt. "
         "Passe die Hilfe an den Versuch an: Beim ersten falschen Versuch nur leicht anstoßen; beim zweiten falschen Versuch wird in die Zwischenschritte gewechselt. "
@@ -3776,6 +3809,7 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Nenne keine vollständige Musterlösung und rechne die Lösung nicht aus. "
         "Wenn die Antwort falsch ist, verrate nicht die korrekte Zielzahl. "
         "Prüfe bei falschen Antworten zuerst die Faktoren der Nutzereingabe: Sind alle notwendigen Faktoren enthalten, ist ein Faktor zu viel drin, liegt ein 10/100/1000- oder Kommafehler vor, oder wurde multiplizieren und dividieren vertauscht? "
+        "Wenn die lokale Vorprüfung einen fehlenden Faktor nennt, formuliere nicht als Frage, ob dieser Faktor wirklich benötigt wird; sage stattdessen, dass dieser Faktor wahrscheinlich fehlt oder noch einbezogen werden muss. "
         "Sprich nur dann von falscher Reihenfolge, wenn diese Faktor- und Richtungsprüfung keinen plausibleren Grund liefert. "
         "Bei reinen Multiplikationsketten ist die Reihenfolge normalerweise nicht der Grund für ein falsches Endergebnis. "
         "Denke aktiv darüber nach, ob eine Maßeinheit fehlt, ein unnötiger Faktor verwendet wurde, ein nötiger Faktor fehlt, oder ob Multiplikation und Division verwechselt wurden. "
@@ -3832,7 +3866,7 @@ def generate_main_guided_start_hint(task, answer_value):
     prompt = (
         "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
         "Die Haupteingabe zur Aufgabe war zum zweiten Mal falsch; jetzt soll der Lernende über geführte Zwischenschritte weiterarbeiten. "
-        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Antworte auf Deutsch in 3 bis maximal 4 Sätzen. "
         "Nenne, dass die Eingabe noch nicht passt, und beziehe dich auf den berechneten Eingabewert sowie die gesuchte Zielgröße. "
         "Nenne dabei ausdrücklich nicht die richtige Endlösung, keine konkrete Zielzahl und keine vollständige Musterrechnung. "
         "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum kommenden Rechenweg über. "
@@ -3874,7 +3908,7 @@ def generate_solution_reveal_feedback(task, answer_value):
     prompt = (
         "Du bist ein Lernassistent für Auszubildende im Holzhandel. "
         "Eine Aufgabe ohne sinnvolle geführte Zwischenschritte wurde falsch beantwortet; jetzt wird die Musterlösung eingeblendet. "
-        "Antworte auf Deutsch in 4 bis maximal 5 Sätzen. "
+        "Antworte auf Deutsch in 3 bis maximal 4 Sätzen. "
         "Vergleiche die Nutzereingabe mit der richtigen Lösung, erkläre den wahrscheinlichsten Denkfehler und bereite kurz auf die Musterlösung vor. "
         "Du darfst den richtigen Endwert nennen, weil die Musterlösung direkt angezeigt wird. "
         "Keine lange Musterlösung, keine Aufzählung. "
@@ -4635,13 +4669,14 @@ def handle_explanation_request():
 
 
 def render_solution_explanation_form():
+    st.caption("Hier kannst du dir den angezeigten Rechenweg KI-generiert erklären lassen.")
     with st.form("solution_explanation_form", clear_on_submit=False):
         st.text_input(
-            "Was möchtest du zum Rechenweg wissen?",
+            "Was möchtest du zum Rechenweg KI-generiert erklärt bekommen?",
             key="explanation_request",
             placeholder="Zum Beispiel: Warum muss ich hier durch 0,75 teilen?",
         )
-        explanation_submitted = st.form_submit_button("Schritte erklären", type="primary")
+        explanation_submitted = st.form_submit_button("Schritte per KI erklären", type="primary")
 
     if explanation_submitted:
         handle_explanation_request()
@@ -4650,7 +4685,7 @@ def render_solution_explanation_form():
         st.warning(st.session_state.explanation_error)
 
     if st.session_state.explanation_text:
-        st.info(f"Erklärung: {st.session_state.explanation_text}")
+        st.info(f"KI-Erklärung: {st.session_state.explanation_text}")
 
 
 def keypad_append(input_key, token):
@@ -4973,9 +5008,9 @@ if st.session_state.result_text and not st.session_state.solution_visible:
 
 if st.session_state.hint_text and not st.session_state.solution_visible:
     if st.session_state.feedback_kind == "success":
-        st.success(f"Hinweis: {st.session_state.hint_text}")
+        st.success(f"KI-Hinweis: {st.session_state.hint_text}")
     else:
-        st.warning(f"Hinweis: {st.session_state.hint_text}")
+        st.warning(f"KI-Hinweis: {st.session_state.hint_text}")
 
 show_initial_guided_hint = (
     st.session_state.guided_visible
@@ -4993,7 +5028,7 @@ elif st.session_state.guided_visible and not st.session_state.task_finished and 
 
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
-    st.write("Rechne immer nur den aktuellen Zwischenschritt aus. Sobald er passt, erscheint der nächste Schritt mit dem passenden Hinweis.")
+    st.write("Rechne immer nur den aktuellen Zwischenschritt aus. Sobald er passt, erscheint der nächste Schritt mit dem passenden KI-Hinweis.")
 
     for completed_entry in st.session_state.guided_completed:
         render_guided_completed_entry(completed_entry)
@@ -5022,7 +5057,7 @@ if st.session_state.guided_visible:
 
 if st.session_state.solution_visible:
     if st.session_state.hint_text:
-        st.warning(st.session_state.hint_text)
+        st.warning(f"KI-Hinweis: {st.session_state.hint_text}")
     else:
         st.warning(
             "Nicht ganz. "
