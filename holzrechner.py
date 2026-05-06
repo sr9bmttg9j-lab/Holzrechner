@@ -200,6 +200,14 @@ ERROR_PATTERN_GUIDE = """
 - Das Ergebnis wird nicht auf Größenordnung und fachliche Plausibilität geprüft.
 """
 
+AI_ERROR_EVALUATION_GUIDE = """
+Typische Fehlerquellen, die du bei falschen Eingaben zusätzlich prüfen sollst:
+- Faktorfehler durch Maßeinheiten: Häufig liegt das Ergebnis ungefähr um Faktor 10, 100 oder 1000 daneben, weil Millimeter, Zentimeter und Meter falsch umgerechnet wurden.
+- Fehlender oder überflüssiger Faktor: Manchmal wurde ein notwendiger Faktor wie Breite, Dicke, Höhe, Stückzahl oder Paketmenge weggelassen; manchmal wurde ein Faktor verwendet, der für die gesuchte Zielgröße gar nicht gebraucht wird.
+- Vertauschte Rechenrichtung: Häufig wurde multipliziert, obwohl geteilt werden müsste, oder geteilt, obwohl multipliziert werden müsste.
+Diese Punkte sind nur mögliche typische Fehlerquellen, keine feste Diagnose. Prüfe immer anhand der konkreten Aufgabe, der Nutzereingabe, des berechneten Eingabewerts und der gesuchten Zielgröße, welcher Fehler wirklich plausibel ist.
+"""
+
 FORMULA_GUIDE = """
 Preisumrechnung:
 - Euro pro Kubikmeter zu Euro pro Quadratmeter: Preis pro Kubikmeter x Dicke
@@ -2946,6 +2954,7 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Zwischenschritt, Eingabe und richtigen Wert zusammen. "
         "Verrate nicht den vollständigen restlichen Lösungsweg. "
         "Keine lange Musterlösung, kein Bezug auf vorherige Hinweise. "
+        f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Zwischenschritt: {step['label']}. "
         f"Eingabe des Nutzers: {raw_value}. "
@@ -3017,6 +3026,7 @@ def generate_resolved_step_message(task, step, raw_value, answer_value, next_ste
         "Wenn es einen nächsten Schritt gibt, erkläre kurz, wie mit dem korrekten Wert dort weitergearbeitet wird. "
         "Wenn es keinen nächsten Schritt gibt, sage klar, dass dieser korrekte Wert das Ergebnis dieses letzten Schritts ist. "
         "Keine lange Musterlösung, keine Aufzählung. "
+        f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Zwischenschritt: {step['label']}. "
         f"Eingabe des Nutzers: {raw_value}. "
@@ -3077,6 +3087,7 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
         "Schreibe nicht 'fachlich korrekt'. "
         "Keine Floskeln, keine lange Musterlösung. "
+        f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Versuch in der Aufgabe: {attempt_text}. "
         f"Antwort des Nutzers: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
@@ -3132,6 +3143,7 @@ def generate_main_guided_start_hint(task, answer_value):
         "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum kommenden Rechenweg über. "
         "Beschreibe, dass der Rechenweg jetzt in einzelne Zwischenschritte zerlegt wird, damit zuerst nur der nächste kleine Schritt geprüft wird. "
         "Verrate nicht den vollständigen Rechenweg und nicht unnötig alle späteren Schritte. "
+        f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Gesuchte Zielgröße: {unit_label(task['unit'])}. "
         f"Eingabe des Nutzers ergibt: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
@@ -3171,6 +3183,7 @@ def generate_solution_reveal_feedback(task, answer_value):
         "Vergleiche die Nutzereingabe mit der richtigen Lösung, erkläre den wahrscheinlichsten Denkfehler und bereite kurz auf die Musterlösung vor. "
         "Du darfst den richtigen Endwert nennen, weil die Musterlösung direkt angezeigt wird. "
         "Keine lange Musterlösung, keine Aufzählung. "
+        f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Eingabe des Nutzers ergibt: {format_user_result(answer_value, task)} {unit_label(task['unit'])}. "
         f"Richtige Lösung: {format_expected(task)} {unit_label(task['unit'])}. "
@@ -4198,6 +4211,10 @@ Beispiele, die funktionieren:
 st.write(
     "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
     "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
+)
+st.write(
+    "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
+    "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
 )
 
 st.subheader("Theorie auffrischen")
