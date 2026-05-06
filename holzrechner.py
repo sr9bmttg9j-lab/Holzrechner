@@ -3820,10 +3820,10 @@ def render_mobile_keypad(input_key, instance_key, disabled=False):
     st.markdown("<div class='mobile-keypad-note'>Mobile Eingabehilfe</div>", unsafe_allow_html=True)
     rows = [
         [("7", "7"), ("8", "8"), ("9", "9"), ("/", "/")],
-        [("4", "4"), ("5", "5"), ("6", "6"), ("x", "x")],
+        [("4", "4"), ("5", "5"), ("6", "6"), ("*", "*")],
         [("1", "1"), ("2", "2"), ("3", "3"), (":", ":")],
         [("0", "0"), (",", ","), ("=", "="), ("-", "-")],
-        [("(", "("), (")", ")"), ("*", "*"), ("⌫", "backspace")],
+        [("(", "("), (")", ")"), ("x", "x"), ("⌫", "backspace")],
     ]
 
     for row_index, row in enumerate(rows):
@@ -3972,18 +3972,38 @@ st.markdown(
                 color: #6b7280;
                 font-size: 0.9rem;
                 font-weight: 600;
-                margin: -0.2rem 0 0.35rem 0;
+                margin: -0.15rem 0 0.45rem 0;
             }
 
             div[class*="st-key-mobile_keypad_"] {
                 display: block;
             }
 
+            div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-mobile_keypad_"]) {
+                display: grid !important;
+                grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+                gap: 0.4rem !important;
+                width: 100%;
+                margin-bottom: 0.4rem;
+            }
+
+            div[data-testid="stHorizontalBlock"]:has(div[class*="st-key-mobile_keypad_"]) > div {
+                width: 100% !important;
+                min-width: 0 !important;
+                flex: unset !important;
+            }
+
             div[class*="st-key-mobile_keypad_"] button {
                 width: 100%;
-                min-height: 2.65rem;
+                min-height: 3rem;
                 padding: 0.35rem 0.2rem;
                 border-radius: 7px;
+                font-size: 1.08rem;
+                font-weight: 700;
+            }
+
+            div[class*="st-key-mobile_keypad_"] + div[class*="st-key-mobile_keypad_"] {
+                margin-top: 0;
             }
         }
     </style>
