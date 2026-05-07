@@ -891,6 +891,46 @@ def factor_check(label, value, missing_when_ratio_is_value=False):
     }
 
 
+def base_factor_check(label, value):
+    return {
+        "label": label,
+        "value": value,
+    }
+
+
+def db_wrong_factor_checks(base_value, db_percent, correct_factor, mode):
+    checks = []
+    percent_text = format_decimal(db_percent, 0)
+    correct_text = format_decimal(correct_factor, 2)
+    wrong_factors = []
+
+    for offset in (Decimal("0.10"), Decimal("0.20"), Decimal("0.30")):
+        candidate = correct_factor + offset
+        if candidate < Decimal("1") and candidate != correct_factor:
+            wrong_factors.append(candidate)
+
+    for wrong_factor in dict.fromkeys(wrong_factors):
+        wrong_text = format_decimal(wrong_factor, 2)
+        if mode == "sale_price":
+            value = base_value / wrong_factor
+            message = (
+                f"Deine Eingabe wirkt so, als wäre der DB-Faktor im Kopf falsch gebildet worden: "
+                f"Bei {percent_text} % DB brauchst du {correct_text}, nicht {wrong_text}. "
+                "Prüfe beim Ziel-VK immer zuerst: 100 Prozent minus DB-Satz ergibt den Kostenanteil."
+            )
+        else:
+            value = base_value * wrong_factor
+            message = (
+                f"Deine Eingabe wirkt so, als wäre der DB-Faktor im Kopf falsch gebildet worden: "
+                f"Bei {percent_text} % DB brauchst du {correct_text}, nicht {wrong_text}. "
+                "Bei der Rückwärtsrechnung vom VK zum EK wird der VK mit dem richtigen Kostenanteil multipliziert."
+            )
+
+        checks.append(wrong_value_check(value, message, "EUR", round_for_check=True))
+
+    return checks
+
+
 def wrong_value_check(value, message, unit=None, round_for_check=None, match_mode=None):
     return {
         "value": value,
@@ -1436,6 +1476,10 @@ def task_total_price_from_volume(level):
             factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
             factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            base_factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
         "wrong_value_checks": [
             wrong_value_check(
                 total_volume / m3_price,
@@ -1758,6 +1802,10 @@ def task_db_sale_price(level):
             factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamtvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            base_factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+        ],
         "wrong_value_checks": [
             wrong_value_check(
                 total_ek * divisor,
@@ -1799,6 +1847,7 @@ def task_db_sale_price(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_ek, db_percent, divisor, "sale_price"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -1900,6 +1949,10 @@ def task_lfm_db_sale_price(level):
             factor_check(f"EK pro Laufmeter {format_decimal(ek_price_lfm, 2)} Euro", ek_price_lfm),
             db_factor_check(db_percent, divisor),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Laufmeter {format_decimal(running_meters, running_meters_places)}", running_meters),
+            base_factor_check(f"EK pro Laufmeter {format_decimal(ek_price_lfm, 2)} Euro", ek_price_lfm),
+        ],
         "wrong_value_checks": [
             wrong_value_check(
                 total_ek,
@@ -1914,6 +1967,7 @@ def task_lfm_db_sale_price(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_ek, db_percent, divisor, "sale_price"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2010,6 +2064,10 @@ def task_m2_db_sale_price(level):
             factor_check(f"EK pro Quadratmeter {format_decimal(ek_price_m2, 2)} Euro", ek_price_m2),
             db_factor_check(db_percent, divisor),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamtfläche {format_decimal(total_area, total_area_places)} Quadratmeter", total_area),
+            base_factor_check(f"EK pro Quadratmeter {format_decimal(ek_price_m2, 2)} Euro", ek_price_m2),
+        ],
         "wrong_value_checks": [
             wrong_value_check(
                 total_ek,
@@ -2024,6 +2082,7 @@ def task_m2_db_sale_price(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_ek, db_percent, divisor, "sale_price"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2424,6 +2483,7 @@ def task_ek_from_vk_db(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_vk, db_percent, divisor, "ek_from_vk"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2528,6 +2588,7 @@ def task_lfm_ek_from_vk_db(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_vk / running_meters, db_percent, divisor, "ek_from_vk"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2653,6 +2714,7 @@ def task_m2_ek_from_vk_db(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_vk / total_area, db_percent, divisor, "ek_from_vk"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2770,6 +2832,10 @@ def task_package_price(level):
             factor_check(f"Paketstückzahl {package_count}", Decimal(package_count)),
             factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Paketvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            base_factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
+        ],
         "guided_steps": [
             make_guided_step(
                 "Volumen pro Stück",
@@ -2861,6 +2927,10 @@ def task_panel_package_price(level):
             factor_check(f"Breite {format_decimal(width_m, 3)} Meter", width_m),
             factor_check(f"Plattenanzahl {package_count}", Decimal(package_count)),
             factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Paketfläche {format_decimal(package_area, package_area_places)} Quadratmeter", package_area),
+            base_factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
         ],
         "guided_steps": [
             make_guided_step(
@@ -2969,6 +3039,10 @@ def task_package_db_sale_price(level):
             factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
         ],
+        "base_factor_checks": [
+            base_factor_check(f"Paketvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            base_factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+        ],
         "wrong_value_checks": [
             wrong_value_check(
                 total_ek * divisor,
@@ -3002,6 +3076,7 @@ def task_package_db_sale_price(level):
                 ),
                 "EUR",
             ),
+            *db_wrong_factor_checks(total_ek, db_percent, divisor, "sale_price"),
         ],
         "guided_steps": [
             make_guided_step(
@@ -3951,6 +4026,42 @@ def diagnose_factor_check(answer_value, expected_value, factor_checks):
     return ""
 
 
+def diagnose_missing_base_factors(answer_value, expected_value, base_factor_checks):
+    if expected_value == 0 or not base_factor_checks:
+        return ""
+
+    try:
+        ratio = (answer_value / expected_value).copy_abs()
+    except (InvalidOperation, ZeroDivisionError):
+        return ""
+
+    product = Decimal("1")
+    labels = []
+    for factor in base_factor_checks:
+        label = factor.get("label", "Basiswert")
+        value = factor.get("value")
+        if not value:
+            continue
+        value = Decimal(value)
+        if value == 0:
+            continue
+        product *= value
+        labels.append(label)
+
+    if not labels or product == 0:
+        return ""
+
+    if is_close_factor(ratio, Decimal("1") / product):
+        joined_labels = " und ".join(labels)
+        return (
+            f"Die Abweichung passt auffällig dazu, dass die eigentliche Basis der Rechnung fehlt: {joined_labels}. "
+            "Deine Eingabe wirkt so, als wären nur Umrechnungs- oder DB-Faktoren stehen geblieben. "
+            "Prüfe zuerst, welche Menge bewertet wird und welche Preisbasis dazu gehört."
+        )
+
+    return ""
+
+
 def diagnose_wrong_value_check(task, answer_value):
     for check in task.get("wrong_value_checks", []):
         value = check.get("value")
@@ -4001,6 +4112,14 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
         wrong_value_diagnostic = diagnose_wrong_value_check(task, answer_value)
         if wrong_value_diagnostic:
             return wrong_value_diagnostic
+
+    base_factor_diagnostic = diagnose_missing_base_factors(
+        answer_value,
+        expected_value,
+        task.get("base_factor_checks", []),
+    )
+    if base_factor_diagnostic:
+        return base_factor_diagnostic
 
     factor_diagnostic = diagnose_factor_check(answer_value, expected_value, task.get("factor_checks", []))
     if factor_diagnostic:
