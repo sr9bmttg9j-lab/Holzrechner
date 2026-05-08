@@ -1846,6 +1846,7 @@ def task_db_sale_price(level):
         [
             f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Ein Kubikmeter kostet im EK {format_decimal(ek_price_m3, 0)} Euro, bei diesem Querschnitt liegen {package_count} Stück im Paket. Es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der gesamte VK für diese Position?",
             f"Für eine Anfrage liegen {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} vor. Der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, der Ziel-DB bei {format_decimal(db_percent, 0)} %. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte VK?",
+            f"Ein Lieferant bietet uns {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} zu {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter im EK an. Bei diesem Querschnitt liegen {package_count} Stück im Paket, intern soll mindestens {format_decimal(db_percent, 0)} % DB erreicht werden.\n\nZu welchem Mindestpreis können wir die gesamte Position dem Kunden anbieten?",
         ]
     )
 
@@ -2008,6 +2009,7 @@ def task_lfm_db_sale_price(level):
         [
             f"{request_intro()}: {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark. Der EK liegt bei {format_decimal(ek_price_lfm, 2)} Euro pro Laufmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte VK?",
             f"Eine Kundin interessiert sich für {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Ein Brett hat {format_m(board_length)} m Länge, {width_text} Breite und {thickness_text} Stärke. Kalkuliert wird mit {format_decimal(ek_price_lfm, 2)} Euro EK pro Laufmeter und {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der Verkaufspreis für die Position?",
+            f"Der Lieferant bietet {display_name} zu {format_decimal(ek_price_lfm, 2)} Euro pro Laufmeter im EK an. Angefragt sind {format_decimal(running_meters, running_meters_places)} Laufmeter; ein Brett ist {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark. Wir möchten mindestens {format_decimal(db_percent, 0)} % DB erreichen.\n\nWelchen Mindest-VK braucht die Position?",
         ]
     )
 
@@ -2109,6 +2111,7 @@ def task_m2_db_sale_price(level):
         [
             f"Für ein Angebot liegen {panel_count} Platten {product['name']} im Format {panel_format} vor. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte VK?",
             f"{request_intro()}: {panel_count} Stück {product['name']} im Format {panel_format}. Kalkuliert wird mit {format_decimal(ek_price_m2, 2)} Euro EK pro Quadratmeter und {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der Verkaufspreis für diese Position?",
+            f"Ein Lieferant bietet {panel_count} Platten {product['name']} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter im EK an. Für das Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB stehen bleiben.\n\nWelchen Mindestpreis müssen wir für diese Position anbieten?",
         ]
     )
 
@@ -3080,6 +3083,7 @@ def task_ek_from_vk_db(level):
         [
             f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Der VK liegt bei {format_decimal(total_vk, 2)} Euro, kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB. Ein Paket in diesem Maß enthält {package_count} Stück.\n\nWie hoch ist der gesamte EK?",
             f"Ein Angebot über {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} endet bei {format_decimal(total_vk, 2)} Euro VK. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie hoch ist der gesamte EK?",
+            f"Für {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} wurde dem Kunden ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro angeboten. Im Ergebnis sollen {format_decimal(db_percent, 0)} % DB enthalten sein; ein Paket in diesem Maß enthält {package_count} Stück.\n\nWelcher gesamte Lieferanten-EK steckt in dieser Position?",
         ]
     )
 
@@ -3155,6 +3159,148 @@ def task_ek_from_vk_db(level):
     }
 
 
+def task_m3_ek_from_vk_db(level):
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
+    count = random.choice(COUNTS_BY_LEVEL[level])
+    package_count = structural_package_count(width_m, height_m)
+    db_percent = db_percent_for_product(product, level)
+    ek_price_m3 = m3_price_for_product(product, level)
+
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(count)
+    total_ek = total_volume * ek_price_m3
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    total_vk = total_ek / divisor
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+
+    prompt = random.choice(
+        [
+            f"Für {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} wurde ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro angeboten. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie viel Euro pro Kubikmeter hat der Lieferant rechnerisch im EK berechnet?",
+            f"Ein Kundenauftrag über {count} Stück {product['name']} im Maß {format_m(length_m)} m x {width_text} x {height_text} endet bei {format_decimal(total_vk, 2)} Euro Gesamt-VK. Aus der Kalkulation sollen {format_decimal(db_percent, 0)} % DB übrig bleiben.\n\nWelcher EK pro Kubikmeter steckt dahinter?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+        ),
+        (
+            "Gesamtvolumen",
+            "Gesamtvolumen = Volumen pro Stück x Stückzahl",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {count} Stück = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
+        ),
+        (
+            "Gesamter EK",
+            "Gesamter EK = VK x (1 - DB-Satz)",
+            f"{format_decimal(total_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(total_ek, 2)} Euro",
+        ),
+        (
+            "EK pro Kubikmeter",
+            "EK pro Kubikmeter = gesamter EK / Gesamtvolumen",
+            f"{format_decimal(total_ek, 2)} Euro / {format_decimal(total_volume, total_volume_places)} Kubikmeter = "
+            f"{format_decimal(ek_price_m3, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": ek_price_m3.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "m3_ek_from_vk_db",
+        "correction": "Rechne zuerst das Gesamtvolumen aus. Dann führst du den VK über den DB-Faktor auf den gesamten EK zurück und teilst diesen EK durch die Kubikmeter.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(total_vk, 2)} x {format_decimal(divisor, 2)} / "
+            f"({format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x {count})"
+        ),
+        "factor_checks": [
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stückzahl {count}", Decimal(count)),
+            factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+            db_factor_check(db_percent, divisor),
+            factor_check(
+                f"Gesamtvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter",
+                total_volume,
+                missing_when_ratio_is_value=True,
+            ),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamter EK {format_decimal(total_ek, 2)} Euro", total_ek),
+            base_factor_check(f"Gesamtvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_vk / total_volume,
+                "Deine Eingabe wirkt wie der VK pro Kubikmeter. Für den EK pro Kubikmeter muss zuerst der DB aus dem VK herausgerechnet werden.",
+                "EUR",
+            ),
+            wrong_value_check(
+                total_vk / divisor / total_volume,
+                (
+                    f"Deine Eingabe wirkt so, als hättest du den VK durch den DB-Faktor {format_decimal(divisor, 2)} geteilt. "
+                    "Bei der Rückwärtsrechnung vom VK zum EK wird mit diesem Faktor multipliziert."
+                ),
+                "EUR",
+            ),
+            *db_wrong_factor_checks(total_vk / total_volume, db_percent, divisor, "ek_from_vk"),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Volumen pro Stück",
+                piece_volume.normalize(),
+                "m3",
+                piece_volume_places,
+                False,
+                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
+                "Länge x Breite x Höhe",
+                placeholder=f"Zum Beispiel {format_m(length_m)} * {format_decimal(width_m, 2)} * {format_decimal(height_m, 2)}",
+            ),
+            make_guided_step(
+                "Gesamtvolumen",
+                total_volume.normalize(),
+                "m3",
+                total_volume_places,
+                False,
+                "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
+                "Volumen pro Stück x Stückzahl",
+                placeholder=f"Zum Beispiel {format_decimal(piece_volume, piece_volume_places)} * {count}",
+            ),
+            make_guided_step(
+                "Gesamter EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den VK mit dem DB-Faktor.",
+                "VK x DB-Faktor",
+                placeholder=f"Zum Beispiel {format_decimal(total_vk, 2)} * {format_decimal(divisor, 2)}",
+            ),
+            make_guided_step(
+                "EK pro Kubikmeter",
+                ek_price_m3.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den gesamten EK durch das Gesamtvolumen.",
+                "Gesamter EK / Gesamtvolumen",
+                placeholder=f"Zum Beispiel {format_decimal(total_ek, 2)} / {format_decimal(total_volume, total_volume_places)}",
+            ),
+        ],
+    }
+
+
 def task_lfm_ek_from_vk_db(level):
     product = generate_hobelware_product()
     display_name = hobelware_display_name(product)
@@ -3176,6 +3322,7 @@ def task_lfm_ek_from_vk_db(level):
         [
             f"Ein Angebot über {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} endet bei {format_decimal(total_vk, 2)} Euro VK. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Laufmeter?",
             f"{request_intro()}: {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Der gesamte VK beträgt {format_decimal(total_vk, 2)} Euro, der DB liegt bei {format_decimal(db_percent, 0)} %. Ein Brett ist {format_m(board_length)} m lang.\n\nWelcher EK pro Laufmeter steckt dahinter?",
+            f"Für {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} wurde dem Kunden ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro genannt. In der Kalkulation sind {format_decimal(db_percent, 0)} % DB vorgesehen; die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWelchen Laufmeter-EK hat der Lieferant rechnerisch berechnet?",
         ]
     )
 
@@ -3292,6 +3439,7 @@ def task_m2_ek_from_vk_db(level):
         [
             f"Ein Angebot über {panel_count} Platten {product['name']} im Format {panel_format} endet bei {format_decimal(total_vk, 2)} Euro VK. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Quadratmeter?",
             f"Für {product['name']} liegen {panel_count} Stück im Format {panel_format} vor. Der Gesamt-VK beträgt {format_decimal(total_vk, 2)} Euro, der DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
+            f"Ein Kundenangebot über {panel_count} Platten {product['name']} im Format {panel_format} hat einen Gesamt-VK von {format_decimal(total_vk, 2)} Euro. Intern soll dabei ein DB von {format_decimal(db_percent, 0)} % erreicht werden.\n\nWelchen Quadratmeter-EK hat der Lieferant rechnerisch angesetzt?",
         ]
     )
 
@@ -3634,6 +3782,7 @@ def task_panel_package_db_sale_price(level):
         [
             f"Für ein Angebot soll ein Plattenpaket {product['name']} kalkuliert werden. Eine Platte hat das Format {panel_format}, im Paket liegen {package_count} Platten. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Paket-VK?",
             f"Eine Kundin interessiert sich für ein komplettes Paket {product['name']} im Format {panel_format}. Enthalten sind {package_count} Platten, der EK liegt bei {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Verkaufspreis für das Paket?",
+            f"Der Lieferant bietet ein Paket {product['name']} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter EK an. Im Paket liegen {package_count} Platten, im Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB erreicht werden.\n\nZu welchem Mindestpreis können wir das Paket verkaufen?",
         ]
     )
 
@@ -3901,6 +4050,7 @@ def task_package_db_sale_price(level):
         [
             f"{request_intro()}: ein volles Paket {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Im Paket liegen {package_count} Stück, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Paket-VK?",
             f"Für ein Angebot soll ein komplettes Paket {product['name']} kalkuliert werden. Das Maß beträgt {format_m(length_m)} m x {width_text} x {height_text}, im Paket liegen {package_count} Stück. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Verkaufspreis für das Paket?",
+            f"Ein Lieferant bietet ein volles Paket {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} zu {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter im EK an. Das Paket enthält {package_count} Stück, unser Mindest-DB soll {format_decimal(db_percent, 0)} % betragen.\n\nWelchen Paketpreis müssen wir dem Kunden mindestens anbieten?",
         ]
     )
 
@@ -4581,8 +4731,8 @@ def task_absolute_db_from_position(level):
 
     prompt = random.choice(
         [
-            f"Für {context} liegt ein EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter vor. Der VK der Position beträgt {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
-            f"Eine Position umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und verkauft wird für {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der Rohertrag beziehungsweise absolute DB?",
+            f"Für {context} liegt ein EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter vor. Der gesamte VK der Position beträgt {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
+            f"Eine Position umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und der gesamte VK dieser Position beträgt {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der Rohertrag beziehungsweise absolute DB?",
         ]
     )
 
@@ -4671,8 +4821,8 @@ def task_relative_db_from_position(level):
 
     prompt = random.choice(
         [
-            f"Für {context} liegt der EK bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter. Verkauft wird die Position für {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der relative DB in Prozent?",
-            f"Eine Anfrage umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und der VK bei {format_decimal(total_vk, 2)} Euro.\n\nWie viel Prozent DB wurden erzielt?",
+            f"Für {context} liegt der EK bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter. Der gesamte VK der Position beträgt {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der relative DB in Prozent?",
+            f"Eine Anfrage umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und der gesamte VK der Position bei {format_decimal(total_vk, 2)} Euro.\n\nWie viel Prozent DB wurden erzielt?",
         ]
     )
 
@@ -4797,6 +4947,7 @@ TASK_GENERATORS = [
     task_lfm_db_sale_price,
     task_m2_db_sale_price,
     task_ek_from_vk_db,
+    task_m3_ek_from_vk_db,
     task_lfm_ek_from_vk_db,
     task_m2_ek_from_vk_db,
     task_absolute_db_from_ek_vk,
@@ -4841,6 +4992,7 @@ TASKS_BY_LEVEL = {
         task_db_sale_price,
         task_lfm_db_sale_price,
         task_m2_db_sale_price,
+        task_m3_ek_from_vk_db,
         task_lfm_ek_from_vk_db,
         task_m2_ek_from_vk_db,
         task_absolute_db_from_ek_vk,
@@ -4883,6 +5035,7 @@ TASKS_BY_LEVEL = {
         task_lfm_db_sale_price,
         task_m2_db_sale_price,
         task_ek_from_vk_db,
+        task_m3_ek_from_vk_db,
         task_lfm_ek_from_vk_db,
         task_m2_ek_from_vk_db,
         task_absolute_db_from_ek_vk,
@@ -5538,6 +5691,7 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
         "relative_db_from_ek_vk",
         "absolute_db_from_position",
         "relative_db_from_position",
+        "m3_ek_from_vk_db",
     }:
         return (
             "Beim DB gehst du zuerst vom Unterschied zwischen VK und EK aus. "
@@ -5605,6 +5759,7 @@ def likely_error_focus(task):
         "wood_fiber_insulation_weight": "Achte besonders darauf, dass die Rohdichte fest 40 Kilogramm pro Kubikmeter beträgt.",
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis, auf Breite x Stärke in Meter und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
+        "m3_ek_from_vk_db": "Achte besonders darauf, den VK über den DB-Faktor auf den EK zurückzurechnen und danach durch das Gesamtvolumen zu teilen.",
         "lfm_ek_from_vk_db": "Achte besonders darauf, den VK über den DB-Faktor auf den gesamten EK zurückzurechnen und danach durch die Laufmeter zu teilen.",
         "m2_ek_from_vk_db": "Achte besonders darauf, zuerst die Gesamtfläche zu bilden und den VK über den DB-Faktor auf den EK pro Quadratmeter zurückzuführen.",
         "panel_package_db_sale_price": "Achte besonders auf Paketfläche, Paket-EK und danach den Ziel-DB.",
