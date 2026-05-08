@@ -5196,11 +5196,15 @@ def init_state():
         st.session_state.recent_task_types = []
         st.session_state.pending_next_task = False
         st.session_state.show_theory = False
+        st.session_state.show_usage = False
         create_next_task()
         return
 
     if "show_theory" not in st.session_state:
         st.session_state.show_theory = False
+
+    if "show_usage" not in st.session_state:
+        st.session_state.show_usage = False
 
     if "main_input_locked" not in st.session_state:
         st.session_state.main_input_locked = False
@@ -5707,8 +5711,18 @@ st.write(
     "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
     "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
 )
-st.markdown(
-    """
+
+st.subheader("Bedienung des Holzrechners")
+if st.button(
+    "Bedienung ausblenden" if st.session_state.show_usage else "Bedienung anzeigen",
+    key="usage_toggle_button",
+):
+    st.session_state.show_usage = not st.session_state.show_usage
+    st.rerun()
+
+if st.session_state.show_usage:
+    st.markdown(
+        """
 Beispiele, die funktionieren:
 
 - **Dividieren mit Schrägstrich:** `0,4536 / 0,0054`
@@ -5720,16 +5734,21 @@ Beispiele, die funktionieren:
 
 Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` werden ebenfalls erkannt.
 """
-)
-st.markdown(
-    "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
-    "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
-    "ganz entspannt zur Seite legen.**"
-)
-st.write(
-    "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
-    "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
-)
+    )
+    st.markdown(
+        "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
+        "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
+        "ganz entspannt zur Seite legen.**"
+    )
+    st.write(
+        "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
+        "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
+    )
+    if st.button("Bedienung ausblenden", key="usage_hide_bottom_button"):
+        st.session_state.show_usage = False
+        st.rerun()
+
+st.write("Jetzt direkt mit der ersten Aufgabe starten.")
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
