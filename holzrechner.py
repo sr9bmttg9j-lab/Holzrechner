@@ -4527,18 +4527,74 @@ def task_running_meter_piece_count(level):
         ]
     )
 
-    solution = format_solution_steps(
-        (
-            "Rechnerische Stückzahl",
-            "Rechnerische Stückzahl = benötigte Laufmeter / Länge pro Stück",
-            f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
-            f"{format_decimal(raw_pieces, raw_places)} Stück",
-        ),
-        (
-            "Benötigte Stück",
-            "Stückzahl = rechnerische Stückzahl, danach auf volle Stück aufrunden",
-            f"{format_decimal(raw_pieces, raw_places)} Stück, aufgerundet = {format_decimal(result, 0)} Stück",
-        ),
+    needs_rounding = raw_pieces != raw_pieces.to_integral_value()
+    if needs_rounding:
+        solution = format_solution_steps(
+            (
+                "Rechnerische Stückzahl",
+                "Rechnerische Stückzahl = benötigte Laufmeter / Länge pro Stück",
+                f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
+                f"{format_decimal(raw_pieces, raw_places)} Stück",
+            ),
+            (
+                "Benötigte Stück",
+                "Stückzahl = rechnerische Stückzahl, danach auf volle Stück aufrunden",
+                f"{format_decimal(raw_pieces, raw_places)} Stück, aufgerundet = {format_decimal(result, 0)} Stück",
+            ),
+        )
+        guided_steps = [
+            make_guided_step(
+                "Rechnerische Stückzahl",
+                raw_pieces.normalize(),
+                "Stück",
+                raw_places,
+                False,
+                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
+                "Benötigte Laufmeter / Länge pro Stück",
+            ),
+            make_guided_step(
+                "Benötigte Stück",
+                result,
+                "Stück",
+                0,
+                False,
+                "Runde die rechnerische Stückzahl auf volle Stück auf.",
+                "Rechnerische Stückzahl auf volle Stück aufrunden",
+                match_mode="ceil_integer",
+            ),
+        ]
+    else:
+        solution = format_solution_steps(
+            (
+                "Benötigte Stück",
+                "Benötigte Stück = benötigte Laufmeter / Länge pro Stück",
+                f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
+                f"{format_decimal(result, 0)} Stück",
+            ),
+        )
+        guided_steps = [
+            make_guided_step(
+                "Benötigte Stück",
+                result,
+                "Stück",
+                0,
+                False,
+                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
+                "Benötigte Laufmeter / Länge pro Stück",
+                match_mode="ceil_integer",
+            ),
+        ]
+
+    correction = (
+        "Teile den Laufmeterbedarf durch die Länge eines Stücks und runde anschließend auf volle Stück auf."
+        if needs_rounding
+        else "Teile den Laufmeterbedarf durch die Länge eines Stücks."
+    )
+    perfect_formula = (
+        f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
+        f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(result, 0)}"
+        if needs_rounding
+        else f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)}"
     )
 
     return {
@@ -4549,35 +4605,10 @@ def task_running_meter_piece_count(level):
         "round_for_check": False,
         "match_mode": "ceil_integer",
         "task_type": "running_meter_piece_count",
-        "correction": "Teile den Laufmeterbedarf durch die Länge eines Stücks und runde anschließend auf volle Stück auf.",
+        "correction": correction,
         "solution": solution,
-        "perfect_formula": (
-            f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
-            f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(result, 0)}"
-        ),
-        "guided_steps": [
-            make_guided_step(
-                "Rechnerische Stückzahl",
-                raw_pieces.normalize(),
-                "Stück",
-                raw_places,
-                False,
-                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
-                "Benötigte Laufmeter / Länge pro Stück",
-                placeholder=f"Zum Beispiel {format_decimal(needed_lfm, 0)} / {format_m(length_m)}",
-            ),
-            make_guided_step(
-                "Benötigte Stück",
-                result,
-                "Stück",
-                0,
-                False,
-                "Runde die rechnerische Stückzahl auf volle Stück auf.",
-                "Rechnerische Stückzahl auf volle Stück aufrunden",
-                placeholder=f"Zum Beispiel {format_decimal(raw_pieces, raw_places)}",
-                match_mode="ceil_integer",
-            ),
-        ],
+        "perfect_formula": perfect_formula,
+        "guided_steps": guided_steps,
     }
 
 
@@ -5203,7 +5234,7 @@ def default_step_placeholder(step):
 
 
 def step_placeholder(step):
-    return step.get("placeholder") or default_step_placeholder(step)
+    return default_step_placeholder(step)
 
 
 def clean_formula_expression(expression):
