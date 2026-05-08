@@ -722,11 +722,25 @@ def evaluate_expression(text):
         if parts:
             expression = parts[-1]
 
-    cleaned = expression.replace(",", ".")
+    cleaned = normalize_number_input(expression)
     cleaned = cleaned.replace("×", "*").replace("·", "*")
     cleaned = cleaned.replace("x", "*").replace("X", "*").replace(":", "/")
     parsed = ast.parse(cleaned, mode="eval")
     return evaluate_ast_node(parsed.body)
+
+
+def normalize_number_input(expression):
+    cleaned = expression.strip()
+    cleaned = re.sub(r"(?<=\d)[\s'_´`’](?=\d{3}(?:\D|$))", "", cleaned)
+
+    def remove_dot_groups(match):
+        number = match.group(0)
+        if number.startswith("0."):
+            return number
+        return number.replace(".", "")
+
+    cleaned = re.sub(r"(?<!\d)\d{1,3}(?:\.\d{3})+(?!\d)", remove_dot_groups, cleaned)
+    return cleaned.replace(",", ".")
 
 
 def evaluate_ast_node(node):
@@ -3636,8 +3650,8 @@ def format_value_for_step(value, step):
 
 
 def is_direct_result_input(text):
-    cleaned = text.strip().replace(" ", "")
-    return bool(re.fullmatch(r"[+-]?\d+(?:[,.]\d+)?", cleaned))
+    cleaned = normalize_number_input(text).replace(" ", "")
+    return bool(re.fullmatch(r"[+-]?\d+(?:\.\d+)?", cleaned))
 
 
 def default_step_placeholder(step):
@@ -5108,7 +5122,7 @@ def handle_submission():
         answer_value = evaluate_expression(answer_text)
     except (InvalidOperation, SyntaxError, ZeroDivisionError):
         st.session_state.feedback_kind = "error"
-        st.session_state.feedback_text = "Die Eingabe konnte nicht als Rechenweg erkannt werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, × und optional ein Gleichheitszeichen mit Ergebnis."
+        st.session_state.feedback_text = "Die Eingabe konnte nicht als Rechenweg erkannt werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, ×, deutsche Tausendertrennzeichen und optional ein Gleichheitszeichen mit Ergebnis."
         return
 
     task = st.session_state.task
@@ -5189,7 +5203,7 @@ def handle_guided_submission():
     except (InvalidOperation, SyntaxError, ZeroDivisionError):
         st.session_state.feedback_kind = "error"
         st.session_state.feedback_text = ""
-        st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, × und optional ein Gleichheitszeichen mit Ergebnis."
+        st.session_state.guided_summary = f"{step['label']}: Die Eingabe konnte nicht gelesen werden. Erlaubt sind Zahlen, Klammern, +, -, *, /, x, :, ×, deutsche Tausendertrennzeichen und optional ein Gleichheitszeichen mit Ergebnis."
         st.session_state.guided_summary_kind = "error"
         st.session_state.guided_step_feedback = []
         st.rerun()
@@ -5566,12 +5580,17 @@ st.markdown(
 
 st.title("Holzrechner")
 st.write(
+    "Das ist dein Holzrechner zum Üben: Hier kannst du dir in Ruhe das Rechenwissen aneignen, "
+    "das du im Holzhandel für Mengen, Preise, Einheiten und Deckungsbeitrag brauchst."
+)
+st.write(
     "Im Holzhandel ist sauberes Umrechnen jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB "
     "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
 st.write(
     "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
-    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal."
+    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal, "
+    "und deutsche Tausendertrennzeichen wie 3.465 oder 3'465 werden ebenfalls erkannt."
 )
 st.write(
     "Den Taschenrechner kannst du dabei zur Seite legen: Alle Rechenwege und Ergebnisse können direkt hier eingegeben "
