@@ -5703,15 +5703,6 @@ if st.session_state.show_theory:
         st.session_state.show_theory = False
         st.rerun()
 
-st.write(
-    "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
-    "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
-)
-st.write(
-    "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
-    "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
-)
-
 st.subheader("Bedienung des Holzrechners")
 if st.button(
     "Bedienung ausblenden" if st.session_state.show_usage else "Bedienung anzeigen",
@@ -5721,6 +5712,14 @@ if st.button(
     st.rerun()
 
 if st.session_state.show_usage:
+    st.write(
+        "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
+        "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
+    )
+    st.write(
+        "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
+        "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
+    )
     st.markdown(
         """
 Beispiele, die funktionieren:
@@ -5731,8 +5730,7 @@ Beispiele, die funktionieren:
 - **Multiplizieren mit Sternchen und Ergebnis:** `6*0,08*0,12=0,0576`
 - **Mit Klammern rechnen:** `(142,86 - 100) / 142,86 * 100`
 - **Klammern beim Dividieren nutzen:** `0,4536 / (0,20 x 0,027)`
-
-Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` werden ebenfalls erkannt.
+- **Leerzeichen und Tausendertrennzeichen:** Leerzeichen sind egal; deutsche Tausendertrennzeichen wie `3.465` werden ebenfalls erkannt.
 """
     )
     st.markdown(
@@ -5748,7 +5746,7 @@ Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` w
         st.session_state.show_usage = False
         st.rerun()
 
-st.write("Jetzt direkt mit der ersten Aufgabe starten.")
+st.subheader("Jetzt direkt mit der ersten Aufgabe starten.")
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
