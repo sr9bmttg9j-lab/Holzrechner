@@ -7236,11 +7236,24 @@ if (
     else:
         st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
 
+show_initial_guided_hint = (
+    st.session_state.guided_visible
+    and not st.session_state.task_finished
+    and not st.session_state.solution_visible
+    and st.session_state.get("guided_step_index", 0) == 0
+    and not st.session_state.get("guided_completed", [])
+    and bool(st.session_state.get("guided_summary", ""))
+)
+
+if show_initial_guided_hint:
+    render_guided_summary()
+
 if (
     st.session_state.guided_visible
     and not st.session_state.task_finished
     and not st.session_state.solution_visible
-    and not st.session_state.get("guided_summary", "")
+    and st.session_state.get("guided_step_index", 0) == 0
+    and not st.session_state.get("guided_completed", [])
 ):
     st.warning("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
 
@@ -7269,7 +7282,7 @@ if st.session_state.guided_visible:
         if guided_submitted:
             handle_guided_submission()
 
-    if st.session_state.get("guided_summary", ""):
+    if st.session_state.get("guided_summary", "") and not show_initial_guided_hint:
         render_guided_summary()
     elif st.session_state.get("hint_text", "") and not st.session_state.task_finished:
         st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
