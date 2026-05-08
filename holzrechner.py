@@ -5679,11 +5679,9 @@ st.markdown(
 st.title("Holzrechner")
 st.write(
     "Das ist dein Holzrechner zum Üben: Hier kannst du dir in Ruhe das Rechenwissen aneignen, "
-    "das du im Holzhandel für Mengen, Preise, Einheiten und Deckungsbeitrag brauchst."
-)
-st.write(
-    "Im Holzhandel ist sauberes Umrechnen jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB "
-    "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
+    "das du im Holzhandel für Mengen, Preise, Einheiten und Deckungsbeitrag brauchst. "
+    "Sauberes Umrechnen ist jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB müssen sicher sitzen, "
+    "damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
 
 st.subheader("Theorie auffrischen")
@@ -5709,18 +5707,20 @@ st.write(
     "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
     "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
 )
-st.write(
-    "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
-    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal, "
-    "und deutsche Tausendertrennzeichen wie 3.465 oder 3'465 werden ebenfalls erkannt."
-)
 st.markdown(
     """
+Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen.
+
 Beispiele, die funktionieren:
-- `0,4536 / 0,0054`
-- `0,4536 : 0,0054 = 84`
-- `6 x 0,08 x 0,12`
-- `6*0,08*0,12=0,0576`
+
+- **Dividieren mit Schrägstrich:** `0,4536 / 0,0054`
+- **Dividieren mit Doppelpunkt und Ergebnis:** `0,4536 : 0,0054 = 84`
+- **Multiplizieren mit x:** `6 x 0,08 x 0,12`
+- **Multiplizieren mit Sternchen und Ergebnis:** `6*0,08*0,12=0,0576`
+- **Mit Klammern rechnen:** `(142,86 - 100) / 142,86 * 100`
+- **Klammern beim Dividieren nutzen:** `0,4536 / (0,20 x 0,027)`
+
+Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` werden ebenfalls erkannt.
 """
 )
 st.markdown(
