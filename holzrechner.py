@@ -1326,6 +1326,73 @@ def task_price_per_square_meter(level):
     }
 
 
+def task_m3_price_from_square_meter(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    thickness_m = panel_thickness_for_product(product, level)
+    m2_price = panel_m2_price_for_product(product, level)
+    result = m2_price / thickness_m
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick und kostet {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Preis pro Kubikmeter?",
+            f"Für eine {product['name']} im Format {panel_format} liegt ein Quadratmeterpreis von {format_decimal(m2_price, 2)} Euro vor. Die Platte ist {thickness_text} stark.\n\nWie hoch ist der entsprechende Kubikmeterpreis?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Preis je Kubikmeter",
+            "Euro pro Kubikmeter = Euro pro Quadratmeter / Dicke",
+            f"{format_decimal(m2_price, 2)} Euro pro Quadratmeter / {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(result, 2)} Euro pro Kubikmeter",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "m3_price_from_square_meter",
+        "correction": "Gehe rückwärts vom Quadratmeterpreis zum Kubikmeterpreis. Ein Kubikmeter enthält bei dünnen Platten viele Quadratmeter, deshalb wird durch die Dicke in Metern geteilt.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(m2_price, 2)} / {format_decimal(thickness_m, 3)}",
+        "factor_checks": [
+            factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
+            factor_check(
+                f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
+                thickness_m,
+                missing_when_ratio_is_value=True,
+            ),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                m2_price * thickness_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Quadratmeterpreis offenbar mit der Dicke multipliziert. "
+                    "Für Euro pro Kubikmeter muss der Quadratmeterpreis auf einen ganzen Kubikmeter hochgerechnet werden."
+                ),
+                "EUR",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Preis pro Kubikmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den Quadratmeterpreis durch die Dicke in Metern.",
+                "Quadratmeterpreis / Dicke in Meter",
+                placeholder=f"Zum Beispiel {format_decimal(m2_price, 2)} / {format_decimal(thickness_m, 3)}",
+            ),
+        ],
+    }
+
+
 def task_square_meters_from_volume(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
@@ -2350,6 +2417,122 @@ def task_weight_from_volume(level):
     }
 
 
+def task_weight_from_dimensions(level):
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
+    count = random.choice(COUNTS_BY_LEVEL[level])
+    package_count = structural_package_count(width_m, height_m)
+    density = density_for_product(product)
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(count)
+    result = total_volume * density
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+
+    prompt = random.choice(
+        [
+            f"Für eine Lieferung liegen {count} Stück {product['name']} mit je {format_m(length_m)} m Länge sowie {width_text} x {height_text} Querschnitt vor. Die Dichte wird mit {format_decimal(density, 0)} Kilogramm pro Kubikmeter angesetzt. Ein volles Paket hätte {package_count} Stück.\n\nWie schwer ist die Lieferung ungefähr?",
+            f"{request_intro()}: {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text}. Als Dichte werden {format_decimal(density, 0)} Kilogramm pro Kubikmeter angenommen, bei diesem Maß liegen {package_count} Stück im Paket.\n\nWelches Gewicht ergibt sich?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Volumen pro Stück",
+            "Volumen pro Stück = Länge x Breite x Höhe",
+            f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+        ),
+        (
+            "Gesamtvolumen",
+            "Gesamtvolumen = Volumen pro Stück x Stückzahl",
+            f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {count} Stück = "
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
+        ),
+        (
+            "Gewicht",
+            "Gewicht = Gesamtvolumen x Dichte",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(density, 0)} Kilogramm pro Kubikmeter = "
+            f"{format_decimal(result, 2)} Kilogramm",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "kg",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "weight_from_dimensions",
+        "correction": "Bestimme zuerst das Volumen aus den konkreten Maßen und der Stückzahl. Danach wird das Gesamtvolumen mit der Dichte weitergerechnet.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_m(length_m)} x {format_decimal(width_m, 2)} x {format_decimal(height_m, 2)} x "
+            f"{count} x {format_decimal(density, 0)}"
+        ),
+        "factor_checks": [
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stückzahl {count}", Decimal(count)),
+            factor_check(f"Dichte {format_decimal(density, 0)} Kilogramm pro Kubikmeter", density),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamtvolumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            base_factor_check(f"Dichte {format_decimal(density, 0)} Kilogramm pro Kubikmeter", density),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_volume,
+                "Deine Eingabe entspricht auffällig dem Gesamtvolumen. Für das Gewicht fehlt danach noch die Dichte.",
+                "kg",
+            ),
+            wrong_value_check(
+                total_volume / density,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar durch die Dichte geteilt. "
+                    "Für das Gewicht wird das Volumen mit Kilogramm pro Kubikmeter multipliziert."
+                ),
+                "kg",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Volumen pro Stück",
+                piece_volume.normalize(),
+                "m3",
+                piece_volume_places,
+                False,
+                "Beginne mit dem Volumen eines einzelnen Stücks.",
+                "Länge x Breite x Höhe",
+                placeholder=f"Zum Beispiel {format_m(length_m)} * {format_decimal(width_m, 2)} * {format_decimal(height_m, 2)}",
+            ),
+            make_guided_step(
+                "Gesamtvolumen",
+                total_volume.normalize(),
+                "m3",
+                total_volume_places,
+                False,
+                "Multipliziere das Volumen pro Stück mit der Stückzahl.",
+                "Volumen pro Stück x Stückzahl",
+                placeholder=f"Zum Beispiel {format_decimal(piece_volume, piece_volume_places)} * {count}",
+            ),
+            make_guided_step(
+                "Gewicht",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "kg",
+                2,
+                True,
+                "Multipliziere das Gesamtvolumen mit der Dichte.",
+                "Gesamtvolumen x Dichte",
+                placeholder=f"Zum Beispiel {format_decimal(total_volume, total_volume_places)} * {format_decimal(density, 0)}",
+            ),
+        ],
+    }
+
+
 def task_wood_fiber_insulation_weight(level):
     volume = random.choice(INSULATION_VOLUMES)
     density = WOOD_FIBER_INSULATION_DENSITY
@@ -2517,6 +2700,362 @@ def task_m3_price_from_running_meter(level):
                 True,
                 "Teile den Laufmeterpreis durch den Querschnitt.",
                 "Formel: Laufmeterpreis / (Breite x Höhe)",
+            ),
+        ],
+    }
+
+
+def task_running_meter_price_from_square_meter(level):
+    product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    m2_price = choice_for_level(PANEL_M2_PRICES_BY_LEVEL, level)
+    result = m2_price * width_m
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"{request_intro()}: {display_name}. Der Preis liegt bei {format_decimal(m2_price, 2)} Euro pro Quadratmeter, die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
+            f"Für {display_name} soll ein Quadratmeterpreis von {format_decimal(m2_price, 2)} Euro auf Laufmeter umgerechnet werden. Die Bretter sind {width_text} breit, {thickness_text} stark und je {format_m(board_length)} m lang.\n\nWie hoch ist der Laufmeterpreis?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Preis je Laufmeter",
+            "Euro pro Laufmeter = Euro pro Quadratmeter x Breite",
+            f"{format_decimal(m2_price, 2)} Euro pro Quadratmeter x {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "running_meter_price_from_square_meter",
+        "correction": "Für den Laufmeterpreis aus dem Quadratmeterpreis brauchst du nur die Breite. Die Brettlänge und die Stärke sind hier Zusatzinformationen.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(m2_price, 2)} x {format_decimal(width_m, 2)}",
+        "factor_checks": [
+            factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                m2_price / width_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Quadratmeterpreis offenbar durch die Breite geteilt. "
+                    "Bei Euro pro Laufmeter wird aus einem Streifen von einem Meter Länge die Fläche über die Breite gebildet."
+                ),
+                "EUR",
+            ),
+            *ignored_board_length_checks(
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                board_length,
+                "EUR",
+                "dem Preis je Laufmeter",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Preis je Laufmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den Quadratmeterpreis mit der Breite in Metern.",
+                "Quadratmeterpreis x Breite",
+                placeholder=f"Zum Beispiel {format_decimal(m2_price, 2)} * {format_decimal(width_m, 2)}",
+            ),
+        ],
+    }
+
+
+def task_square_meter_price_from_running_meter(level):
+    product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    price_per_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
+    result = price_per_lfm / width_m
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"Ein Laufmeter {display_name} kostet {format_decimal(price_per_lfm, 2)} Euro. Die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie hoch ist der Preis pro Quadratmeter?",
+            f"Für {display_name} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Die Bretter sind {width_text} breit, {thickness_text} stark und je {format_m(board_length)} m lang.\n\nWie teuer ist 1 Quadratmeter?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Preis je Quadratmeter",
+            "Euro pro Quadratmeter = Euro pro Laufmeter / Breite",
+            f"{format_decimal(price_per_lfm, 2)} Euro pro Laufmeter / {format_decimal(width_m, 2)} Meter = "
+            f"{format_decimal(result, 2)} Euro pro Quadratmeter",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "square_meter_price_from_running_meter",
+        "correction": "Rechne vom Laufmeterpreis auf den Quadratmeterpreis zurück. Dafür teilst du durch die Breite in Metern; Länge und Stärke sind hier nicht die Preisbasis.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(price_per_lfm, 2)} / {format_decimal(width_m, 2)}",
+        "factor_checks": [
+            factor_check(f"Laufmeterpreis {format_decimal(price_per_lfm, 2)} Euro", price_per_lfm),
+            factor_check(
+                f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)",
+                width_m,
+                missing_when_ratio_is_value=True,
+            ),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                price_per_lfm * width_m,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Laufmeterpreis offenbar mit der Breite multipliziert. "
+                    "Für Euro pro Quadratmeter muss der Laufmeterpreis auf einen ganzen Quadratmeter hochgerechnet werden."
+                ),
+                "EUR",
+            ),
+            *ignored_board_length_checks(
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                board_length,
+                "EUR",
+                "dem Preis je Quadratmeter",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Preis je Quadratmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den Laufmeterpreis durch die Breite in Metern.",
+                "Laufmeterpreis / Breite",
+                placeholder=f"Zum Beispiel {format_decimal(price_per_lfm, 2)} / {format_decimal(width_m, 2)}",
+            ),
+        ],
+    }
+
+
+def task_lfm_price_from_m3_with_db(level):
+    product = generate_hobelware_product()
+    display_name = hobelware_display_name(product)
+    width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
+    height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
+    board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    cross_section = width_m * height_m
+    ek_lfm = cross_section * ek_price_m3
+    result = ek_lfm / divisor
+    width_text = display_measure(width_m, ("cm", "m"))
+    thickness_text = display_measure(height_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"{request_intro()}: {display_name}. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter. Die Ware ist {width_text} breit, {thickness_text} stark und {format_m(board_length)} m lang. Der Ziel-DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Laufmeter?",
+            f"Für {display_name} soll aus einem EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter ein Laufmeter-VK kalkuliert werden. Querschnitt: {width_text} x {thickness_text}, Brettlänge {format_m(board_length)} m, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie teuer ist 1 Laufmeter im VK?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Querschnitt",
+            "Querschnitt = Breite x Höhe",
+            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
+            f"{format_decimal(cross_section, 5)} Quadratmeter",
+        ),
+        (
+            "EK je Laufmeter",
+            "EK je Laufmeter = Querschnitt x EK pro Kubikmeter",
+            f"{format_decimal(cross_section, 5)} Quadratmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(ek_lfm, 2)} Euro",
+        ),
+        (
+            "VK je Laufmeter",
+            "VK je Laufmeter = EK je Laufmeter / (1 - DB-Satz)",
+            f"{format_decimal(ek_lfm, 2)} Euro / {format_decimal(divisor, 2)} = {format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "lfm_price_from_m3_with_db",
+        "correction": "Baue zuerst den EK je Laufmeter aus Querschnitt und Kubikmeterpreis auf. Erst danach wird der Ziel-DB auf den Laufmeterpreis gerechnet.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(width_m, 2)} x {format_decimal(height_m, 3)} x "
+            f"{format_decimal(ek_price_m3, 0)} / {format_decimal(divisor, 2)}"
+        ),
+        "factor_checks": [
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+            factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+            db_factor_check(db_percent, divisor),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"EK je Laufmeter {format_decimal(ek_lfm, 2)} Euro", ek_lfm),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                ek_lfm,
+                "Deine Eingabe entspricht dem EK je Laufmeter. Für den VK fehlt danach noch der Ziel-DB.",
+                "EUR",
+            ),
+            wrong_value_check(
+                ek_lfm * (Decimal("1") + db_percent / Decimal("100")),
+                "Deine Eingabe wirkt wie ein einfacher Aufschlag auf den EK. Ein Ziel-DB wird aber vom Verkaufspreis aus betrachtet.",
+                "EUR",
+            ),
+            *db_wrong_factor_checks(ek_lfm, db_percent, divisor, "sale_price"),
+            *ignored_board_length_checks(
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                board_length,
+                "EUR",
+                "dem VK pro Laufmeter",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Querschnitt",
+                cross_section.normalize(),
+                "m2",
+                5,
+                False,
+                "Rechne zuerst Breite x Stärke mit Meterwerten.",
+                "Breite x Stärke",
+                placeholder=f"Zum Beispiel {format_decimal(width_m, 2)} * {format_decimal(height_m, 3)}",
+            ),
+            make_guided_step(
+                "EK je Laufmeter",
+                ek_lfm.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den Querschnitt mit dem EK pro Kubikmeter.",
+                "Querschnitt x EK pro Kubikmeter",
+                placeholder=f"Zum Beispiel {format_decimal(cross_section, 5)} * {format_decimal(ek_price_m3, 0)}",
+            ),
+            make_guided_step(
+                "VK je Laufmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den EK je Laufmeter durch den Kostenanteil nach DB.",
+                "EK je Laufmeter / (1 - DB-Satz)",
+                placeholder=f"Zum Beispiel {format_decimal(ek_lfm, 2)} / {format_decimal(divisor, 2)}",
+            ),
+        ],
+    }
+
+
+def task_m2_price_from_m3_with_db(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    thickness_m = panel_thickness_for_product(product, level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    ek_m2 = thickness_m * ek_price_m3
+    result = ek_m2 / divisor
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Quadratmeter?",
+            f"Für eine {product['name']} im Format {panel_format} soll aus {format_decimal(ek_price_m3, 0)} Euro EK pro Kubikmeter ein Quadratmeter-VK mit {format_decimal(db_percent, 0)} % DB kalkuliert werden. Die Platte ist {thickness_text} dick.\n\nWie teuer ist 1 Quadratmeter im VK?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "EK je Quadratmeter",
+            "EK je Quadratmeter = EK pro Kubikmeter x Dicke",
+            f"{format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
+            f"{format_decimal(ek_m2, 2)} Euro",
+        ),
+        (
+            "VK je Quadratmeter",
+            "VK je Quadratmeter = EK je Quadratmeter / (1 - DB-Satz)",
+            f"{format_decimal(ek_m2, 2)} Euro / {format_decimal(divisor, 2)} = {format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "m2_price_from_m3_with_db",
+        "correction": "Rechne zuerst den EK pro Quadratmeter über die Dicke aus dem Kubikmeterpreis. Danach kalkulierst du den VK mit dem Ziel-DB.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(ek_price_m3, 0)} x {format_decimal(thickness_m, 3)} / {format_decimal(divisor, 2)}"
+        ),
+        "factor_checks": [
+            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+            db_factor_check(db_percent, divisor),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"EK je Quadratmeter {format_decimal(ek_m2, 2)} Euro", ek_m2),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                ek_m2,
+                "Deine Eingabe entspricht dem EK je Quadratmeter. Für den VK fehlt danach noch der Ziel-DB.",
+                "EUR",
+            ),
+            wrong_value_check(
+                ek_m2 * (Decimal("1") + db_percent / Decimal("100")),
+                "Deine Eingabe wirkt wie ein einfacher Aufschlag auf den EK. Ein Ziel-DB wird aber vom Verkaufspreis aus betrachtet.",
+                "EUR",
+            ),
+            *db_wrong_factor_checks(ek_m2, db_percent, divisor, "sale_price"),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "EK je Quadratmeter",
+                ek_m2.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den Kubikmeterpreis mit der Dicke in Metern.",
+                "EK pro Kubikmeter x Dicke",
+                placeholder=f"Zum Beispiel {format_decimal(ek_price_m3, 0)} * {format_decimal(thickness_m, 3)}",
+            ),
+            make_guided_step(
+                "VK je Quadratmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den EK je Quadratmeter durch den Kostenanteil nach DB.",
+                "EK je Quadratmeter / (1 - DB-Satz)",
+                placeholder=f"Zum Beispiel {format_decimal(ek_m2, 2)} / {format_decimal(divisor, 2)}",
             ),
         ],
     }
@@ -3075,6 +3614,272 @@ def task_panel_package_price(level):
     }
 
 
+def task_panel_package_db_sale_price(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
+    package_count = panel_package_count(product)
+    ek_price_m2 = panel_m2_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+
+    sheet_area = length_m * width_m
+    package_area = sheet_area * Decimal(package_count)
+    package_ek = package_area * ek_price_m2
+    result = package_ek / divisor
+    sheet_area_places = precise_decimal_places(sheet_area)
+    package_area_places = precise_decimal_places(package_area)
+
+    prompt = random.choice(
+        [
+            f"Für ein Angebot soll ein Plattenpaket {product['name']} kalkuliert werden. Eine Platte hat das Format {panel_format}, im Paket liegen {package_count} Platten. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Paket-VK?",
+            f"Eine Kundin interessiert sich für ein komplettes Paket {product['name']} im Format {panel_format}. Enthalten sind {package_count} Platten, der EK liegt bei {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Verkaufspreis für das Paket?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Fläche pro Platte",
+            "Fläche pro Platte = Länge x Breite",
+            f"{format_decimal(length_m, 2)} Meter x {format_decimal(width_m, 3)} Meter = "
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+        ),
+        (
+            "Paketfläche",
+            "Paketfläche = Fläche pro Platte x Plattenanzahl",
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter x {package_count} Stück = "
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter",
+        ),
+        (
+            "Paket-EK",
+            "Paket-EK = Paketfläche x EK pro Quadratmeter",
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter x {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter = "
+            f"{format_decimal(package_ek, 2)} Euro",
+        ),
+        (
+            "Paket-VK",
+            "Paket-VK = Paket-EK / (1 - DB-Satz)",
+            f"{format_decimal(package_ek, 2)} Euro / {format_decimal(divisor, 2)} = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "panel_package_db_sale_price",
+        "correction": "Rechne zuerst die Fläche pro Platte, dann die Paketfläche und den Paket-EK. Erst danach wird der Ziel-DB auf den Paket-VK umgerechnet.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(length_m, 2)} x {format_decimal(width_m, 3)} x {package_count} x "
+            f"{format_decimal(ek_price_m2, 2)} / {format_decimal(divisor, 2)}"
+        ),
+        "factor_checks": [
+            factor_check(f"Länge {format_decimal(length_m, 2)} Meter", length_m),
+            factor_check(f"Breite {format_decimal(width_m, 3)} Meter", width_m),
+            factor_check(f"Plattenanzahl {package_count}", Decimal(package_count)),
+            factor_check(f"EK pro Quadratmeter {format_decimal(ek_price_m2, 2)} Euro", ek_price_m2),
+            db_factor_check(db_percent, divisor),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Paketfläche {format_decimal(package_area, package_area_places)} Quadratmeter", package_area),
+            base_factor_check(f"EK pro Quadratmeter {format_decimal(ek_price_m2, 2)} Euro", ek_price_m2),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                package_ek,
+                "Deine Eingabe entspricht auffällig dem Paket-EK. Für den Paket-VK fehlt danach noch der Ziel-DB.",
+                "EUR",
+            ),
+            wrong_value_check(
+                package_ek * (Decimal("1") + db_percent / Decimal("100")),
+                "Deine Eingabe wirkt wie ein einfacher Aufschlag auf den EK. Ein Ziel-DB wird aber vom Verkaufspreis aus betrachtet.",
+                "EUR",
+            ),
+            *db_wrong_factor_checks(package_ek, db_percent, divisor, "sale_price"),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Fläche pro Platte",
+                sheet_area.normalize(),
+                "m2",
+                sheet_area_places,
+                False,
+                "Rechne zuerst Länge x Breite für eine einzelne Platte.",
+                "Länge x Breite",
+                placeholder=f"Zum Beispiel {format_decimal(length_m, 2)} * {format_decimal(width_m, 3)}",
+            ),
+            make_guided_step(
+                "Paketfläche",
+                package_area.normalize(),
+                "m2",
+                package_area_places,
+                False,
+                "Multipliziere die Fläche pro Platte mit der Plattenanzahl im Paket.",
+                "Fläche pro Platte x Plattenanzahl",
+                placeholder=f"Zum Beispiel {format_decimal(sheet_area, sheet_area_places)} * {package_count}",
+            ),
+            make_guided_step(
+                "Paket-EK",
+                package_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere die Paketfläche mit dem EK pro Quadratmeter.",
+                "Paketfläche x EK pro Quadratmeter",
+                placeholder=f"Zum Beispiel {format_decimal(package_area, package_area_places)} * {format_decimal(ek_price_m2, 2)}",
+            ),
+            make_guided_step(
+                "Paket-VK",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den Paket-EK durch den Kostenanteil nach DB.",
+                "Paket-EK / (1 - DB-Satz)",
+                placeholder=f"Zum Beispiel {format_decimal(package_ek, 2)} / {format_decimal(divisor, 2)}",
+            ),
+        ],
+    }
+
+
+def task_panel_package_ek_from_vk_db(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
+    package_count = panel_package_count(product)
+    ek_price_m2 = panel_m2_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+
+    sheet_area = length_m * width_m
+    package_area = sheet_area * Decimal(package_count)
+    package_ek = package_area * ek_price_m2
+    package_vk = package_ek / divisor
+    result = ek_price_m2
+    sheet_area_places = precise_decimal_places(sheet_area)
+    package_area_places = precise_decimal_places(package_area)
+
+    prompt = random.choice(
+        [
+            f"Ein Plattenpaket {product['name']} im Format {panel_format} wurde für {format_decimal(package_vk, 2)} Euro verkauft. Im Paket liegen {package_count} Platten und der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWie hoch war der EK pro Quadratmeter?",
+            f"Für ein Paket {product['name']} mit {package_count} Platten im Format {panel_format} liegt ein VK von {format_decimal(package_vk, 2)} Euro vor. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Fläche pro Platte",
+            "Fläche pro Platte = Länge x Breite",
+            f"{format_decimal(length_m, 2)} Meter x {format_decimal(width_m, 3)} Meter = "
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+        ),
+        (
+            "Paketfläche",
+            "Paketfläche = Fläche pro Platte x Plattenanzahl",
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter x {package_count} Stück = "
+            f"{format_decimal(package_area, package_area_places)} Quadratmeter",
+        ),
+        (
+            "Paket-EK",
+            "Paket-EK = Paket-VK x (1 - DB-Satz)",
+            f"{format_decimal(package_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(package_ek, 2)} Euro",
+        ),
+        (
+            "EK pro Quadratmeter",
+            "EK pro Quadratmeter = Paket-EK / Paketfläche",
+            f"{format_decimal(package_ek, 2)} Euro / {format_decimal(package_area, package_area_places)} Quadratmeter = "
+            f"{format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "panel_package_ek_from_vk_db",
+        "correction": "Rechne zuerst den VK über den DB-Faktor auf den Paket-EK zurück. Danach verteilst du den Paket-EK auf die Paketfläche.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(package_vk, 2)} x {format_decimal(divisor, 2)} / "
+            f"({format_decimal(length_m, 2)} x {format_decimal(width_m, 3)} x {package_count})"
+        ),
+        "factor_checks": [
+            factor_check(f"Paket-VK {format_decimal(package_vk, 2)} Euro", package_vk),
+            db_factor_check(db_percent, divisor),
+            factor_check(
+                f"Paketfläche {format_decimal(package_area, package_area_places)} Quadratmeter",
+                package_area,
+                missing_when_ratio_is_value=True,
+            ),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Paket-VK {format_decimal(package_vk, 2)} Euro", package_vk),
+            base_factor_check(f"DB-Faktor {format_decimal(divisor, 2)}", divisor),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                package_vk / package_area,
+                "Deine Eingabe wirkt so, als hättest du den VK direkt auf die Paketfläche verteilt. Für den EK muss zuerst der DB herausgerechnet werden.",
+                "EUR",
+            ),
+            wrong_value_check(
+                package_vk / divisor / package_area,
+                "Deine Eingabe wirkt wie die Gegenrichtung beim DB: Du hast den VK offenbar noch weiter hochgerechnet statt auf den EK zurückzurechnen.",
+                "EUR",
+            ),
+            *db_wrong_factor_checks(package_vk / package_area, db_percent, divisor, "ek_from_vk"),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Fläche pro Platte",
+                sheet_area.normalize(),
+                "m2",
+                sheet_area_places,
+                False,
+                "Rechne zuerst Länge x Breite für eine einzelne Platte.",
+                "Länge x Breite",
+                placeholder=f"Zum Beispiel {format_decimal(length_m, 2)} * {format_decimal(width_m, 3)}",
+            ),
+            make_guided_step(
+                "Paketfläche",
+                package_area.normalize(),
+                "m2",
+                package_area_places,
+                False,
+                "Multipliziere die Fläche pro Platte mit der Plattenanzahl im Paket.",
+                "Fläche pro Platte x Plattenanzahl",
+                placeholder=f"Zum Beispiel {format_decimal(sheet_area, sheet_area_places)} * {package_count}",
+            ),
+            make_guided_step(
+                "Paket-EK",
+                package_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Rechne den Paket-VK mit dem DB-Faktor auf den Paket-EK zurück.",
+                "Paket-VK x (1 - DB-Satz)",
+                placeholder=f"Zum Beispiel {format_decimal(package_vk, 2)} * {format_decimal(divisor, 2)}",
+            ),
+            make_guided_step(
+                "EK pro Quadratmeter",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Teile den Paket-EK durch die Paketfläche.",
+                "Paket-EK / Paketfläche",
+                placeholder=f"Zum Beispiel {format_decimal(package_ek, 2)} / {format_decimal(package_area, package_area_places)}",
+            ),
+        ],
+    }
+
+
 def task_package_db_sale_price(level):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
@@ -3227,6 +4032,102 @@ def task_package_db_sale_price(level):
     }
 
 
+def task_package_ek_from_vk_db(level):
+    product = generate_structural_product()
+    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m)
+    package_count = structural_package_count(width_m, height_m)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+
+    piece_volume = length_m * width_m * height_m
+    total_volume = piece_volume * Decimal(package_count)
+    package_ek = total_volume * ek_price_m3
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    package_vk = package_ek / divisor
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
+    width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
+
+    prompt = random.choice(
+        [
+            f"Ein komplettes Paket {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} wurde für {format_decimal(package_vk, 2)} Euro verkauft. Im Paket liegen {package_count} Stück, kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch war der Paket-EK?",
+            f"Für ein Paket {product['name']} mit {package_count} Stück im Maß {format_m(length_m)} m x {width_text} x {height_text} liegt ein Paket-VK von {format_decimal(package_vk, 2)} Euro vor. Der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte EK dieses Pakets?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "DB-Faktor",
+            "DB-Faktor = 1 - DB-Satz",
+            f"1 - {format_decimal(db_percent, 0)} % = {format_decimal(divisor, 2)}",
+        ),
+        (
+            "Paket-EK",
+            "Paket-EK = Paket-VK x DB-Faktor",
+            f"{format_decimal(package_vk, 2)} Euro x {format_decimal(divisor, 2)} = {format_decimal(package_ek, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": package_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "package_ek_from_vk_db",
+        "correction": "Wenn Paket-VK und DB bekannt sind, rechnest du mit dem DB-Faktor zurück auf den Paket-EK. Die Maße beschreiben hier das Paket, sind für diese Rückwärtsrechnung aber nicht der entscheidende Rechenschritt.",
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(package_vk, 2)} x {format_decimal(divisor, 2)}",
+        "factor_checks": [
+            factor_check(f"Paket-VK {format_decimal(package_vk, 2)} Euro", package_vk),
+            db_factor_check(db_percent, divisor),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                package_vk / divisor,
+                (
+                    f"Deine Eingabe wirkt so, als hättest du den VK durch den DB-Faktor {format_decimal(divisor, 2)} geteilt. "
+                    "Bei der Rückwärtsrechnung zum EK wird der VK mit diesem Faktor multipliziert."
+                ),
+                "EUR",
+            ),
+            wrong_value_check(
+                total_volume * ek_price_m3,
+                "Deine Eingabe entspricht dem rechnerischen Paket-EK aus Volumen und Kubikmeterpreis. Hier sollst du aber aus dem gegebenen VK und DB zurückrechnen.",
+                "EUR",
+            ),
+            *db_wrong_factor_checks(package_vk, db_percent, divisor, "ek_from_vk"),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "DB-Faktor",
+                divisor.normalize(),
+                "Faktor",
+                2,
+                False,
+                "Ziehe den DB-Satz von 1 ab.",
+                "1 - DB-Satz",
+                placeholder=f"Zum Beispiel 1 - 0,{format_decimal(db_percent, 0)}",
+            ),
+            make_guided_step(
+                "Paket-EK",
+                package_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere den Paket-VK mit dem DB-Faktor.",
+                "Paket-VK x DB-Faktor",
+                placeholder=f"Zum Beispiel {format_decimal(package_vk, 2)} * {format_decimal(divisor, 2)}",
+            ),
+        ],
+        "reference_values": {
+            "piece_volume": f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+            "package_volume": f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
+        },
+    }
+
+
 def task_flooring_packages(level):
     product = random.choice(FLOORING_PRODUCTS)
     length_m = random.choice(product["lengths"])
@@ -3324,6 +4225,98 @@ def task_flooring_packages(level):
                 "Bedarf / Paketfläche, dann auf volle Pakete aufrunden",
                 placeholder="Zum Beispiel 100 / 2,80",
                 match_mode="ceil_integer",
+            ),
+        ],
+    }
+
+
+def task_panel_count_from_area(level):
+    product = generate_panel_product()
+    panel_format = panel_format_text(product)
+    length_m, width_m = panel_format_dimensions(panel_format)
+    thickness_m = panel_thickness_for_product(product, level)
+    panel_count = panel_count_for_level(level)
+    sheet_area = length_m * width_m
+    total_area = sheet_area * Decimal(panel_count)
+    sheet_area_places = precise_decimal_places(sheet_area)
+    total_area_places = precise_decimal_places(total_area)
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"Für eine Anfrage werden {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} benötigt. Eine Platte hat das Format {panel_format} und ist {thickness_text} dick.\n\nWie viele Platten sind das?",
+            f"Ein Angebot umfasst {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} im Format {panel_format}. Die Dicke beträgt {thickness_text}.\n\nWie viele einzelne Platten werden benötigt?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Fläche pro Platte",
+            "Fläche pro Platte = Länge x Breite",
+            f"{format_decimal(length_m, 2)} Meter x {format_decimal(width_m, 3)} Meter = "
+            f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+        ),
+        (
+            "Plattenanzahl",
+            "Plattenanzahl = Gesamtfläche / Fläche pro Platte",
+            f"{format_decimal(total_area, total_area_places)} Quadratmeter / {format_decimal(sheet_area, sheet_area_places)} Quadratmeter = "
+            f"{panel_count} Stück",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": Decimal(panel_count),
+        "unit": "Stück",
+        "display_places": 0,
+        "round_for_check": False,
+        "task_type": "panel_count_from_area",
+        "correction": "Rechne zuerst die Fläche einer einzelnen Platte aus und teile danach die Gesamtfläche durch diese Plattenfläche.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(total_area, total_area_places)} / "
+            f"({format_decimal(length_m, 2)} x {format_decimal(width_m, 3)})"
+        ),
+        "factor_checks": [
+            factor_check(f"Gesamtfläche {format_decimal(total_area, total_area_places)} Quadratmeter", total_area),
+            factor_check(
+                f"Fläche pro Platte {format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+                sheet_area,
+                missing_when_ratio_is_value=True,
+            ),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_area * sheet_area,
+                "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Gesamtfläche offenbar mit der Plattenfläche multipliziert. Für die Stückzahl wird geteilt.",
+                "Stück",
+            ),
+            wrong_value_check(
+                total_area / thickness_m,
+                "Deine Eingabe wirkt so, als wäre die Dicke verwendet worden. Für die Anzahl der Platten brauchst du hier aber die Fläche pro Platte.",
+                "Stück",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Fläche pro Platte",
+                sheet_area.normalize(),
+                "m2",
+                sheet_area_places,
+                False,
+                "Rechne zuerst Länge x Breite für eine einzelne Platte.",
+                "Länge x Breite",
+                placeholder=f"Zum Beispiel {format_decimal(length_m, 2)} * {format_decimal(width_m, 3)}",
+            ),
+            make_guided_step(
+                "Plattenanzahl",
+                Decimal(panel_count),
+                "Stück",
+                0,
+                False,
+                "Teile die Gesamtfläche durch die Fläche einer Platte.",
+                "Gesamtfläche / Fläche pro Platte",
+                placeholder=f"Zum Beispiel {format_decimal(total_area, total_area_places)} / {format_decimal(sheet_area, sheet_area_places)}",
             ),
         ],
     }
@@ -3577,21 +4570,226 @@ def task_relative_db_from_ek_vk(level):
     }
 
 
+def task_absolute_db_from_position(level):
+    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    total_ek = total_volume * ek_price_m3
+    total_vk = total_ek / divisor
+    result = total_vk - total_ek
+
+    prompt = random.choice(
+        [
+            f"Für {context} liegt ein EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter vor. Der VK der Position beträgt {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der absolute DB in Euro?",
+            f"Eine Position umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und verkauft wird für {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der Rohertrag beziehungsweise absolute DB?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Gesamter EK",
+            "Gesamter EK = Volumen x EK pro Kubikmeter",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_ek, 2)} Euro",
+        ),
+        (
+            "Absoluter DB",
+            "Absoluter DB = VK - EK",
+            f"{format_decimal(total_vk, 2)} Euro - {format_decimal(total_ek, 2)} Euro = {format_decimal(result, 2)} Euro",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "EUR",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "absolute_db_from_position",
+        "correction": "Bestimme zuerst den gesamten EK aus Volumen und EK pro Kubikmeter. Der absolute DB ist danach der Unterschied zwischen VK und EK.",
+        "solution": solution,
+        "perfect_formula": (
+            f"{format_decimal(total_vk, 2)} - "
+            f"({format_decimal(total_volume, total_volume_places)} x {format_decimal(ek_price_m3, 0)})"
+        ),
+        "factor_checks": [
+            factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+            factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            factor_check(f"EK pro Kubikmeter {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamter EK {format_decimal(total_ek, 2)} Euro", total_ek),
+            base_factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                total_ek - total_vk,
+                "Deine Eingabe wirkt wie EK minus VK. Beim absoluten DB geht es um VK minus EK.",
+                "EUR",
+            ),
+            wrong_value_check(
+                total_vk,
+                "Deine Eingabe entspricht dem VK. Gefragt ist aber nur der Betrag, der nach Abzug des EK als DB bleibt.",
+                "EUR",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Gesamter EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere das Volumen mit dem EK pro Kubikmeter.",
+                "Volumen x EK pro Kubikmeter",
+                placeholder=f"Zum Beispiel {format_decimal(total_volume, total_volume_places)} * {format_decimal(ek_price_m3, 0)}",
+            ),
+            make_guided_step(
+                "Absoluter DB",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Ziehe den EK vom VK ab.",
+                "VK - EK",
+                placeholder=f"Zum Beispiel {format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}",
+            ),
+        ],
+    }
+
+
+def task_relative_db_from_position(level):
+    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
+    ek_price_m3 = m3_price_for_product(product, level)
+    db_percent = db_percent_for_product(product, level)
+    divisor = (Decimal("100") - db_percent) / Decimal("100")
+    total_ek = total_volume * ek_price_m3
+    total_vk = total_ek / divisor
+    absolute_db = total_vk - total_ek
+    result = (absolute_db / total_vk) * Decimal("100")
+
+    prompt = random.choice(
+        [
+            f"Für {context} liegt der EK bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter. Verkauft wird die Position für {format_decimal(total_vk, 2)} Euro.\n\nWie hoch ist der relative DB in Prozent?",
+            f"Eine Anfrage umfasst {context}. Das Volumen beträgt {format_decimal(total_volume, total_volume_places)} Kubikmeter, der EK liegt bei {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter und der VK bei {format_decimal(total_vk, 2)} Euro.\n\nWie viel Prozent DB wurden erzielt?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Gesamter EK",
+            "Gesamter EK = Volumen x EK pro Kubikmeter",
+            f"{format_decimal(total_volume, total_volume_places)} Kubikmeter x {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter = "
+            f"{format_decimal(total_ek, 2)} Euro",
+        ),
+        (
+            "Absoluter DB",
+            "Absoluter DB = VK - EK",
+            f"{format_decimal(total_vk, 2)} Euro - {format_decimal(total_ek, 2)} Euro = {format_decimal(absolute_db, 2)} Euro",
+        ),
+        (
+            "DB-Satz",
+            "DB-Satz = absoluter DB / VK x 100",
+            f"{format_decimal(absolute_db, 2)} Euro / {format_decimal(total_vk, 2)} Euro x 100 = {format_decimal(result, 2)} %",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+        "unit": "Prozent",
+        "display_places": 2,
+        "round_for_check": True,
+        "task_type": "relative_db_from_position",
+        "correction": "Bestimme zuerst den gesamten EK, danach den absoluten DB. Für den relativen DB setzt du diesen Rohertrag ins Verhältnis zum VK.",
+        "solution": solution,
+        "perfect_formula": (
+            f"({format_decimal(total_vk, 2)} - "
+            f"({format_decimal(total_volume, total_volume_places)} x {format_decimal(ek_price_m3, 0)})) / "
+            f"{format_decimal(total_vk, 2)} x 100"
+        ),
+        "factor_checks": [
+            factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+            factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
+            factor_check(f"EK pro Kubikmeter {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
+        ],
+        "base_factor_checks": [
+            base_factor_check(f"Gesamter EK {format_decimal(total_ek, 2)} Euro", total_ek),
+            base_factor_check(f"Absoluter DB {format_decimal(absolute_db, 2)} Euro", absolute_db),
+            base_factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                (absolute_db / total_ek) * Decimal("100"),
+                "Deine Eingabe wirkt so, als hättest du den DB auf den EK bezogen. Der relative DB wird im Holzhandel auf den VK bezogen.",
+                "Prozent",
+                match_mode="percent_or_factor",
+            ),
+            wrong_value_check(
+                absolute_db,
+                "Deine Eingabe entspricht dem absoluten DB in Euro. Gefragt ist hier aber der relative DB in Prozent.",
+                "Prozent",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Gesamter EK",
+                total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Multipliziere das Volumen mit dem EK pro Kubikmeter.",
+                "Volumen x EK pro Kubikmeter",
+                placeholder=f"Zum Beispiel {format_decimal(total_volume, total_volume_places)} * {format_decimal(ek_price_m3, 0)}",
+            ),
+            make_guided_step(
+                "Absoluter DB",
+                absolute_db.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "EUR",
+                2,
+                True,
+                "Ziehe den EK vom VK ab.",
+                "VK - EK",
+                placeholder=f"Zum Beispiel {format_decimal(total_vk, 2)} - {format_decimal(total_ek, 2)}",
+            ),
+            make_guided_step(
+                "DB-Satz",
+                result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
+                "Prozent",
+                2,
+                True,
+                "Teile den absoluten DB durch den VK und multipliziere mit 100.",
+                "Absoluter DB / VK x 100",
+                placeholder=f"Zum Beispiel {format_decimal(absolute_db, 2)} / {format_decimal(total_vk, 2)} * 100",
+                match_mode="percent_or_factor",
+            ),
+        ],
+    }
+
+
 TASK_GENERATORS = [
     task_unit_conversion,
     task_flooring_packages,
+    task_panel_count_from_area,
     task_running_meter_piece_count,
     task_volume_beam,
     task_volume_from_running_meters,
     task_volume_from_square_meters,
     task_volume_from_total_price,
     task_weight_from_volume,
+    task_weight_from_dimensions,
     task_wood_fiber_insulation_weight,
     task_running_meters_from_volume,
     task_running_meters_from_square_meters,
     task_price_per_running_meter,
     task_m3_price_from_running_meter,
+    task_m3_price_from_square_meter,
     task_price_per_square_meter,
+    task_running_meter_price_from_square_meter,
+    task_square_meter_price_from_running_meter,
+    task_lfm_price_from_m3_with_db,
+    task_m2_price_from_m3_with_db,
     task_square_meters_from_volume,
     task_square_meters_from_running_meters,
     task_total_price_from_volume,
@@ -3603,9 +4801,14 @@ TASK_GENERATORS = [
     task_m2_ek_from_vk_db,
     task_absolute_db_from_ek_vk,
     task_relative_db_from_ek_vk,
+    task_absolute_db_from_position,
+    task_relative_db_from_position,
     task_package_price,
     task_panel_package_price,
+    task_panel_package_db_sale_price,
+    task_panel_package_ek_from_vk_db,
     task_package_db_sale_price,
+    task_package_ek_from_vk_db,
 ]
 
 TASK_TYPE_TO_GENERATOR = {
@@ -3617,17 +4820,24 @@ TASKS_BY_LEVEL = {
     1: [
         task_unit_conversion,
         task_flooring_packages,
+        task_panel_count_from_area,
         task_running_meter_piece_count,
         task_volume_beam,
         task_volume_from_running_meters,
         task_square_meters_from_running_meters,
         task_running_meters_from_volume,
         task_wood_fiber_insulation_weight,
+        task_weight_from_dimensions,
         task_total_price_from_volume,
         task_volume_from_square_meters,
         task_volume_from_total_price,
         task_price_per_running_meter,
         task_price_per_square_meter,
+        task_m3_price_from_square_meter,
+        task_running_meter_price_from_square_meter,
+        task_square_meter_price_from_running_meter,
+        task_lfm_price_from_m3_with_db,
+        task_m2_price_from_m3_with_db,
         task_db_sale_price,
         task_lfm_db_sale_price,
         task_m2_db_sale_price,
@@ -3635,27 +4845,40 @@ TASKS_BY_LEVEL = {
         task_m2_ek_from_vk_db,
         task_absolute_db_from_ek_vk,
         task_relative_db_from_ek_vk,
+        task_absolute_db_from_position,
+        task_relative_db_from_position,
         task_package_price,
         task_panel_package_price,
+        task_panel_package_db_sale_price,
+        task_panel_package_ek_from_vk_db,
         task_package_db_sale_price,
+        task_package_ek_from_vk_db,
     ],
     2: [
         task_unit_conversion,
         task_flooring_packages,
+        task_panel_count_from_area,
         task_running_meter_piece_count,
         task_volume_beam,
         task_volume_from_running_meters,
         task_volume_from_square_meters,
         task_volume_from_total_price,
         task_weight_from_volume,
+        task_weight_from_dimensions,
         task_wood_fiber_insulation_weight,
         task_total_price_from_volume,
         task_price_per_square_meter,
+        task_m3_price_from_square_meter,
+        task_running_meter_price_from_square_meter,
+        task_square_meter_price_from_running_meter,
+        task_lfm_price_from_m3_with_db,
+        task_m2_price_from_m3_with_db,
         task_square_meters_from_volume,
         task_square_meters_from_running_meters,
         task_running_meters_from_volume,
         task_running_meters_from_square_meters,
         task_price_per_running_meter,
+        task_m3_price_from_running_meter,
         task_db_sale_price,
         task_lfm_db_sale_price,
         task_m2_db_sale_price,
@@ -3664,9 +4887,14 @@ TASKS_BY_LEVEL = {
         task_m2_ek_from_vk_db,
         task_absolute_db_from_ek_vk,
         task_relative_db_from_ek_vk,
+        task_absolute_db_from_position,
+        task_relative_db_from_position,
         task_package_price,
         task_panel_package_price,
+        task_panel_package_db_sale_price,
+        task_panel_package_ek_from_vk_db,
         task_package_db_sale_price,
+        task_package_ek_from_vk_db,
     ],
     3: TASK_GENERATORS,
 }
@@ -4281,7 +5509,17 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
                 "Das spricht oft für einen Fehler bei der Umrechnung von Millimeter, Zentimeter und Meter."
             )
 
-    if task["task_type"] in {"price_per_running_meter", "m3_price_from_running_meter", "total_price_from_volume", "volume_from_total_price"}:
+    if task["task_type"] in {
+        "price_per_running_meter",
+        "m3_price_from_running_meter",
+        "m3_price_from_square_meter",
+        "running_meter_price_from_square_meter",
+        "square_meter_price_from_running_meter",
+        "lfm_price_from_m3_with_db",
+        "m2_price_from_m3_with_db",
+        "total_price_from_volume",
+        "volume_from_total_price",
+    }:
         if is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100")):
             return (
                 "Dein Ergebnis liegt grob um einen glatten Faktor daneben. "
@@ -4295,13 +5533,18 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
                 "Wenn eine Kommazahl an Paketen herauskommt, muss auf das nächste volle Paket aufgerundet werden."
             )
 
-    if task["task_type"] in {"absolute_db_from_ek_vk", "relative_db_from_ek_vk"}:
+    if task["task_type"] in {
+        "absolute_db_from_ek_vk",
+        "relative_db_from_ek_vk",
+        "absolute_db_from_position",
+        "relative_db_from_position",
+    }:
         return (
             "Beim DB gehst du zuerst vom Unterschied zwischen VK und EK aus. "
             "Für den Prozentwert wird dieser Unterschied anschließend durch den VK geteilt."
         )
 
-    if task["task_type"] in {"weight_from_volume", "wood_fiber_insulation_weight"}:
+    if task["task_type"] in {"weight_from_volume", "weight_from_dimensions", "wood_fiber_insulation_weight"}:
         return (
             "Beim Gewicht wird nicht mit einem Preis gerechnet, sondern mit der Dichte. "
             "Prüfe, ob du das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter weitergerechnet hast."
@@ -4340,6 +5583,11 @@ def likely_error_focus(task):
         "unit_conversion": "Achte besonders auf den Einheitenfaktor zwischen Millimeter, Zentimeter und Meter.",
         "price_per_running_meter": "Achte besonders auf Querschnitt, Volumen von 1 Laufmeter und die richtige Preisbasis.",
         "price_per_square_meter": "Achte besonders auf die Dicke der Platte und auf die Preisbasis pro Kubikmeter.",
+        "m3_price_from_square_meter": "Achte besonders auf die Rückrichtung vom Quadratmeterpreis zum Kubikmeterpreis über die Dicke.",
+        "running_meter_price_from_square_meter": "Achte besonders auf die Breite als Verbindung zwischen Quadratmeterpreis und Laufmeterpreis.",
+        "square_meter_price_from_running_meter": "Achte besonders darauf, den Laufmeterpreis durch die Breite zu teilen.",
+        "lfm_price_from_m3_with_db": "Achte besonders auf Querschnitt, Kubikmeterpreis und danach den Ziel-DB.",
+        "m2_price_from_m3_with_db": "Achte besonders auf Dicke, Kubikmeterpreis und danach den Ziel-DB.",
         "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
         "volume_from_square_meters": "Achte besonders auf die Richtung der Umrechnung von Quadratmeter zu Kubikmeter über die Dicke.",
         "total_price_from_volume": "Achte besonders darauf, ob Volumen und Preisbasis wirklich zur Zielgröße Gesamtpreis passen.",
@@ -4353,17 +5601,24 @@ def likely_error_focus(task):
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
         "weight_from_volume": "Achte besonders darauf, dass die Dichte ein Faktor pro Kubikmeter ist.",
+        "weight_from_dimensions": "Achte besonders darauf, erst das Gesamtvolumen aus den Maßen aufzubauen und dann mit der Dichte weiterzurechnen.",
         "wood_fiber_insulation_weight": "Achte besonders darauf, dass die Rohdichte fest 40 Kilogramm pro Kubikmeter beträgt.",
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis, auf Breite x Stärke in Meter und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "lfm_ek_from_vk_db": "Achte besonders darauf, den VK über den DB-Faktor auf den gesamten EK zurückzurechnen und danach durch die Laufmeter zu teilen.",
         "m2_ek_from_vk_db": "Achte besonders darauf, zuerst die Gesamtfläche zu bilden und den VK über den DB-Faktor auf den EK pro Quadratmeter zurückzuführen.",
+        "panel_package_db_sale_price": "Achte besonders auf Paketfläche, Paket-EK und danach den Ziel-DB.",
+        "panel_package_ek_from_vk_db": "Achte besonders darauf, den Paket-VK über den DB-Faktor auf den Paket-EK und dann auf den Quadratmeter-EK zurückzurechnen.",
+        "package_ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom Paket-VK über den DB-Faktor zum Paket-EK.",
         "package_price": "Achte besonders auf die Reihenfolge Einzelvolumen, Paketvolumen und Paketpreis.",
         "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
+        "panel_count_from_area": "Achte besonders darauf, zuerst die Fläche pro Platte zu bilden und die Gesamtfläche dadurch zu teilen.",
         "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
         "running_meter_piece_count": "Achte besonders darauf, den Laufmeterbedarf durch die Stücklänge zu teilen und anschließend auf volle Stück aufzurunden.",
         "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
         "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
+        "absolute_db_from_position": "Achte besonders darauf, erst den EK aus Menge und Preisbasis aufzubauen und danach VK minus EK zu rechnen.",
+        "relative_db_from_position": "Achte besonders darauf, den DB aus der konkreten Menge erst in Euro und dann als Prozent vom VK zu berechnen.",
     }
     return focus.get(task["task_type"], "Achte besonders auf die passende Einheit, die Rechenrichtung und die Preisbasis.")
 
@@ -5689,7 +6944,6 @@ st.write(
 )
 
 st.subheader("Theorie auffrischen")
-st.write("Möchtest du noch deine theoretischen Grundlagen auffrischen? Dann klick hier.")
 if st.button(
     "Theorie ausblenden" if st.session_state.show_theory else "Theorie anzeigen",
     key="theory_toggle_button",
