@@ -7127,7 +7127,12 @@ if st.session_state.show_usage:
     )
     st.write(
         "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
-        "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
+        "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht. "
+        "Der Ablauf ist dabei bewusst ruhig aufgebaut: Zuerst hast du zwei Versuche für die Hauptaufgabe. "
+        "Wenn es dann noch nicht passt, führt dich der Holzrechner Schritt für Schritt durch die Rechnung; auch dort hast du "
+        "je Zwischenschritt zwei Versuche, bevor der aktuelle Schritt aufgelöst wird und du mit dem nächsten Wert weiterrechnen kannst. "
+        "Am Ende erscheint eine Musterlösung mit dem vollständigen Rechenweg, und zu diesem Rechenweg kannst du dir zusätzlich "
+        "KI-generierte Erklärungen geben lassen."
     )
     st.markdown(
         """
