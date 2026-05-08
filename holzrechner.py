@@ -312,6 +312,16 @@ def clean_ai_output(text):
     text = str(text)
     text = text.replace("**", "")
     text = text.replace("__", "")
+    text = text.replace("{,}", ",")
+    text = re.sub(r"\\text\{([^{}]*)\}", r"\1", text)
+    text = re.sub(r"\\mathrm\{([^{}]*)\}", r"\1", text)
+    text = text.replace("\\times", " x ")
+    text = text.replace("\\cdot", " x ")
+    text = text.replace("\\,", " ")
+    text = text.replace("\\(", "(").replace("\\)", ")")
+    text = text.replace("\\[", "").replace("\\]", "")
+    text = text.replace("$", "")
+    text = re.sub(r"\s+", " ", text).strip()
     return text
 
 
@@ -5850,6 +5860,8 @@ def generate_guided_error_hint(task, step, raw_value, answer_value, step_attempt
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Zwischenschritt, Eingabe und richtigen Wert zusammen. "
         "Verrate nicht den vollständigen restlichen Lösungsweg. "
         "Keine lange Musterlösung, kein Bezug auf vorherige Hinweise. "
+        "Verwende keinen Markdown-Fettdruck, keine Sternchen und keine LaTeX-Schreibweise. "
+        "Schreibe Maße und Rechnungen normal im Fließtext, zum Beispiel 6 m x 0,08 m x 0,12 m. "
         f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Zwischenschritt: {step['label']}. "
@@ -5922,6 +5934,8 @@ def generate_resolved_step_message(task, step, raw_value, answer_value, next_ste
         "Wenn es einen nächsten Schritt gibt, erkläre kurz, wie mit dem korrekten Wert dort weitergearbeitet wird. "
         "Wenn es keinen nächsten Schritt gibt, sage klar, dass dieser korrekte Wert das Ergebnis dieses letzten Schritts ist. "
         "Keine lange Musterlösung, keine Aufzählung. "
+        "Verwende keinen Markdown-Fettdruck, keine Sternchen und keine LaTeX-Schreibweise. "
+        "Schreibe Maße und Rechnungen normal im Fließtext, zum Beispiel 6 m x 0,08 m x 0,12 m. "
         f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Zwischenschritt: {step['label']}. "
@@ -5987,6 +6001,8 @@ def generate_hint(task, answer_value, is_correct, attempt=None):
         "Übernimm die lokale Vorprüfung nicht blind, sondern bewerte Aufgabe, Nutzereingabe und korrekte Lösung zusammen. "
         "Schreibe nicht 'fachlich korrekt'. "
         "Keine Floskeln, keine lange Musterlösung. "
+        "Verwende keinen Markdown-Fettdruck, keine Sternchen und keine LaTeX-Schreibweise. "
+        "Schreibe Maße und Rechnungen normal im Fließtext, zum Beispiel 6 m x 0,08 m x 0,12 m. "
         f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Versuch in der Aufgabe: {attempt_text}. "
@@ -6043,6 +6059,8 @@ def generate_main_guided_start_hint(task, answer_value):
         "Erkläre den wahrscheinlichsten Fehler mit Bezug auf die Aufgabe und leite freundlich zum kommenden Rechenweg über. "
         "Beschreibe, dass der Rechenweg jetzt in einzelne Zwischenschritte zerlegt wird, damit zuerst nur der nächste kleine Schritt geprüft wird. "
         "Verrate nicht den vollständigen Rechenweg und nicht unnötig alle späteren Schritte. "
+        "Verwende keinen Markdown-Fettdruck, keine Sternchen und keine LaTeX-Schreibweise. "
+        "Schreibe Maße und Rechnungen normal im Fließtext, zum Beispiel 6 m x 0,08 m x 0,12 m. "
         f"Zusätzliche Prüfperspektive: {AI_ERROR_EVALUATION_GUIDE} "
         f"Aufgabe: {task['prompt']} "
         f"Gesuchte Zielgröße: {unit_label(task['unit'])}. "
@@ -6512,6 +6530,8 @@ def generate_step_explanation(task, question_text):
         "Vermeide Formulierungen wie 'gemeint sind hier die Schritte'. "
         "Wenn ein Prozentwert oder ein DB-Faktor vorkommt, erkläre ihn ganz konkret, zum Beispiel 100 minus 25 gleich 75 Prozent und damit 0,75 als Faktor. "
         "Verwende keine allgemeinen Floskeln wie 'die passende Formelrichtung' oder 'dieses Zwischenergebnis wird im nächsten Schritt verwendet'. "
+        "Verwende keinen Markdown-Fettdruck, keine Sternchen und keine LaTeX-Schreibweise. "
+        "Schreibe Maße und Rechnungen normal im Fließtext, zum Beispiel 6 m x 0,08 m x 0,12 m. "
         "Antworte so, als würde dir jemand die Frage direkt im Gespräch stellen, in 5 bis maximal 6 Sätzen, wenn die Frage das hergibt. "
         f"Fachliche Formellogik: {FORMULA_GUIDE} "
         f"Aufgabentext: {task['prompt']} "
@@ -7206,35 +7226,29 @@ if st.session_state.feedback_text:
 if st.session_state.result_text and not st.session_state.solution_visible:
     st.write(st.session_state.result_text)
 
-if st.session_state.hint_text and not st.session_state.solution_visible:
+if (
+    st.session_state.hint_text
+    and not st.session_state.solution_visible
+    and not st.session_state.guided_visible
+):
     if st.session_state.feedback_kind == "success":
         st.success(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
     else:
         st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
 
-show_initial_guided_hint = (
+if (
     st.session_state.guided_visible
     and not st.session_state.task_finished
     and not st.session_state.solution_visible
-    and st.session_state.get("guided_step_index", 0) == 0
-    and not st.session_state.get("guided_completed", [])
-    and bool(st.session_state.get("guided_summary", ""))
-)
-
-if show_initial_guided_hint:
-    render_guided_summary()
-elif st.session_state.guided_visible and not st.session_state.task_finished and not st.session_state.solution_visible:
+    and not st.session_state.get("guided_summary", "")
+):
     st.warning("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
 
 if st.session_state.guided_visible:
     st.subheader("Geführte Zwischenschritte")
-    st.write("Rechne immer nur den aktuellen Zwischenschritt aus. Sobald er passt, erscheint der nächste Schritt mit dem passenden KI-Hinweis.")
 
     for completed_entry in st.session_state.guided_completed:
         render_guided_completed_entry(completed_entry)
-
-    if not show_initial_guided_hint:
-        render_guided_summary()
 
     guided_steps = st.session_state.task.get("guided_steps", [])
     current_index = st.session_state.guided_step_index
@@ -7254,6 +7268,11 @@ if st.session_state.guided_visible:
 
         if guided_submitted:
             handle_guided_submission()
+
+    if st.session_state.get("guided_summary", ""):
+        render_guided_summary()
+    elif st.session_state.get("hint_text", "") and not st.session_state.task_finished:
+        st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
 
 if st.session_state.solution_visible:
     if st.session_state.hint_text:
