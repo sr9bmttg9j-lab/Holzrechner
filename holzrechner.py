@@ -146,6 +146,20 @@ PRODUCT_DENSITIES = {
     "3-Schicht-Platte": [Decimal("450"), Decimal("500"), Decimal("550")],
     "Dekorplatte": [Decimal("620"), Decimal("650"), Decimal("700")],
 }
+INSULATION_VOLUMES = [
+    Decimal("5"),
+    Decimal("7"),
+    Decimal("9"),
+    Decimal("11"),
+    Decimal("13"),
+    Decimal("15"),
+    Decimal("17"),
+    Decimal("19"),
+    Decimal("21"),
+    Decimal("23"),
+    Decimal("25"),
+]
+WOOD_FIBER_INSULATION_DENSITY = Decimal("40")
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
@@ -2336,6 +2350,86 @@ def task_weight_from_volume(level):
     }
 
 
+def task_wood_fiber_insulation_weight(level):
+    volume = random.choice(INSULATION_VOLUMES)
+    density = WOOD_FIBER_INSULATION_DENSITY
+    result = volume * density
+
+    prompt = random.choice(
+        [
+            (
+                f"Ein Dachstuhl soll mit Holzfaser-Einblasdämmung gedämmt werden. "
+                f"Der zu füllende Hohlraum hat ein Volumen von {format_decimal(volume, 0)} Kubikmeter. "
+                f"Damit die Dämmung setzungssicher eingebaut werden kann, ist eine Rohdichte von "
+                f"{format_decimal(density, 0)} Kilogramm pro Kubikmeter erforderlich.\n\n"
+                "Wie viele Kilogramm Einblasdämmung werden benötigt?"
+            ),
+            (
+                f"Für eine Holzfaser-Einblasdämmung müssen {format_decimal(volume, 0)} Kubikmeter Hohlraum "
+                f"gefüllt werden. Vorgegeben ist eine setzungssichere Rohdichte von "
+                f"{format_decimal(density, 0)} Kilogramm pro Kubikmeter.\n\n"
+                "Welche Dämmstoffmenge in Kilogramm wird gebraucht?"
+            ),
+            (
+                f"Bei einer Baustelle sind {format_decimal(volume, 0)} Kubikmeter Gefach mit "
+                f"Holzfaser-Einblasdämmung zu füllen. Die Rohdichte bleibt bei "
+                f"{format_decimal(density, 0)} Kilogramm pro Kubikmeter.\n\n"
+                "Wie viel Kilogramm Material müssen eingeplant werden?"
+            ),
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Benötigte Dämmstoffmenge",
+            "Kilogramm = Kubikmeter x Rohdichte",
+            f"{format_decimal(volume, 0)} Kubikmeter x "
+            f"{format_decimal(density, 0)} Kilogramm pro Kubikmeter = {format_decimal(result, 0)} Kilogramm",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result,
+        "unit": "kg",
+        "display_places": 0,
+        "round_for_check": True,
+        "task_type": "wood_fiber_insulation_weight",
+        "correction": (
+            "Bei Einblasdämmung ist die Rohdichte der feste Faktor pro Kubikmeter. "
+            "Du rechnest das zu füllende Volumen mit 40 Kilogramm pro Kubikmeter weiter."
+        ),
+        "solution": solution,
+        "perfect_formula": f"{format_decimal(volume, 0)} x {format_decimal(density, 0)}",
+        "factor_checks": [
+            factor_check(f"Volumen {format_decimal(volume, 0)} Kubikmeter", volume),
+            factor_check(f"Rohdichte {format_decimal(density, 0)} Kilogramm pro Kubikmeter", density),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                volume / density,
+                (
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar durch die Rohdichte geteilt. "
+                    "Für die benötigte Dämmstoffmenge wird das Volumen mit 40 Kilogramm pro Kubikmeter multipliziert."
+                ),
+                "kg",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Benötigte Dämmstoffmenge",
+                result,
+                "kg",
+                0,
+                True,
+                "Multipliziere das Volumen des Hohlraums mit der Rohdichte.",
+                "Kubikmeter x Rohdichte",
+                placeholder="Zum Beispiel 18 * 40",
+            ),
+        ],
+    }
+
+
 def task_m3_price_from_running_meter(level):
     product = generate_hobelware_product()
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
@@ -3492,6 +3586,7 @@ TASK_GENERATORS = [
     task_volume_from_square_meters,
     task_volume_from_total_price,
     task_weight_from_volume,
+    task_wood_fiber_insulation_weight,
     task_running_meters_from_volume,
     task_running_meters_from_square_meters,
     task_price_per_running_meter,
@@ -3527,6 +3622,7 @@ TASKS_BY_LEVEL = {
         task_volume_from_running_meters,
         task_square_meters_from_running_meters,
         task_running_meters_from_volume,
+        task_wood_fiber_insulation_weight,
         task_total_price_from_volume,
         task_volume_from_square_meters,
         task_volume_from_total_price,
@@ -3552,6 +3648,7 @@ TASKS_BY_LEVEL = {
         task_volume_from_square_meters,
         task_volume_from_total_price,
         task_weight_from_volume,
+        task_wood_fiber_insulation_weight,
         task_total_price_from_volume,
         task_price_per_square_meter,
         task_square_meters_from_volume,
@@ -4204,7 +4301,7 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
             "Für den Prozentwert wird dieser Unterschied anschließend durch den VK geteilt."
         )
 
-    if task["task_type"] == "weight_from_volume":
+    if task["task_type"] in {"weight_from_volume", "wood_fiber_insulation_weight"}:
         return (
             "Beim Gewicht wird nicht mit einem Preis gerechnet, sondern mit der Dichte. "
             "Prüfe, ob du das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter weitergerechnet hast."
@@ -4256,6 +4353,7 @@ def likely_error_focus(task):
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
         "weight_from_volume": "Achte besonders darauf, dass die Dichte ein Faktor pro Kubikmeter ist.",
+        "wood_fiber_insulation_weight": "Achte besonders darauf, dass die Rohdichte fest 40 Kilogramm pro Kubikmeter beträgt.",
         "m3_price_from_running_meter": "Achte besonders auf die richtige Preisbasis, auf Breite x Stärke in Meter und auf Teilen statt Multiplizieren.",
         "ek_from_vk_db": "Achte besonders auf die Rückwärtsrechnung vom VK über den DB-Faktor zum EK.",
         "lfm_ek_from_vk_db": "Achte besonders darauf, den VK über den DB-Faktor auf den gesamten EK zurückzurechnen und danach durch die Laufmeter zu teilen.",
