@@ -5685,32 +5685,6 @@ st.write(
     "Im Holzhandel ist sauberes Umrechnen jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB "
     "müssen sicher sitzen, damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
-st.write(
-    "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
-    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal, "
-    "und deutsche Tausendertrennzeichen wie 3.465 oder 3'465 werden ebenfalls erkannt."
-)
-st.write(
-    "Den Taschenrechner kannst du dabei zur Seite legen: Alle Rechenwege und Ergebnisse können direkt hier eingegeben "
-    "und geprüft werden."
-)
-st.markdown(
-    """
-Beispiele, die funktionieren:
-- `0,4536 / 0,0054`
-- `0,4536 : 0,0054 = 84`
-- `6 x 0,08 x 0,12`
-- `6*0,08*0,12=0,0576`
-"""
-)
-st.write(
-    "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
-    "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
-)
-st.write(
-    "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
-    "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
-)
 
 st.subheader("Theorie auffrischen")
 st.write("Möchtest du noch deine theoretischen Grundlagen auffrischen? Dann klick hier.")
@@ -5726,6 +5700,33 @@ if st.session_state.show_theory:
     if st.button("Theorie ausblenden", key="theory_hide_bottom_button"):
         st.session_state.show_theory = False
         st.rerun()
+
+st.write(
+    "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
+    "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
+)
+st.write(
+    "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
+    "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht."
+)
+st.write(
+    "Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen. "
+    "Zum Multiplizieren kannst du x, × oder * verwenden; zum Dividieren gehen / oder :. Leerzeichen sind egal, "
+    "und deutsche Tausendertrennzeichen wie 3.465 oder 3'465 werden ebenfalls erkannt."
+)
+st.markdown(
+    """
+Beispiele, die funktionieren:
+- `0,4536 / 0,0054`
+- `0,4536 : 0,0054 = 84`
+- `6 x 0,08 x 0,12`
+- `6*0,08*0,12=0,0576`
+"""
+)
+st.markdown(
+    "**Den Taschenrechner kannst du dabei zur Seite legen: Alle Rechenwege und Ergebnisse können direkt hier eingegeben "
+    "und geprüft werden.**"
+)
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
