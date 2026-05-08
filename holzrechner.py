@@ -5724,13 +5724,12 @@ Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` w
 """
 )
 st.markdown(
-    "**Den Taschenrechner kannst du dabei zur Seite legen: Alle Rechenwege und Ergebnisse können direkt hier eingegeben "
-    "und geprüft werden.**"
+    "**Du kannst zwar direkt das Endergebnis eingeben, aber auch alle Rechenwege können direkt hier geprüft werden. "
+    "Deswegen kannst du deinen Taschenrechner ganz entspannt zur Seite legen.**"
 )
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
-st.caption("Du kannst deinen Rechenweg als Formel, direkt das Ergebnis oder beides mit Gleichheitszeichen eintragen.")
 
 with st.form("answer_form", clear_on_submit=False):
     st.text_input(
