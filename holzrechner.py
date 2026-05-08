@@ -308,6 +308,13 @@ def ensure_sentence(text):
     return f"{text}."
 
 
+def clean_ai_output(text):
+    text = str(text)
+    text = text.replace("**", "")
+    text = text.replace("__", "")
+    return text
+
+
 def format_m(value):
     return format_decimal(value, 2).rstrip("0").rstrip(",")
 
@@ -5351,7 +5358,7 @@ def guided_completed_entry(text, kind="success"):
 def render_guided_resolved_entry(entry):
     next_step = entry.get("next_step_label", "")
     next_text = f"<div class='resolved-next'>Als Nächstes: {escape(next_step)}.</div>" if next_step else ""
-    message = entry.get("message", "").strip()
+    message = clean_ai_output(entry.get("message", "")).strip()
     message_html = f"<div class='resolved-message'>{escape(message)}</div>" if message else ""
     result_label = "Weiterrechnen kannst du mit" if next_step else "Das Ergebnis ist"
     formula = entry.get("formula", "").strip()
@@ -5394,15 +5401,16 @@ def render_guided_completed_entry(entry):
         render_guided_resolved_entry(entry)
         return
     if kind == "warning":
-        st.warning(text)
+        st.warning(clean_ai_output(text))
     else:
-        st.success(text)
+        st.success(clean_ai_output(text))
 
 
 def render_guided_summary():
     text = st.session_state.get("guided_summary", "")
     if not text:
         return
+    text = clean_ai_output(text)
 
     kind = st.session_state.get("guided_summary_kind", "warning")
     if kind == "success":
@@ -6852,7 +6860,7 @@ def render_solution_explanation_form():
         st.warning(st.session_state.explanation_error)
 
     if st.session_state.explanation_text:
-        st.info(f"KI-Erklärung: {st.session_state.explanation_text}")
+        st.info(f"KI-Erklärung: {clean_ai_output(st.session_state.explanation_text)}")
 
 
 def keypad_append(input_key, token):
@@ -7200,9 +7208,9 @@ if st.session_state.result_text and not st.session_state.solution_visible:
 
 if st.session_state.hint_text and not st.session_state.solution_visible:
     if st.session_state.feedback_kind == "success":
-        st.success(f"KI-Hinweis: {st.session_state.hint_text}")
+        st.success(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
     else:
-        st.warning(f"KI-Hinweis: {st.session_state.hint_text}")
+        st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
 
 show_initial_guided_hint = (
     st.session_state.guided_visible
@@ -7249,7 +7257,7 @@ if st.session_state.guided_visible:
 
 if st.session_state.solution_visible:
     if st.session_state.hint_text:
-        st.warning(f"KI-Hinweis: {st.session_state.hint_text}")
+        st.warning(f"KI-Hinweis: {clean_ai_output(st.session_state.hint_text)}")
     else:
         st.warning(
             "Nicht ganz. "
