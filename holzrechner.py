@@ -5709,8 +5709,6 @@ st.write(
 )
 st.markdown(
     """
-Du kannst den Rechenweg als Formel, nur das Endergebnis oder Formel mit Gleichheitszeichen und Ergebnis eintragen.
-
 Beispiele, die funktionieren:
 
 - **Dividieren mit Schrägstrich:** `0,4536 / 0,0054`
@@ -5724,8 +5722,13 @@ Leerzeichen sind egal. Deutsche Tausendertrennzeichen wie `3.465` oder `3'465` w
 """
 )
 st.markdown(
-    "**Du kannst zwar direkt das Endergebnis eingeben, aber auch alle Rechenwege können direkt hier geprüft werden. "
-    "Deswegen kannst du deinen Taschenrechner ganz entspannt zur Seite legen.**"
+    "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
+    "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
+    "ganz entspannt zur Seite legen.**"
+)
+st.write(
+    "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
+    "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
 )
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
