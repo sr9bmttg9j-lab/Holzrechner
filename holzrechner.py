@@ -7225,9 +7225,6 @@ Beispiele, die funktionieren:
             st.rerun()
 
 
-st.markdown("#### Jetzt direkt mit der ersten Aufgabe starten.")
-st.caption("Weiter unten kannst du die Theorie auffrischen und die Bedienung des Holzrechners anzeigen lassen.")
-
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
 
