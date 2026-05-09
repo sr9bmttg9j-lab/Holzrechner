@@ -69,10 +69,11 @@ HOBEL_THICKNESSES_BY_LEVEL = {
     3: [Decimal("0.019"), Decimal("0.023"), Decimal("0.027")],
 }
 HOBEL_LENGTHS_BY_LEVEL = {
-    1: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("6.0")],
-    2: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("5.5"), Decimal("6.0")],
-    3: [Decimal("3.0"), Decimal("3.5"), Decimal("4.0"), Decimal("4.5"), Decimal("5.0"), Decimal("5.5"), Decimal("6.0")],
+    1: [Decimal("2.70"), Decimal("3.00"), Decimal("3.30"), Decimal("3.60"), Decimal("3.90"), Decimal("4.20"), Decimal("4.50"), Decimal("4.80"), Decimal("5.10"), Decimal("5.40")],
+    2: [Decimal("2.70"), Decimal("3.00"), Decimal("3.30"), Decimal("3.60"), Decimal("3.90"), Decimal("4.20"), Decimal("4.50"), Decimal("4.80"), Decimal("5.10"), Decimal("5.40")],
+    3: [Decimal("2.70"), Decimal("3.00"), Decimal("3.30"), Decimal("3.60"), Decimal("3.90"), Decimal("4.20"), Decimal("4.50"), Decimal("4.80"), Decimal("5.10"), Decimal("5.40")],
 }
+HOBEL_BUNDLE_COUNTS = [4, 5, 6, 7, 8]
 COUNTS_BY_LEVEL = {
     1: [4, 6, 8, 10, 12, 16, 20],
     2: [5, 6, 8, 10, 12, 14, 18, 24, 30],
@@ -188,6 +189,7 @@ UNIT_LABELS = {
     "Faktor": "Faktor",
     "Pakete": "Pakete",
     "Stück": "Stück",
+    "Bund": "Bund",
     "Prozent": "Prozent",
 }
 
@@ -251,7 +253,7 @@ Bodenpakete:
 - Benötigte Pakete: Bedarf in Quadratmeter / Paketfläche, danach auf volle Pakete aufrunden
 
 Laufende Ware:
-- Benötigte Stückzahl: Bedarf in Laufmeter / Länge pro Stück, danach auf volle Stück aufrunden
+- Benötigte Stückzahl oder Bundzahl: Bedarf in Laufmeter / Länge pro Stück, danach auf volle Stück und bei Glattkantbrettern auf volle Bund aufrunden
 
 Dichte und Gewicht:
 - Gewicht in Kilogramm: Kubikmeter x Dichte in Kilogramm pro Kubikmeter
@@ -4662,21 +4664,20 @@ def task_panel_count_from_area(level):
 def task_running_meter_piece_count(level):
     needed_lfm = choice_for_level(RUNNING_METER_NEEDS_BY_LEVEL, level)
 
-    if random.random() < 0.70:
+    is_hobelware = random.random() < 0.70
+    if is_hobelware:
         product = generate_hobelware_product()
         display_name = "Glattkantbretter"
-        length_m = random.choice(
-            {
-                1: [Decimal("3.00"), Decimal("3.45"), Decimal("3.50"), Decimal("4.00"), Decimal("4.50")],
-                2: [Decimal("3.45"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00"), Decimal("5.50")],
-                3: [Decimal("3.45"), Decimal("4.00"), Decimal("4.50"), Decimal("5.00"), Decimal("5.50"), Decimal("6.00")],
-            }[level]
-        )
+        length_m = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+        bundle_count = random.choice(HOBEL_BUNDLE_COUNTS)
         width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
         height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
         width_text = display_measure(width_m, ("cm", "m"))
         height_text = display_measure(height_m, ("mm", "cm"))
-        extra_context = f"Die Bretter sind {width_text} breit und {height_text} stark."
+        extra_context = (
+            f"Die Bretter sind {width_text} breit und {height_text} stark. "
+            f"Ein Bund enthält {bundle_count} Bretter."
+        )
     else:
         product = {"name": "KVH", "kind": "structural_beam"}
         display_name = product["name"]
@@ -4686,91 +4687,169 @@ def task_running_meter_piece_count(level):
         extra_context = f"Der Querschnitt beträgt {width_text} x {height_text}."
 
     raw_pieces = needed_lfm / length_m
-    result = round_up_to_whole(raw_pieces)
     raw_places = precise_decimal_places(raw_pieces, 3, 4)
 
-    prompt = random.choice(
-        [
-            f"Ein Kunde benötigt {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Ein Stück ist {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück müssen mindestens bestellt werden?",
-            f"Für eine Anfrage sollen {format_decimal(needed_lfm, 0)} Laufmeter {display_name} geliefert werden. Die Ware kommt in {format_m(length_m)} m Länge. {extra_context}\n\nWie viele volle Stück werden benötigt?",
-            f"Eine Kundin möchte {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Die einzelnen Stücke sind jeweils {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück braucht sie mindestens?",
-        ]
-    )
-
-    needs_rounding = raw_pieces != raw_pieces.to_integral_value()
-    if needs_rounding:
+    if is_hobelware:
+        needed_pieces = round_up_to_whole(raw_pieces)
+        raw_bundles = Decimal(needed_pieces) / Decimal(bundle_count)
+        result = round_up_to_whole(raw_bundles)
+        raw_bundle_places = precise_decimal_places(raw_bundles, 3, 4)
+        prompt = random.choice(
+            [
+                f"Ein Kunde benötigt {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Ein Brett ist {format_m(length_m)} m lang. {extra_context}\n\nWie viele Bund müssen mindestens bestellt werden?",
+                f"Für eine Anfrage sollen {format_decimal(needed_lfm, 0)} Laufmeter {display_name} geliefert werden. Die Ware kommt in {format_m(length_m)} m Länge. {extra_context}\n\nWie viele volle Bund werden benötigt?",
+                f"Eine Kundin möchte {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Die einzelnen Bretter sind jeweils {format_m(length_m)} m lang. {extra_context}\n\nWie viele Bund braucht sie mindestens?",
+            ]
+        )
         solution = format_solution_steps(
             (
-                "Rechnerische Stückzahl",
-                "Rechnerische Stückzahl = benötigte Laufmeter / Länge pro Stück",
+                "Rechnerische Brettanzahl",
+                "Rechnerische Brettanzahl = benötigte Laufmeter / Länge pro Brett",
                 f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
-                f"{format_decimal(raw_pieces, raw_places)} Stück",
+                f"{format_decimal(raw_pieces, raw_places)} Bretter",
             ),
             (
-                "Benötigte Stück",
-                "Stückzahl = rechnerische Stückzahl, danach auf volle Stück aufrunden",
-                f"{format_decimal(raw_pieces, raw_places)} Stück, aufgerundet = {format_decimal(result, 0)} Stück",
+                "Benötigte Bretter",
+                "Benötigte Bretter = rechnerische Brettanzahl, danach auf volle Bretter aufrunden",
+                f"{format_decimal(raw_pieces, raw_places)} Bretter, aufgerundet = "
+                f"{format_decimal(needed_pieces, 0)} Bretter",
+            ),
+            (
+                "Benötigte Bund",
+                "Bund = benötigte Bretter / Bretter je Bund, danach auf volle Bund aufrunden",
+                f"{format_decimal(needed_pieces, 0)} Bretter / {bundle_count} Bretter je Bund = "
+                f"{format_decimal(raw_bundles, raw_bundle_places)} Bund, aufgerundet = {format_decimal(result, 0)} Bund",
             ),
         )
         guided_steps = [
             make_guided_step(
-                "Rechnerische Stückzahl",
+                "Rechnerische Brettanzahl",
                 raw_pieces.normalize(),
                 "Stück",
                 raw_places,
                 False,
-                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
-                "Benötigte Laufmeter / Länge pro Stück",
+                "Teile den Laufmeterbedarf durch die Länge eines Bretts.",
+                "Benötigte Laufmeter / Länge pro Brett",
+                placeholder="Zum Beispiel 150 / 3,30",
             ),
             make_guided_step(
-                "Benötigte Stück",
-                result,
+                "Benötigte Bretter",
+                needed_pieces,
                 "Stück",
                 0,
                 False,
-                "Runde die rechnerische Stückzahl auf volle Stück auf.",
-                "Rechnerische Stückzahl auf volle Stück aufrunden",
+                "Runde die rechnerische Brettanzahl auf volle Bretter auf.",
+                "Rechnerische Brettanzahl auf volle Bretter aufrunden",
+                placeholder="Zum Beispiel 45,455",
+                match_mode="ceil_integer",
+            ),
+            make_guided_step(
+                "Benötigte Bund",
+                result,
+                "Bund",
+                0,
+                False,
+                "Teile die benötigten Bretter durch die Bretter je Bund und runde auf volle Bund auf.",
+                "Benötigte Bretter / Bretter je Bund, dann auf volle Bund aufrunden",
+                placeholder="Zum Beispiel 46 / 6",
                 match_mode="ceil_integer",
             ),
         ]
-    else:
-        solution = format_solution_steps(
-            (
-                "Benötigte Stück",
-                "Benötigte Stück = benötigte Laufmeter / Länge pro Stück",
-                f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
-                f"{format_decimal(result, 0)} Stück",
-            ),
+        correction = (
+            "Teile den Laufmeterbedarf durch die Länge eines Bretts, runde auf volle Bretter auf "
+            "und rechne danach auf volle Bund weiter."
         )
-        guided_steps = [
-            make_guided_step(
-                "Benötigte Stück",
-                result,
-                "Stück",
-                0,
-                False,
-                "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
-                "Benötigte Laufmeter / Länge pro Stück",
-                match_mode="ceil_integer",
-            ),
-        ]
+        perfect_formula = (
+            f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
+            f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(needed_pieces, 0)} Bretter; "
+            f"{format_decimal(needed_pieces, 0)} / {bundle_count} = "
+            f"{format_decimal(raw_bundles, raw_bundle_places)}, aufgerundet {format_decimal(result, 0)} Bund"
+        )
+        unit = "Bund"
+    else:
+        result = round_up_to_whole(raw_pieces)
+        prompt = random.choice(
+            [
+                f"Ein Kunde benötigt {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Ein Stück ist {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück müssen mindestens bestellt werden?",
+                f"Für eine Anfrage sollen {format_decimal(needed_lfm, 0)} Laufmeter {display_name} geliefert werden. Die Ware kommt in {format_m(length_m)} m Länge. {extra_context}\n\nWie viele volle Stück werden benötigt?",
+                f"Eine Kundin möchte {format_decimal(needed_lfm, 0)} Laufmeter {display_name}. Die einzelnen Stücke sind jeweils {format_m(length_m)} m lang. {extra_context}\n\nWie viele Stück braucht sie mindestens?",
+            ]
+        )
+        needs_rounding = raw_pieces != raw_pieces.to_integral_value()
+        if needs_rounding:
+            solution = format_solution_steps(
+                (
+                    "Rechnerische Stückzahl",
+                    "Rechnerische Stückzahl = benötigte Laufmeter / Länge pro Stück",
+                    f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
+                    f"{format_decimal(raw_pieces, raw_places)} Stück",
+                ),
+                (
+                    "Benötigte Stück",
+                    "Stückzahl = rechnerische Stückzahl, danach auf volle Stück aufrunden",
+                    f"{format_decimal(raw_pieces, raw_places)} Stück, aufgerundet = {format_decimal(result, 0)} Stück",
+                ),
+            )
+            guided_steps = [
+                make_guided_step(
+                    "Rechnerische Stückzahl",
+                    raw_pieces.normalize(),
+                    "Stück",
+                    raw_places,
+                    False,
+                    "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
+                    "Benötigte Laufmeter / Länge pro Stück",
+                ),
+                make_guided_step(
+                    "Benötigte Stück",
+                    result,
+                    "Stück",
+                    0,
+                    False,
+                    "Runde die rechnerische Stückzahl auf volle Stück auf.",
+                    "Rechnerische Stückzahl auf volle Stück aufrunden",
+                    match_mode="ceil_integer",
+                ),
+            ]
+        else:
+            solution = format_solution_steps(
+                (
+                    "Benötigte Stück",
+                    "Benötigte Stück = benötigte Laufmeter / Länge pro Stück",
+                    f"{format_decimal(needed_lfm, 0)} Laufmeter / {format_m(length_m)} Meter = "
+                    f"{format_decimal(result, 0)} Stück",
+                ),
+            )
+            guided_steps = [
+                make_guided_step(
+                    "Benötigte Stück",
+                    result,
+                    "Stück",
+                    0,
+                    False,
+                    "Teile den Laufmeterbedarf durch die Länge eines Stücks.",
+                    "Benötigte Laufmeter / Länge pro Stück",
+                    match_mode="ceil_integer",
+                ),
+            ]
 
-    correction = (
-        "Teile den Laufmeterbedarf durch die Länge eines Stücks und runde anschließend auf volle Stück auf."
-        if needs_rounding
-        else "Teile den Laufmeterbedarf durch die Länge eines Stücks."
-    )
-    perfect_formula = (
-        f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
-        f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(result, 0)}"
-        if needs_rounding
-        else f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)}"
-    )
+        correction = (
+            "Teile den Laufmeterbedarf durch die Länge eines Stücks und runde anschließend auf volle Stück auf."
+            if needs_rounding
+            else "Teile den Laufmeterbedarf durch die Länge eines Stücks."
+        )
+        perfect_formula = (
+            f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)} = "
+            f"{format_decimal(raw_pieces, raw_places)}, aufgerundet {format_decimal(result, 0)}"
+            if needs_rounding
+            else f"{format_decimal(needed_lfm, 0)} / {format_m(length_m)}"
+        )
+        unit = "Stück"
 
     return {
         "prompt": prompt,
         "expected": result,
-        "unit": "Stück",
+        "unit": unit,
         "display_places": 0,
         "round_for_check": False,
         "match_mode": "ceil_integer",
@@ -5380,6 +5459,12 @@ def default_step_placeholder(step):
         return "Zum Beispiel 6,20 / 0,00304"
     if "fläche pro stück" in label:
         return "Zum Beispiel 2 * 0,20"
+    if "rechnerische brettanzahl" in label:
+        return "Zum Beispiel 150 / 3,30"
+    if "benötigte bretter" in label:
+        return "Zum Beispiel 45,455"
+    if "bund" in label:
+        return "Zum Beispiel 46 / 6"
     if "stückzahl" in label or "benötigte stück" in label:
         return "Zum Beispiel 150 / 3,45"
     if "paketfläche" in label:
@@ -6002,7 +6087,7 @@ def likely_error_focus(task):
         "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
         "panel_count_from_area": "Achte besonders darauf, zuerst die Fläche pro Platte zu bilden und die Gesamtfläche dadurch zu teilen.",
         "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
-        "running_meter_piece_count": "Achte besonders darauf, den Laufmeterbedarf durch die Stücklänge zu teilen und anschließend auf volle Stück aufzurunden.",
+        "running_meter_piece_count": "Achte besonders darauf, den Laufmeterbedarf durch die Stücklänge zu teilen und anschließend auf volle Stück oder volle Bund aufzurunden.",
         "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
         "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
         "absolute_db_from_position": "Achte besonders darauf, erst den EK aus Menge und Preisbasis aufzubauen und danach VK minus EK zu rechnen.",
@@ -6635,7 +6720,7 @@ def fallback_step_explanation(task, question_text):
         return (
             "Bei laufender Ware geht es zuerst darum, wie viele Stücklängen in den gewünschten Laufmeterbedarf passen. "
             "Dafür wird der Bedarf in Laufmetern durch die Länge eines Stücks geteilt. "
-            "Wenn eine Kommazahl entsteht, wird auf volle Stück aufgerundet, weil kein halbes Brett oder halbes KVH-Stück bestellt werden kann."
+            "Wenn eine Kommazahl entsteht, wird auf volle Stück aufgerundet; bei Glattkantbrettern wird anschließend zusätzlich auf volle Bund weitergerechnet."
         )
 
     if task["task_type"] == "relative_db_from_ek_vk":
