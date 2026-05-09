@@ -702,7 +702,7 @@ def density_for_product(product):
     return random.choice(PRODUCT_DENSITIES.get(product_name(product), [Decimal("500")]))
 
 
-def generate_whole_volume_position(level):
+def generate_whole_volume_position_details(level):
     product = random.choice(PRODUCTS)
     kind = product["kind"]
 
@@ -710,40 +710,223 @@ def generate_whole_volume_position(level):
         length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
         width_m, height_m = generate_structural_dimensions(level, length_m)
         count = random.choice(COUNTS_BY_LEVEL[level])
-        total_volume = length_m * width_m * height_m * Decimal(count)
+        piece_volume = length_m * width_m * height_m
+        total_volume = piece_volume * Decimal(count)
+        piece_volume_places = precise_decimal_places(piece_volume)
+        total_volume_places = precise_decimal_places(total_volume)
         width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
         context = (
             f"{count} Stück {product['name']} im Format {format_m(length_m)} m x "
             f"{width_text} x {height_text}"
         )
-        return product, context, total_volume, precise_decimal_places(total_volume)
+        return {
+            "product": product,
+            "context": context,
+            "total_volume": total_volume,
+            "total_volume_places": total_volume_places,
+            "perfect_volume_formula": (
+                f"{format_m(length_m)} x {format_decimal(width_m, 2)} x "
+                f"{format_decimal(height_m, 2)} x {count}"
+            ),
+            "volume_solution_steps": [
+                (
+                    "Volumen pro Stück",
+                    "Volumen pro Stück = Länge x Breite x Höhe",
+                    f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
+                    f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+                ),
+                (
+                    "Gesamtvolumen",
+                    "Gesamtvolumen = Volumen pro Stück x Stückzahl",
+                    f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {count} Stück = "
+                    f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
+                ),
+            ],
+            "volume_guided_steps": [
+                make_guided_step(
+                    "Volumen pro Stück",
+                    piece_volume.normalize(),
+                    "m3",
+                    piece_volume_places,
+                    False,
+                    "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
+                    "Länge x Breite x Höhe",
+                ),
+                make_guided_step(
+                    "Gesamtvolumen",
+                    total_volume.normalize(),
+                    "m3",
+                    total_volume_places,
+                    False,
+                    "Multipliziere danach das Volumen pro Stück mit der Stückzahl.",
+                    "Volumen pro Stück x Stückzahl",
+                ),
+            ],
+            "volume_factor_checks": [
+                factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+                factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+                factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+                factor_check(f"Stückzahl {count}", Decimal(count)),
+            ],
+        }
 
     if kind == "panel":
         panel_format = panel_format_text(product)
         length_m, width_m = panel_format_dimensions(panel_format)
         thickness_m = panel_thickness_for_product(product, level)
         panel_count = panel_count_for_level(level)
-        total_volume = length_m * width_m * thickness_m * Decimal(panel_count)
+        sheet_area = length_m * width_m
+        total_area = sheet_area * Decimal(panel_count)
+        total_volume = total_area * thickness_m
+        sheet_area_places = precise_decimal_places(sheet_area)
+        total_area_places = precise_decimal_places(total_area)
+        total_volume_places = precise_decimal_places(total_volume)
         thickness_text = display_measure(thickness_m, ("mm", "cm"))
         context = (
             f"{panel_count} Platten {product['name']} im Format {panel_format} "
             f"bei {thickness_text} Dicke"
         )
-        return product, context, total_volume, precise_decimal_places(total_volume)
+        return {
+            "product": product,
+            "context": context,
+            "total_volume": total_volume,
+            "total_volume_places": total_volume_places,
+            "perfect_volume_formula": (
+                f"{format_decimal(length_m, 2)} x {format_decimal(width_m, 3)} x "
+                f"{panel_count} x {format_decimal(thickness_m, 3)}"
+            ),
+            "volume_solution_steps": [
+                (
+                    "Fläche pro Platte",
+                    "Fläche pro Platte = Länge x Breite",
+                    f"{format_decimal(length_m, 2)} Meter x {format_decimal(width_m, 3)} Meter = "
+                    f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter",
+                ),
+                (
+                    "Gesamtfläche",
+                    "Gesamtfläche = Fläche pro Platte x Plattenanzahl",
+                    f"{format_decimal(sheet_area, sheet_area_places)} Quadratmeter x {panel_count} Stück = "
+                    f"{format_decimal(total_area, total_area_places)} Quadratmeter",
+                ),
+                (
+                    "Gesamtvolumen",
+                    "Gesamtvolumen = Gesamtfläche x Dicke",
+                    f"{format_decimal(total_area, total_area_places)} Quadratmeter x "
+                    f"{format_decimal(thickness_m, 3)} Meter = {format_decimal(total_volume, total_volume_places)} Kubikmeter",
+                ),
+            ],
+            "volume_guided_steps": [
+                make_guided_step(
+                    "Fläche pro Platte",
+                    sheet_area.normalize(),
+                    "m2",
+                    sheet_area_places,
+                    False,
+                    "Rechne zuerst Länge x Breite für eine einzelne Platte.",
+                    "Länge x Breite",
+                ),
+                make_guided_step(
+                    "Gesamtfläche",
+                    total_area.normalize(),
+                    "m2",
+                    total_area_places,
+                    False,
+                    "Multipliziere die Fläche pro Platte mit der Plattenanzahl.",
+                    "Fläche pro Platte x Plattenanzahl",
+                ),
+                make_guided_step(
+                    "Gesamtvolumen",
+                    total_volume.normalize(),
+                    "m3",
+                    total_volume_places,
+                    False,
+                    "Multipliziere die Gesamtfläche mit der Dicke in Meter.",
+                    "Gesamtfläche x Dicke",
+                ),
+            ],
+            "volume_factor_checks": [
+                factor_check(f"Länge {format_decimal(length_m, 2)} Meter", length_m),
+                factor_check(f"Breite {format_decimal(width_m, 3)} Meter", width_m),
+                factor_check(f"Plattenanzahl {panel_count}", Decimal(panel_count)),
+                factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            ],
+        }
 
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
     height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     board_count = board_count_for_level(level)
+    piece_volume = board_length * width_m * height_m
     running_meters = board_length * Decimal(board_count)
-    total_volume = width_m * height_m * running_meters
+    total_volume = piece_volume * Decimal(board_count)
+    piece_volume_places = precise_decimal_places(piece_volume)
+    total_volume_places = precise_decimal_places(total_volume)
     width_text = display_measure(width_m, ("cm", "m"))
     thickness_text = display_measure(height_m, ("mm", "cm"))
     context = (
         f"{board_count} Bretter {hobelware_display_name(product)} mit je {format_m(board_length)} m Länge, "
         f"{width_text} Breite und {thickness_text} Stärke"
     )
-    return product, context, total_volume, precise_decimal_places(total_volume)
+    return {
+        "product": product,
+        "context": context,
+        "total_volume": total_volume,
+        "total_volume_places": total_volume_places,
+        "perfect_volume_formula": (
+            f"{format_m(board_length)} x {format_decimal(width_m, 2)} x "
+            f"{format_decimal(height_m, 3)} x {board_count}"
+        ),
+        "volume_solution_steps": [
+            (
+                "Volumen pro Brett",
+                "Volumen pro Brett = Länge x Breite x Stärke",
+                f"{format_m(board_length)} Meter x {format_decimal(width_m, 2)} Meter x "
+                f"{format_decimal(height_m, 3)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
+            ),
+            (
+                "Gesamtvolumen",
+                "Gesamtvolumen = Volumen pro Brett x Brettanzahl",
+                f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter x {board_count} Stück = "
+                f"{format_decimal(total_volume, total_volume_places)} Kubikmeter",
+            ),
+        ],
+        "volume_guided_steps": [
+            make_guided_step(
+                "Volumen pro Brett",
+                piece_volume.normalize(),
+                "m3",
+                piece_volume_places,
+                False,
+                "Rechne zuerst Länge x Breite x Stärke für ein einzelnes Brett.",
+                "Länge x Breite x Stärke",
+            ),
+            make_guided_step(
+                "Gesamtvolumen",
+                total_volume.normalize(),
+                "m3",
+                total_volume_places,
+                False,
+                "Multipliziere danach das Volumen pro Brett mit der Brettanzahl.",
+                "Volumen pro Brett x Brettanzahl",
+            ),
+        ],
+        "volume_factor_checks": [
+            factor_check(f"Länge {format_m(board_length)} Meter", board_length),
+            factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(height_m, 3)} Meter)", height_m),
+            factor_check(f"Brettanzahl {board_count}", Decimal(board_count)),
+        ],
+    }
+
+
+def generate_whole_volume_position(level):
+    details = generate_whole_volume_position_details(level)
+    return (
+        details["product"],
+        details["context"],
+        details["total_volume"],
+        details["total_volume_places"],
+    )
 
 
 def evaluate_expression(text):
@@ -1213,15 +1396,10 @@ def task_price_per_running_meter(level):
 
     solution = format_solution_steps(
         (
-            "Querschnitt",
-            "Querschnitt = Breite x Höhe",
-            f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
-            f"{format_decimal(cross_section, 5)} Quadratmeter",
-        ),
-        (
             "Preis je Laufmeter",
-            "Euro pro Laufmeter = Euro pro Kubikmeter x Querschnitt",
-            f"{format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(cross_section, 5)} Quadratmeter = "
+            "Euro pro Laufmeter = Euro pro Kubikmeter x Breite x Stärke",
+            f"{format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(width_m, 2)} Meter x "
+            f"{format_decimal(height_m, 3)} Meter = "
             f"{format_decimal(result, 2)} Euro",
         ),
     )
@@ -1233,7 +1411,7 @@ def task_price_per_running_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "price_per_running_meter",
-        "correction": "Prüfe, ob du zuerst Breite x Höhe in Meter angesetzt und daraus das Volumen von 1 Laufmeter bestimmt hast.",
+        "correction": "Rechne den Preis pro Kubikmeter direkt mit Breite und Stärke in Meter auf den Laufmeterpreis um.",
         "solution": solution,
         "perfect_formula": (
             f"{format_decimal(m3_price, 0)} x {format_decimal(width_m, 2)} x "
@@ -1262,21 +1440,13 @@ def task_price_per_running_meter(level):
         ],
         "guided_steps": [
             make_guided_step(
-                "Querschnitt",
-                cross_section.normalize(),
-                "m2",
-                5,
-                False,
-                "Rechne zuerst Breite x Höhe mit Meterwerten.",
-            ),
-            make_guided_step(
                 "Preis je Laufmeter",
                 result.quantize(q("1.00"), rounding=ROUND_HALF_UP),
                 "EUR",
                 2,
                 True,
-                "Multipliziere danach den Querschnitt mit dem Preis pro Kubikmeter.",
-                placeholder="Zum Beispiel 0,00304 * 350",
+                "Multipliziere den Kubikmeterpreis direkt mit Breite und Stärke in Meter.",
+                "Kubikmeterpreis x Breite x Stärke",
             ),
         ],
     }
@@ -4769,7 +4939,11 @@ def task_relative_db_from_ek_vk(level):
 
 
 def task_absolute_db_from_position(level):
-    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
+    details = generate_whole_volume_position_details(level)
+    product = details["product"]
+    context = details["context"]
+    total_volume = details["total_volume"]
+    total_volume_places = details["total_volume_places"]
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
@@ -4785,6 +4959,7 @@ def task_absolute_db_from_position(level):
     )
 
     solution = format_solution_steps(
+        *details["volume_solution_steps"],
         (
             "Gesamter EK",
             "Gesamter EK = Volumen x EK pro Kubikmeter",
@@ -4805,13 +4980,14 @@ def task_absolute_db_from_position(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "absolute_db_from_position",
-        "correction": "Bestimme zuerst den gesamten EK aus Volumen und EK pro Kubikmeter. Der absolute DB ist danach der Unterschied zwischen VK und EK.",
+        "correction": "Baue zuerst das Gesamtvolumen aus den Maßen auf, berechne daraus den gesamten EK und ziehe diesen EK anschließend vom VK ab.",
         "solution": solution,
         "perfect_formula": (
             f"{format_decimal(total_vk, 2)} - "
-            f"({format_decimal(total_volume, total_volume_places)} x {format_decimal(ek_price_m3, 0)})"
+            f"(({details['perfect_volume_formula']}) x {format_decimal(ek_price_m3, 0)})"
         ),
         "factor_checks": [
+            *details["volume_factor_checks"],
             factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
             factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
             factor_check(f"EK pro Kubikmeter {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
@@ -4833,6 +5009,7 @@ def task_absolute_db_from_position(level):
             ),
         ],
         "guided_steps": [
+            *details["volume_guided_steps"],
             make_guided_step(
                 "Gesamter EK",
                 total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
@@ -4858,7 +5035,11 @@ def task_absolute_db_from_position(level):
 
 
 def task_relative_db_from_position(level):
-    product, context, total_volume, total_volume_places = generate_whole_volume_position(level)
+    details = generate_whole_volume_position_details(level)
+    product = details["product"]
+    context = details["context"]
+    total_volume = details["total_volume"]
+    total_volume_places = details["total_volume_places"]
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
@@ -4875,6 +5056,7 @@ def task_relative_db_from_position(level):
     )
 
     solution = format_solution_steps(
+        *details["volume_solution_steps"],
         (
             "Gesamter EK",
             "Gesamter EK = Volumen x EK pro Kubikmeter",
@@ -4900,14 +5082,15 @@ def task_relative_db_from_position(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "relative_db_from_position",
-        "correction": "Bestimme zuerst den gesamten EK, danach den absoluten DB. Für den relativen DB setzt du diesen Rohertrag ins Verhältnis zum VK.",
+        "correction": "Baue zuerst das Gesamtvolumen aus den Maßen auf, berechne daraus den gesamten EK und danach den absoluten DB. Für den relativen DB setzt du diesen Rohertrag ins Verhältnis zum VK.",
         "solution": solution,
         "perfect_formula": (
             f"({format_decimal(total_vk, 2)} - "
-            f"({format_decimal(total_volume, total_volume_places)} x {format_decimal(ek_price_m3, 0)})) / "
+            f"(({details['perfect_volume_formula']}) x {format_decimal(ek_price_m3, 0)})) / "
             f"{format_decimal(total_vk, 2)} x 100"
         ),
         "factor_checks": [
+            *details["volume_factor_checks"],
             factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
             factor_check(f"Volumen {format_decimal(total_volume, total_volume_places)} Kubikmeter", total_volume),
             factor_check(f"EK pro Kubikmeter {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
@@ -4931,6 +5114,7 @@ def task_relative_db_from_position(level):
             ),
         ],
         "guided_steps": [
+            *details["volume_guided_steps"],
             make_guided_step(
                 "Gesamter EK",
                 total_ek.quantize(q("1.00"), rounding=ROUND_HALF_UP),
