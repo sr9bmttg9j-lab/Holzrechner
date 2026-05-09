@@ -7364,6 +7364,23 @@ st.markdown(
             margin-top: 0.35rem;
         }
 
+        .task-reminder {
+            border-left: 4px solid #16a34a;
+            background: rgba(34, 197, 94, 0.08);
+            border-radius: 8px;
+            padding: 0.95rem 1rem;
+            margin: 1rem 0 1.15rem 0;
+            line-height: 1.6;
+        }
+
+        .task-reminder p {
+            margin: 0 0 0.75rem 0;
+        }
+
+        .task-reminder p:last-child {
+            margin-bottom: 0;
+        }
+
         .mobile-keypad-note,
         div[class*="st-key-mobile_keypad_"] {
             display: none;
@@ -7421,6 +7438,18 @@ st.markdown(
     """,
     unsafe_allow_html=True,
 )
+
+
+def render_task_reminder():
+    paragraphs = [
+        f"<p>{escape(part).replace(chr(10), '<br>')}</p>"
+        for part in st.session_state.task["prompt"].split("\n\n")
+    ]
+    st.markdown(
+        f"<div class='task-reminder'>{''.join(paragraphs)}</div>",
+        unsafe_allow_html=True,
+    )
+
 
 st.title("Holzrechner")
 st.write(
@@ -7562,6 +7591,9 @@ if (
     st.warning("Jetzt mit Zwischenergebnissen weiterrechnen: Unten kannst du die Aufgabe Schritt für Schritt aufbauen.")
 
 if st.session_state.guided_visible:
+    if not st.session_state.solution_visible:
+        render_task_reminder()
+
     st.subheader("Geführte Zwischenschritte")
 
     for completed_entry in st.session_state.guided_completed:
