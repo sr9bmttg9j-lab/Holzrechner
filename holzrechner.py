@@ -6997,6 +6997,10 @@ st.markdown(
             display: none;
         }
 
+        [data-testid="stAppViewContainer"] .block-container {
+            padding-top: 1.25rem;
+        }
+
         .stTextInput input {
             border: 1px solid #22c55e;
         }
@@ -7157,44 +7161,45 @@ st.write(
     "damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
 )
 
-st.subheader("Theorie auffrischen")
-if st.button(
-    "Theorie ausblenden" if st.session_state.show_theory else "Theorie anzeigen",
-    key="theory_toggle_button",
-):
-    st.session_state.show_theory = not st.session_state.show_theory
-    st.rerun()
-
-if st.session_state.show_theory:
-    render_theory_section()
-    if st.button("Theorie ausblenden", key="theory_hide_bottom_button"):
-        st.session_state.show_theory = False
+def render_learning_sections():
+    st.subheader("Theorie auffrischen")
+    if st.button(
+        "Theorie ausblenden" if st.session_state.show_theory else "Theorie anzeigen",
+        key="theory_toggle_button",
+    ):
+        st.session_state.show_theory = not st.session_state.show_theory
         st.rerun()
 
-st.subheader("Bedienung des Holzrechners")
-if st.button(
-    "Bedienung ausblenden" if st.session_state.show_usage else "Bedienung anzeigen",
-    key="usage_toggle_button",
-):
-    st.session_state.show_usage = not st.session_state.show_usage
-    st.rerun()
+    if st.session_state.show_theory:
+        render_theory_section()
+        if st.button("Theorie ausblenden", key="theory_hide_bottom_button"):
+            st.session_state.show_theory = False
+            st.rerun()
 
-if st.session_state.show_usage:
-    st.write(
-        "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
-        "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
-    )
-    st.write(
-        "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
-        "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht. "
-        "Der Ablauf ist dabei bewusst ruhig aufgebaut: Zuerst hast du zwei Versuche für die Hauptaufgabe. "
-        "Wenn es dann noch nicht passt, führt dich der Holzrechner Schritt für Schritt durch die Rechnung; auch dort hast du "
-        "je Zwischenschritt zwei Versuche, bevor der aktuelle Schritt aufgelöst wird und du mit dem nächsten Wert weiterrechnen kannst. "
-        "Am Ende erscheint eine Musterlösung mit dem vollständigen Rechenweg, und zu diesem Rechenweg kannst du dir zusätzlich "
-        "KI-generierte Erklärungen geben lassen."
-    )
-    st.markdown(
-        """
+    st.subheader("Bedienung des Holzrechners")
+    if st.button(
+        "Bedienung ausblenden" if st.session_state.show_usage else "Bedienung anzeigen",
+        key="usage_toggle_button",
+    ):
+        st.session_state.show_usage = not st.session_state.show_usage
+        st.rerun()
+
+    if st.session_state.show_usage:
+        st.write(
+            "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
+            "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
+        )
+        st.write(
+            "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
+            "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht. "
+            "Der Ablauf ist dabei bewusst ruhig aufgebaut: Zuerst hast du zwei Versuche für die Hauptaufgabe. "
+            "Wenn es dann noch nicht passt, führt dich der Holzrechner Schritt für Schritt durch die Rechnung; auch dort hast du "
+            "je Zwischenschritt zwei Versuche, bevor der aktuelle Schritt aufgelöst wird und du mit dem nächsten Wert weiterrechnen kannst. "
+            "Am Ende erscheint eine Musterlösung mit dem vollständigen Rechenweg, und zu diesem Rechenweg kannst du dir zusätzlich "
+            "KI-generierte Erklärungen geben lassen."
+        )
+        st.markdown(
+            """
 Beispiele, die funktionieren:
 
 - **Dividieren mit Schrägstrich:** `0,4536 / 0,0054`
@@ -7205,21 +7210,23 @@ Beispiele, die funktionieren:
 - **Klammern beim Dividieren nutzen:** `0,4536 / (0,20 x 0,027)`
 - **Leerzeichen und Tausendertrennzeichen:** Leerzeichen sind egal; deutsche Tausendertrennzeichen wie `3.465` werden ebenfalls erkannt.
 """
-    )
-    st.markdown(
-        "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
-        "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
-        "ganz entspannt zur Seite legen.**"
-    )
-    st.write(
-        "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
-        "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
-    )
-    if st.button("Bedienung ausblenden", key="usage_hide_bottom_button"):
-        st.session_state.show_usage = False
-        st.rerun()
+        )
+        st.markdown(
+            "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
+            "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
+            "ganz entspannt zur Seite legen.**"
+        )
+        st.write(
+            "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
+            "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
+        )
+        if st.button("Bedienung ausblenden", key="usage_hide_bottom_button"):
+            st.session_state.show_usage = False
+            st.rerun()
 
-st.subheader("Jetzt direkt mit der ersten Aufgabe starten.")
+
+st.markdown("#### Jetzt direkt mit der ersten Aufgabe starten.")
+st.caption("Weiter unten kannst du die Theorie auffrischen und die Bedienung des Holzrechners anzeigen lassen.")
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
 st.write(st.session_state.task["prompt"])
@@ -7347,3 +7354,5 @@ if st.session_state.task_finished:
 
     if repeat_task_type or different_task_type:
         go_to_next_task(same_task_type=repeat_task_type)
+
+render_learning_sections()
