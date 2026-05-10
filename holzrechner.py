@@ -237,6 +237,7 @@ INSULATION_VOLUMES = [
     Decimal("25"),
 ]
 WOOD_FIBER_INSULATION_DENSITY = Decimal("40")
+VAT_FACTOR = Decimal("1.19")
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
@@ -591,6 +592,16 @@ def format_solution_steps(*steps):
         lines.append(f"Formel: {formula}")
         lines.append(f"Berechnung: {calculation}")
     return "\n".join(lines)
+
+
+def append_solution_step(solution, title, formula, calculation):
+    step_count = sum(1 for line in solution.splitlines() if re.match(r"^\d+\. ", line))
+    return (
+        f"{solution}\n\n"
+        f"{step_count + 1}. {title}\n"
+        f"Formel: {formula}\n"
+        f"Berechnung: {calculation}"
+    )
 
 
 def current_level(task_number):
@@ -1281,6 +1292,11 @@ def db_percent_for_product(product, level):
 
 def db_percent_for_level(level):
     return db_percent_for_product("allgemeine Ware", level)
+
+
+def package_db_percent_for_product(product, level):
+    base_percent = db_percent_for_product(product, level)
+    return (base_percent * Decimal("2") / Decimal("3")).quantize(Decimal("1"), rounding=ROUND_HALF_UP)
 
 
 def db_factor_check(db_percent, divisor):
@@ -2669,6 +2685,69 @@ def task_volume_from_running_meters(level):
             ),
         ],
     }
+
+
+def make_private_customer_gross_task(task, task_type):
+    net_result = task["expected"]
+    gross_result = (net_result * VAT_FACTOR).quantize(q("1.00"), rounding=ROUND_HALF_UP)
+    context = task["prompt"].split("\n\n")[0]
+
+    task = task.copy()
+    task["prompt"] = (
+        f"{context}\n\n"
+        "Es handelt sich um eine Anfrage eines Privatkunden. Bitte berücksichtige zusätzlich die Umsatzsteuer.\n\n"
+        "Wie hoch ist der Brutto-Verkaufspreis?"
+    )
+    task["expected"] = gross_result
+    task["task_type"] = task_type
+    task["correction"] = (
+        f"{task.get('correction', '').rstrip()} Danach kommt für den Privatkunden noch die Umsatzsteuer dazu."
+    ).strip()
+    task["solution"] = append_solution_step(
+        task["solution"],
+        "Brutto-Verkaufspreis",
+        "Brutto-Verkaufspreis = Netto-Verkaufspreis x Umsatzsteuer-Faktor",
+        f"{format_decimal(net_result, 2)} Euro x {format_decimal(VAT_FACTOR, 2)} = {format_decimal(gross_result, 2)} Euro",
+    )
+    task["perfect_formula"] = f"({task['perfect_formula']}) x {format_decimal(VAT_FACTOR, 2)}"
+    task["factor_checks"] = [
+        *task.get("factor_checks", []),
+        factor_check(f"Umsatzsteuer-Faktor {format_decimal(VAT_FACTOR, 2)}", VAT_FACTOR),
+    ]
+    task["wrong_value_checks"] = [
+        wrong_value_check(
+            net_result,
+            "Deine Eingabe entspricht dem Netto-Verkaufspreis. Bei einem Privatkunden muss zusätzlich die Umsatzsteuer berücksichtigt werden.",
+            "EUR",
+        ),
+        *task.get("wrong_value_checks", []),
+    ]
+    task["guided_steps"] = [
+        *task.get("guided_steps", []),
+        make_guided_step(
+            "Brutto-Verkaufspreis",
+            gross_result,
+            "EUR",
+            2,
+            True,
+            "Rechne den Netto-Verkaufspreis noch auf den Brutto-Verkaufspreis für den Privatkunden hoch.",
+            "Netto-Verkaufspreis x Umsatzsteuer-Faktor",
+            placeholder=f"Zum Beispiel {format_decimal(net_result, 2)} * {format_decimal(VAT_FACTOR, 2)}",
+        ),
+    ]
+    return task
+
+
+def task_private_customer_db_sale_price(level):
+    return make_private_customer_gross_task(task_db_sale_price(level), "private_customer_db_sale_price")
+
+
+def task_private_customer_lfm_db_sale_price(level):
+    return make_private_customer_gross_task(task_lfm_db_sale_price(level), "private_customer_lfm_db_sale_price")
+
+
+def task_private_customer_m2_db_sale_price(level):
+    return make_private_customer_gross_task(task_m2_db_sale_price(level), "private_customer_m2_db_sale_price")
 
 
 def task_volume_from_total_price(level):
@@ -4142,7 +4221,7 @@ def task_panel_package_db_sale_price(level):
     length_m, width_m = panel_format_dimensions(panel_format)
     package_count = panel_package_count(product)
     ek_price_m2 = panel_m2_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = package_db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
 
     sheet_area = length_m * width_m
@@ -4275,7 +4354,7 @@ def task_panel_package_ek_from_vk_db(level):
     length_m, width_m = panel_format_dimensions(panel_format)
     package_count = panel_package_count(product)
     ek_price_m2 = panel_m2_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = package_db_percent_for_product(product, level)
     divisor = (Decimal("100") - db_percent) / Decimal("100")
 
     sheet_area = length_m * width_m
@@ -4409,7 +4488,7 @@ def task_package_db_sale_price(level):
     width_m, height_m = generate_structural_dimensions(level, length_m)
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = package_db_percent_for_product(product, level)
 
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(package_count)
@@ -4562,7 +4641,7 @@ def task_package_ek_from_vk_db(level):
     width_m, height_m = generate_structural_dimensions(level, length_m)
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = package_db_percent_for_product(product, level)
 
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(package_count)
@@ -5567,6 +5646,9 @@ TASK_GENERATORS = [
     task_db_sale_price,
     task_lfm_db_sale_price,
     task_m2_db_sale_price,
+    task_private_customer_db_sale_price,
+    task_private_customer_lfm_db_sale_price,
+    task_private_customer_m2_db_sale_price,
     task_ek_from_vk_db,
     task_m3_ek_from_vk_db,
     task_lfm_ek_from_vk_db,
@@ -6453,6 +6535,9 @@ def likely_error_focus(task):
         "db_sale_price": "Achte besonders darauf, ob nach dem gesamten EK noch der Ziel-DB berücksichtigt wurde; häufig fehlt die Division durch den DB-Faktor.",
         "lfm_db_sale_price": "Achte besonders darauf, ob zuerst der gesamte EK aus Laufmetern und EK pro Laufmeter gebildet und danach der Ziel-DB berücksichtigt wurde.",
         "m2_db_sale_price": "Achte besonders auf die Gesamtfläche, den EK pro Quadratmeter und den Ziel-DB.",
+        "private_customer_db_sale_price": "Achte besonders darauf, erst den Netto-Verkaufspreis mit DB zu kalkulieren und danach die Umsatzsteuer für den Privatkunden zu berücksichtigen.",
+        "private_customer_lfm_db_sale_price": "Achte besonders darauf, erst Laufmeter, Einkaufspreis und DB zum Netto-Verkaufspreis zu führen und danach die Umsatzsteuer zu ergänzen.",
+        "private_customer_m2_db_sale_price": "Achte besonders darauf, erst Fläche, Einkaufspreis und DB zum Netto-Verkaufspreis zu führen und danach die Umsatzsteuer zu ergänzen.",
         "package_db_sale_price": "Achte besonders darauf, ob nach dem Paket-EK noch der Ziel-DB berücksichtigt wurde; häufig fehlt die Division durch den DB-Faktor.",
         "volume_from_running_meters": "Achte besonders auf Querschnitt mal Laufmeter und auf vollständige Maße.",
         "volume_from_total_price": "Achte besonders auf die richtige Richtung Preis zu Volumen, also teilen statt multiplizieren.",
@@ -7291,7 +7376,11 @@ def choose_task(level, recent_task_types, task_number, forced_task_type=None):
 
     candidates = TASKS_BY_LEVEL[level]
     if 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
-        db_candidates = [task_func for task_func in candidates if "db" in task_func.__name__]
+        db_candidates = [
+            task_func
+            for task_func in candidates
+            if "db" in task_func.__name__ and "private_customer" not in task_func.__name__
+        ]
         if db_candidates:
             return random.choice(db_candidates)
 
