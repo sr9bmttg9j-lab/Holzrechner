@@ -1576,8 +1576,8 @@ def task_price_per_running_meter(level):
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter, ist {width_text} breit, {thickness_text} stark und die Bretter sind {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
-            f"Für ein Angebot liegt {display_name} vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Ein Brett ist {format_m(board_length)} m lang und hat {width_text} x {thickness_text} Querschnitt.\n\nWie teuer ist 1 Laufmeter?",
+            f"{request_intro()}: {display_name}. Die Ware kostet {format_decimal(m3_price, 0)} Euro pro Kubikmeter, ist {width_text} breit, {thickness_text} stark und die Bretter sind {format_m(board_length)} m lang.\n\nWie hoch ist der Laufmeterpreis?",
+            f"Für ein Angebot liegt {display_name} vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter. Ein Brett ist {format_m(board_length)} m lang und hat {width_text} x {thickness_text} Querschnitt.\n\nWie hoch ist der Laufmeterpreis?",
         ]
     )
 
@@ -1649,8 +1649,8 @@ def task_price_per_square_meter(level):
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie teuer ist 1 Quadratmeter dieser Platte?",
-            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {thickness_text} dick.\n\nWie teuer ist 1 Quadratmeter?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie hoch ist der Quadratmeterpreis dieser Platte?",
+            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {thickness_text} dick.\n\nWie hoch ist der Quadratmeterpreis?",
         ]
     )
 
@@ -1710,7 +1710,7 @@ def task_m3_price_from_square_meter(level):
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick und kostet {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Preis pro Kubikmeter?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick und kostet {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Kubikmeterpreis?",
             f"Für eine {product['name']} im Format {panel_format} liegt ein Quadratmeterpreis von {format_decimal(m2_price, 2)} Euro vor. Die Platte ist {thickness_text} stark.\n\nWie hoch ist der entsprechende Kubikmeterpreis?",
         ]
     )
@@ -3002,8 +3002,8 @@ def task_m3_price_from_running_meter(level):
 
     prompt = random.choice(
         [
-            f"Ein Laufmeter {product['name']} kostet {format_decimal(price_per_lfm, 2)} Euro. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Preis pro Kubikmeter?",
-            f"Für {product['name']} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Preis pro Kubikmeter?",
+            f"Ein Laufmeter {product['name']} kostet {format_decimal(price_per_lfm, 2)} Euro. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Kubikmeterpreis?",
+            f"Für {product['name']} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Der Querschnitt beträgt {width_text} x {thickness_text}.\n\nWie hoch ist der Kubikmeterpreis?",
         ]
     )
 
@@ -3095,7 +3095,7 @@ def task_running_meter_price_from_square_meter(level):
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {display_name}. Der Preis liegt bei {format_decimal(m2_price, 2)} Euro pro Quadratmeter, die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie teuer ist 1 Laufmeter?",
+            f"{request_intro()}: {display_name}. Der Preis liegt bei {format_decimal(m2_price, 2)} Euro pro Quadratmeter, die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie hoch ist der Laufmeterpreis?",
             f"Für {display_name} soll ein Quadratmeterpreis von {format_decimal(m2_price, 2)} Euro auf Laufmeter umgerechnet werden. Die Bretter sind {width_text} breit, {thickness_text} stark und je {format_m(board_length)} m lang.\n\nWie hoch ist der Laufmeterpreis?",
         ]
     )
@@ -3167,8 +3167,8 @@ def task_square_meter_price_from_running_meter(level):
 
     prompt = random.choice(
         [
-            f"Ein Laufmeter {display_name} kostet {format_decimal(price_per_lfm, 2)} Euro. Die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie hoch ist der Preis pro Quadratmeter?",
-            f"Für {display_name} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Die Bretter sind {width_text} breit, {thickness_text} stark und je {format_m(board_length)} m lang.\n\nWie teuer ist 1 Quadratmeter?",
+            f"Ein Laufmeter {display_name} kostet {format_decimal(price_per_lfm, 2)} Euro. Die Ware ist {width_text} breit, {thickness_text} stark und ein Brett ist {format_m(board_length)} m lang.\n\nWie hoch ist der Quadratmeterpreis?",
+            f"Für {display_name} liegt ein Laufmeterpreis von {format_decimal(price_per_lfm, 2)} Euro vor. Die Bretter sind {width_text} breit, {thickness_text} stark und je {format_m(board_length)} m lang.\n\nWie hoch ist der Quadratmeterpreis?",
         ]
     )
 
@@ -3248,7 +3248,7 @@ def task_lfm_price_from_m3_with_db(level):
     prompt = random.choice(
         [
             f"{request_intro()}: {display_name}. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter. Die Ware ist {width_text} breit, {thickness_text} stark und {format_m(board_length)} m lang. Der Ziel-DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Laufmeter?",
-            f"Für {display_name} soll aus einem EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter ein Laufmeter-VK kalkuliert werden. Querschnitt: {width_text} x {thickness_text}, Brettlänge {format_m(board_length)} m, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie teuer ist 1 Laufmeter im VK?",
+            f"Für {display_name} soll aus einem EK von {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter ein Laufmeter-VK kalkuliert werden. Querschnitt: {width_text} x {thickness_text}, Brettlänge {format_m(board_length)} m, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Laufmeter?",
         ]
     )
 
@@ -3362,7 +3362,7 @@ def task_m2_price_from_m3_with_db(level):
     prompt = random.choice(
         [
             f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Quadratmeter?",
-            f"Für eine {product['name']} im Format {panel_format} soll aus {format_decimal(ek_price_m3, 0)} Euro EK pro Kubikmeter ein Quadratmeter-VK mit {format_decimal(db_percent, 0)} % DB kalkuliert werden. Die Platte ist {thickness_text} dick.\n\nWie teuer ist 1 Quadratmeter im VK?",
+            f"Für eine {product['name']} im Format {panel_format} soll aus {format_decimal(ek_price_m3, 0)} Euro EK pro Kubikmeter ein Quadratmeter-VK mit {format_decimal(db_percent, 0)} % DB kalkuliert werden. Die Platte ist {thickness_text} dick.\n\nWie hoch ist der VK pro Quadratmeter?",
         ]
     )
 
@@ -7181,6 +7181,13 @@ def generate_step_explanation(task, question_text):
 
 def polish_task_prompt(text):
     replacements = [
+        ("Wie teuer ist 1 Laufmeter im VK?", "Wie hoch ist der Verkaufspreis pro Laufmeter?"),
+        ("Wie teuer ist 1 Quadratmeter im VK?", "Wie hoch ist der Verkaufspreis pro Quadratmeter?"),
+        ("Wie teuer ist 1 Laufmeter?", "Wie hoch ist der Laufmeterpreis?"),
+        ("Wie teuer ist 1 Quadratmeter dieser Platte?", "Wie hoch ist der Quadratmeterpreis dieser Platte?"),
+        ("Wie teuer ist 1 Quadratmeter?", "Wie hoch ist der Quadratmeterpreis?"),
+        ("Wie hoch ist der Preis pro Kubikmeter?", "Wie hoch ist der Kubikmeterpreis?"),
+        ("Wie hoch ist der Preis pro Quadratmeter?", "Wie hoch ist der Quadratmeterpreis?"),
         (
             "Welchen Laufmeter-EK hat der Lieferant rechnerisch berechnet?",
             "Zu welchem Einkaufspreis pro Laufmeter haben wir die Ware beim Lieferanten eingekauft?",
@@ -7844,6 +7851,11 @@ def render_learning_sections():
             "je Zwischenschritt zwei Versuche, bevor der aktuelle Schritt aufgelöst wird und du mit dem nächsten Wert weiterrechnen kannst. "
             "Am Ende erscheint eine Musterlösung mit dem vollständigen Rechenweg, und zu diesem Rechenweg kannst du dir zusätzlich "
             "KI-generierte Erklärungen geben lassen."
+        )
+        st.write(
+            "Nach jeder abgeschlossenen Aufgabe entscheidest du selbst, wie es weitergeht: Wenn der Aufgabentyp sitzt, wählst du "
+            "„Weiter mit anderem Aufgabentyp“. Wenn du noch unsicher bist, ist „Weiter mit gleichem Aufgabentyp“ sinnvoll, damit du "
+            "direkt noch einmal eine ähnliche Aufgabe bekommst und die Logik festigen kannst."
         )
         st.markdown(
             """
