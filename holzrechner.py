@@ -7893,8 +7893,9 @@ def render_development_section():
             "und ein Sprachmodell erklärt bei Fehlern den wahrscheinlichen Denkweg."
         )
         st.markdown(
-            "Link zum Modul: [VAWi Generative Artificial Intelligence]"
-            "(https://www.vawi.de/live/Studiengangsinhalte-Generative-Artificial-Intelligence/generative-artificial-intelligence.aspx)"
+            'Link zum Modul: <a href="https://www.vawi.de/live/Studiengangsinhalte-Generative-Artificial-Intelligence/generative-artificial-intelligence.aspx" '
+            'target="_blank" rel="noopener noreferrer">VAWi Generative Artificial Intelligence</a>',
+            unsafe_allow_html=True,
         )
 
     with st.expander("Was war der praktische Hintergrund im Holzhandel?"):
