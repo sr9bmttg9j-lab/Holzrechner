@@ -7307,6 +7307,7 @@ def init_state():
         st.session_state.pending_next_task = False
         st.session_state.show_theory = False
         st.session_state.show_usage = False
+        st.session_state.show_development = False
         create_next_task()
         return
 
@@ -7315,6 +7316,9 @@ def init_state():
 
     if "show_usage" not in st.session_state:
         st.session_state.show_usage = False
+
+    if "show_development" not in st.session_state:
+        st.session_state.show_development = False
 
     if "main_input_locked" not in st.session_state:
         st.session_state.main_input_locked = False
@@ -7832,6 +7836,77 @@ st.write(
     "Einheiten, Preise und Deckungsbeitrag wichtig sind."
 )
 
+
+def render_development_section():
+    st.markdown(
+        """
+#### Warum dieser KI-Holzrechner entstanden ist
+
+Der fachliche Ausgangspunkt ist ein sehr praktisches Problem im Holzhandel: Viele Auszubildende und neue Mitarbeitende kennen einzelne Formeln, verlieren aber bei echten Aufgaben schnell die Orientierung. Im Tagesgeschäft kommen Laufmeter, Quadratmeter, Kubikmeter, Stückzahlen, Paketmengen, Einkaufspreise, Verkaufspreise und Deckungsbeitrag zusammen. Sobald Maßeinheiten gemischt werden, zum Beispiel Millimeter, Zentimeter und Meter, entstehen typische Fehler durch fehlende Faktoren, falsche Rechenrichtung oder falsch gesetzte Kommastellen.
+
+Der KI-Holzrechner wurde deshalb nicht als klassischer Taschenrechner gebaut, sondern als Übungswerkzeug. Man soll nicht nur irgendein Endergebnis eintippen, sondern den Rechenweg verstehen, Fehler erkennen und die Logik so oft wiederholen können, bis sie sicher sitzt.
+
+#### Fachliche Produktwelt
+
+Im Hintergrund sind verschiedene Produktgruppen aus dem Holzhandel angelegt. Dazu gehören Konstruktionsholz wie KVH, BSH und KERTO, Hobelware und Glattkantbretter, Profilbretter mit Rohmaß und Deckbreite, Plattenware wie OSB-Platte, Dekorspanplatte, Siebdruckplatte, 3-Schicht-Platte, Dekorplatte, Multiplexplatte Birke, Tischlerplatte, Leimholzplatte und Sperrholzplatte. Zusätzlich gibt es Bodenprodukte wie Eiche-Massivholzdiele, Parkett, Fertigparkett, Laminat und Vinylboden sowie Holzfaser-Einblasdämmung.
+
+Zu diesen Produkten sind typische Maße hinterlegt. Konstruktionshölzer werden mit Längen und Querschnitten gerechnet, Hobelware mit Längen, Breiten und Stärken in Millimetern, Platten mit Format und Plattenstärke, Boden mit Dielenmaßen und Paketstückzahlen. Bei Profilbrettern wird zusätzlich unterschieden zwischen Rohbreite und Deckbreite, weil durch Nut und Feder sichtbare Fläche verloren geht.
+
+#### Rechenwege und Aufgabentypen
+
+Die Aufgaben decken mehrere Rechenwelten ab. Dazu gehören einfache Einheitenumrechnungen zwischen Millimeter, Zentimeter und Meter, Volumenberechnungen aus Länge, Breite, Höhe und Stückzahl, Umrechnungen zwischen Laufmeter, Quadratmeter und Kubikmeter sowie Preisumrechnungen zwischen Kubikmeterpreis, Quadratmeterpreis und Laufmeterpreis.
+
+Darüber hinaus gibt es Aufgaben mit Paketlogik. Bei Bodenpaketen, Bundware oder Stückware muss eine rechnerische Menge auf volle Pakete, Bund oder Stück aufgerundet werden. Der Rechner zeigt dann nicht nur das gerundete Ergebnis, sondern erklärt auch, welcher Rohwert auf welchen vollen Wert aufgerundet wurde.
+
+Ein weiterer Bereich ist die Kalkulation. Der Rechner übt Einkaufspreis, Verkaufspreis, absoluten Deckungsbeitrag und relativen Deckungsbeitrag. Dabei gibt es Aufgaben in beide Richtungen: Aus einem Einkaufspreis und Ziel-DB wird ein Verkaufspreis berechnet, aus einem Verkaufspreis und DB wird zurück auf den Einkaufspreis gerechnet, und aus Einkaufspreis und Verkaufspreis wird der Rohertrag beziehungsweise DB-Satz ermittelt.
+
+Außerdem gibt es Aufgaben zu Dichte und Gewicht, zum Beispiel bei Holzprodukten oder Holzfaser-Einblasdämmung. Dort wird Volumen mit Kilogramm pro Kubikmeter verbunden.
+
+#### Lernablauf in der App
+
+Die Aufgaben werden zufällig erzeugt und wechseln zwischen verschiedenen Produkten, Schwierigkeitsgraden und Rechenrichtungen. Es gibt keine feste letzte Aufgabe. Man kann also so lange weiterüben, wie es sinnvoll ist.
+
+Bei jeder Aufgabe kann man entweder das Endergebnis oder einen Rechenweg eingeben. Der Rechner wertet die Formel direkt aus. Dabei funktionieren unterschiedliche Schreibweisen wie x, *, /, :, Klammern, Gleichheitszeichen, deutsche Kommas und Tausendertrennzeichen.
+
+Wenn eine Eingabe falsch ist, bekommt man nicht sofort die vollständige Musterlösung. Zuerst gibt es KI-Hinweise. Nach zwei falschen Versuchen führt die App durch geführte Zwischenschritte. Jeder Zwischenschritt wird einzeln geprüft. Wenn auch ein Zwischenschritt zweimal falsch ist, löst der Rechner genau diesen Schritt auf und zeigt, mit welchem korrekten Wert weitergerechnet werden kann. Am Ende erscheint eine Musterlösung mit vollständigem Rechenweg und Einheiten.
+
+#### Wo KI eingesetzt wird
+
+Die eigentliche Mathematik wird bewusst nicht der KI überlassen. Die Aufgaben, Werte, erwarteten Ergebnisse und Zwischenschritte werden im Python-Code berechnet. Dadurch bleibt die fachliche Prüfung stabil und reproduzierbar.
+
+Die KI wird für die Erklärung eingesetzt. Wenn eine Eingabe nicht zur berechneten Lösung passt, werden Aufgabentext, erwartete Lösung, Nutzereingabe, Zwischenschritt und mögliche Fehlerdiagnosen an die OpenAI API übergeben. Daraus entsteht ein KI-Hinweis, der erklären soll, was wahrscheinlich schiefgelaufen ist.
+
+Zusätzlich prüft der Code vor der KI-Anfrage typische Fehlerquellen: fehlende Faktoren, zusätzliche Faktoren, Faktor-10-, Faktor-100- oder Faktor-1000-Probleme, falsche Richtung bei mal und geteilt, vertauschte DB-Rechnung, falsche Maßeinheit oder vergessene Preis- und Volumenbasis. Nur wenn so ein Muster wirklich passt, wird es der KI als möglicher Hinweis mitgegeben. Dadurch bleibt der Prompt kürzer und die KI bekommt bessere fachliche Leitplanken.
+
+Nach der Musterlösung kann man außerdem eine freie Frage zum Rechenweg stellen. Dann bekommt die KI den Aufgabentext, den vollständigen Rechenweg und die konkrete Frage. Dadurch kann man zum Beispiel fragen, warum an einer Stelle geteilt oder multipliziert wird oder warum ein bestimmter DB-Faktor verwendet wird.
+
+#### Technische Grundlage
+
+Die App ist in Python geschrieben und läuft mit Streamlit. Streamlit erzeugt aus der Python-Datei eine Weboberfläche, die lokal getestet und öffentlich deployed werden kann. Die Abhängigkeiten stehen in einer requirements-Datei. Der OpenAI-Key wird nicht in den Code geschrieben, sondern über eine lokale .env-Datei oder über Streamlit Secrets bereitgestellt. Dadurch bleibt der Schlüssel außerhalb von GitHub.
+
+Git und GitHub werden genutzt, um Änderungen sauber zu speichern und die Streamlit-App zu aktualisieren. Wenn lokal etwas geändert wird, wird es getestet, als Commit gespeichert und anschließend zu GitHub gepusht. Streamlit Cloud kann daraus automatisch die öffentliche App aktualisieren.
+
+#### Entwicklung mit Codex
+
+Dieses Projekt ist auch ein Beispiel dafür, wie man mit KI-gestützter Softwareentwicklung arbeiten kann. Die zentrale Datei liegt lokal auf dem Rechner. Änderungen wurden Schritt für Schritt mit Codex besprochen, umgesetzt, getestet und gepusht. Besonders hilfreich ist dabei die Spracheingabe: Fachliche Anforderungen können zuerst natürlich formuliert werden, zum Beispiel aus Sicht des Holzhandels, und Codex übersetzt diese Anforderungen dann in konkrete Codeänderungen.
+
+So entsteht eine andere Arbeitsweise als bei klassischer Programmierung. Der fachliche Experte beschreibt, was inhaltlich stimmen muss, und Codex hilft dabei, daraus eine App zu bauen. Das funktioniert besonders gut, wenn jede Änderung klein genug bleibt, getestet wird und fachliches Feedback direkt wieder in die nächste Version einfließt.
+
+#### Steuerung der KI-Antworten
+
+Die KI-Antworten werden durch Prompts begrenzt. Sie sollen kurz, deutsch, konkret und auf den jeweiligen Fehler bezogen sein. Außerdem wird gesteuert, dass beim ersten Hinweis nicht sofort die komplette Lösung verraten wird. Erst wenn der Lernprozess weiter fortgeschritten ist oder ein Zwischenschritt aufgelöst wird, darf die Antwort konkreter werden.
+
+Auch das verwendete Modell kann ausgetauscht werden. Für diese App ist ein kleines, schnelles Modell sinnvoll, weil viele kurze Hinweise erzeugt werden und die Wartezeit gering bleiben soll. Größere Modelle können grundsätzlich ausführlicher analysieren, sind aber langsamer und teurer. Deshalb ist der KI-Einsatz hier bewusst auf kurze Rückmeldungen und konkrete Erklärfragen begrenzt.
+
+#### Grenzen und mögliche Weiterentwicklung
+
+Der KI-Holzrechner ist aktuell vor allem für Desktop-PCs, Laptops und größere Tablets gedacht. Auf dem Handy funktioniert die App grundsätzlich, aber Formeln, Zwischenschritte und Musterlösungen sind dort weniger übersichtlich.
+
+Fachlich kann der Rechner weiter wachsen: zusätzliche Produkte, weitere Kalkulationsarten, neue Fehlerdiagnosen, feinere Schwierigkeitsgrade oder Auswertungen zum Lernfortschritt wären möglich. Die vorhandene Struktur ist so angelegt, dass neue Aufgabentypen ergänzt werden können, ohne das Grundprinzip zu ändern: Python berechnet verlässlich, Streamlit zeigt den Lernprozess, und die KI erklärt die Denkfehler.
+"""
+    )
+
+
 def render_learning_sections():
     st.subheader("Theorie auffrischen")
     if st.button(
@@ -7898,6 +7973,20 @@ Beispiele, die funktionieren:
         )
         if st.button("Bedienung ausblenden", key="usage_hide_bottom_button"):
             st.session_state.show_usage = False
+            st.rerun()
+
+    st.subheader("Entwicklung des KI-Holzrechners")
+    if st.button(
+        "Entwicklung ausblenden" if st.session_state.show_development else "Entwicklung anzeigen",
+        key="development_toggle_button",
+    ):
+        st.session_state.show_development = not st.session_state.show_development
+        st.rerun()
+
+    if st.session_state.show_development:
+        render_development_section()
+        if st.button("Entwicklung ausblenden", key="development_hide_bottom_button"):
+            st.session_state.show_development = False
             st.rerun()
 
 
