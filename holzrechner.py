@@ -7892,10 +7892,10 @@ def render_development_section():
             "Lernwerkzeug entstehen kann: Python berechnet die fachlich richtigen Werte, Streamlit macht daraus eine Web-App, "
             "und ein Sprachmodell erklärt bei Fehlern den wahrscheinlichen Denkweg."
         )
-        st.markdown(
-            'Link zum Modul: <a href="https://www.vawi.de/live/Studiengangsinhalte-Generative-Artificial-Intelligence/generative-artificial-intelligence.aspx" '
-            'target="_blank" rel="noopener noreferrer">VAWi Generative Artificial Intelligence</a>',
-            unsafe_allow_html=True,
+        st.write("Das Modul kann hier separat geöffnet werden:")
+        st.link_button(
+            "VAWi Generative Artificial Intelligence öffnen",
+            "https://www.vawi.de/live/Studiengangsinhalte-Generative-Artificial-Intelligence/generative-artificial-intelligence.aspx",
         )
 
     with st.expander("Was war der praktische Hintergrund im Holzhandel?"):
@@ -8087,6 +8087,18 @@ def render_development_section():
             "feinere Schwierigkeitsgrade oder Auswertungen zum Lernfortschritt wären möglich. Die vorhandene Struktur ist so "
             "angelegt, dass neue Aufgabentypen ergänzt werden können, ohne das Grundprinzip zu ändern: Python berechnet "
             "verlässlich, Streamlit zeigt den Lernprozess, und die KI erklärt die Denkfehler."
+        )
+
+    with st.expander("Wie kann ich als Nutzer zur Weiterentwicklung beitragen?"):
+        st.write(
+            "Am hilfreichsten sind konkrete Hinweise aus der Nutzung: Welche Berechnungen fehlen noch, welche Produkte oder "
+            "Maße sollten ergänzt werden, und welche Aufgaben wirken im Holzhandel noch nicht realistisch genug? Solches Feedback "
+            "kann direkt in neue Aufgabentypen, bessere Produktwerte oder verständlichere Formulierungen einfließen."
+        )
+        st.write(
+            "Besonders wichtig sind Rückmeldungen zu den KI-Hinweisen. Wenn ein Hinweis bei einer falschen Eingabe nicht genau "
+            "auf den eigentlichen Denkfehler trifft, zu viel verrät oder eine typische Fehlerquelle übersieht, sollte das notiert "
+            "werden. Genau an diesen Stellen kann der Holzrechner am besten weiter verbessert werden."
         )
 
 
