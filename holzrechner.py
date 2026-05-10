@@ -5878,13 +5878,13 @@ def render_musterloesung(task):
 
 
 def render_theory_section():
-    st.markdown("#### Maßeinheiten")
-    st.write(
-        "Einheiten sind die Grundlage für jede saubere Rechnung. Besonders bei Zentimeter, Millimeter und Meter "
-        "entstehen schnell Faktor-10-, Faktor-100- oder Faktor-1000-Fehler."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie rechne ich Maßeinheiten um?"):
+        st.write(
+            "Einheiten sind die Grundlage für jede saubere Rechnung. Besonders bei Zentimeter, Millimeter und Meter "
+            "entstehen schnell Faktor-10-, Faktor-100- oder Faktor-1000-Fehler."
+        )
+        st.markdown(
+            """
 | Richtung | Regel | Beispiel |
 | --- | --- | --- |
 | Meter zu Zentimeter | mal 100 | 5 Meter = 500 Zentimeter |
@@ -5894,31 +5894,31 @@ def render_theory_section():
 | Millimeter zu Zentimeter | geteilt durch 10 | 40 Millimeter = 4 Zentimeter |
 | Millimeter zu Meter | geteilt durch 1000 | 40 Millimeter = 0,04 Meter |
 """
-    )
-    st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
+        )
+        st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
 
-    st.markdown("#### Dichte und Gewicht")
-    st.write(
-        "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
-        "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
-        "verwendest du Kilogramm pro Kubikmeter."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie rechne ich Dichte und Gewicht um?"):
+        st.write(
+            "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
+            "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
+            "verwendest du Kilogramm pro Kubikmeter."
+        )
+        st.markdown(
+            """
 | Gesucht | Rechenweg | Beispiel |
 | --- | --- | --- |
 | Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
 | Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
 """
-    )
+        )
 
-    st.markdown("#### Volumen/Menge")
-    st.write(
-        "Volumen und Mengen brauchst du, um Ware fachlich vergleichbar zu machen. Je nach Produkt wird in Laufmetern, "
-        "Quadratmetern, Kubikmetern, Stück oder ganzen Paketen gedacht."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie rechne ich Volumen und Mengen um?"):
+        st.write(
+            "Volumen und Mengen brauchst du, um Ware fachlich vergleichbar zu machen. Je nach Produkt wird in Laufmetern, "
+            "Quadratmetern, Kubikmetern, Stück oder ganzen Paketen gedacht."
+        )
+        st.markdown(
+            """
 | Von | Nach | Rechenweg | Beispiel |
 | --- | --- | --- | --- |
 | Laufmeter | Quadratmeter | Laufmeter x Breite | 24 Laufmeter x 0,16 Meter = 3,84 Quadratmeter |
@@ -5928,15 +5928,15 @@ def render_theory_section():
 | Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe | 30 Laufmeter x 0,08 Meter x 0,10 Meter = 0,240 Kubikmeter |
 | Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) | 0,240 Kubikmeter / (0,08 Meter x 0,10 Meter) = 30 Laufmeter |
 """
-    )
+        )
 
-    st.markdown("#### Preise")
-    st.write(
-        "Preise hängen immer an einer Einheit. Darum ist entscheidend, ob ein Preis pro Laufmeter, Quadratmeter "
-        "oder Kubikmeter gemeint ist, bevor du multiplizierst oder teilst."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie rechne ich Preise um?"):
+        st.write(
+            "Preise hängen immer an einer Einheit. Darum ist entscheidend, ob ein Preis pro Laufmeter, Quadratmeter "
+            "oder Kubikmeter gemeint ist, bevor du multiplizierst oder teilst."
+        )
+        st.markdown(
+            """
 | Von | Nach | Rechenweg | Beispiel |
 | --- | --- | --- | --- |
 | Euro pro Laufmeter | Euro pro Quadratmeter | Euro pro Laufmeter / Breite | 4,80 Euro pro Laufmeter / 0,16 Meter = 30,00 Euro pro Quadratmeter |
@@ -5946,20 +5946,20 @@ def render_theory_section():
 | Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Höhe) | 4,80 Euro pro Laufmeter / (0,08 Meter x 0,10 Meter) = 600,00 Euro pro Kubikmeter |
 | Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Höhe | 600,00 Euro pro Kubikmeter x 0,08 Meter x 0,10 Meter = 4,80 Euro pro Laufmeter |
 """
-    )
+        )
 
-    st.markdown("#### Deckungsbeitrag")
-    st.write(
-        "Der Deckungsbeitrag zeigt, was vom Verkaufspreis nach Abzug des Einkaufspreises übrig bleibt. "
-        "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis. "
-        "Der Gesamt-DB ist die Summe dieser Eurobeträge über mehrere Positionen oder einen Auftrag hinweg; im Handel wird das oft als Rohertrag betrachtet."
-    )
-    st.write(
-        "Ein durchschnittlicher Holzhandel braucht grob etwa 24 Prozent Deckungsbeitrag, damit aus dem Rohertrag die laufenden Kosten bezahlt werden können. "
-        "Der Wareneinsatz ist im EK schon enthalten; vom DB müssen dann zum Beispiel Personal, Lager, Miete, Energie, Fuhrpark, Sprit, Verwaltung, IT, Finanzierung, Schwund und Risiko getragen werden."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie rechne ich mit Deckungsbeitrag?"):
+        st.write(
+            "Der Deckungsbeitrag zeigt, was vom Verkaufspreis nach Abzug des Einkaufspreises übrig bleibt. "
+            "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis. "
+            "Der Gesamt-DB ist die Summe dieser Eurobeträge über mehrere Positionen oder einen Auftrag hinweg; im Handel wird das oft als Rohertrag betrachtet."
+        )
+        st.write(
+            "Ein durchschnittlicher Holzhandel braucht grob etwa 24 Prozent Deckungsbeitrag, damit aus dem Rohertrag die laufenden Kosten bezahlt werden können. "
+            "Der Wareneinsatz ist im EK schon enthalten; vom DB müssen dann zum Beispiel Personal, Lager, Miete, Energie, Fuhrpark, Sprit, Verwaltung, IT, Finanzierung, Schwund und Risiko getragen werden."
+        )
+        st.markdown(
+            """
 | Gesucht | Rechenweg | Beispiel |
 | --- | --- | --- |
 | absoluter DB | DB in Euro = VK - EK | 142,86 Euro - 100 Euro |
@@ -5967,17 +5967,17 @@ def render_theory_section():
 | VK aus EK und DB | VK = EK / (1 - DB-Satz) | 100 Euro / 0,70 bei 30 Prozent DB |
 | EK aus VK und DB | EK = VK x (1 - DB-Satz) | 142,86 Euro x 0,70 bei 30 Prozent DB |
 """
-    )
-    st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
+        )
+        st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
 
-    st.markdown("#### Kombinierte Aufgaben")
-    st.write(
-        "In echten Angeboten kommen diese Formeln oft zusammen vor: Erst werden Maßeinheiten sauber umgerechnet, "
-        "dann wird daraus eine Menge oder ein Volumen gebildet, anschließend ein EK oder VK berechnet und zum Schluss "
-        "kann noch der gewünschte DB berücksichtigt werden."
-    )
-    st.markdown(
-        """
+    with st.expander("Wie kombiniere ich mehrere Rechenschritte?"):
+        st.write(
+            "In echten Angeboten kommen diese Formeln oft zusammen vor: Erst werden Maßeinheiten sauber umgerechnet, "
+            "dann wird daraus eine Menge oder ein Volumen gebildet, anschließend ein EK oder VK berechnet und zum Schluss "
+            "kann noch der gewünschte DB berücksichtigt werden."
+        )
+        st.markdown(
+            """
 **Musteraufgabe:** Für 8 Stück KVH mit 6 Meter Länge, 8 Zentimeter Breite und 12 Zentimeter Höhe liegt der EK bei 420 Euro pro Kubikmeter. Es soll ein DB von 25 Prozent erzielt werden.
 
 **Rechenweg:**
@@ -5986,7 +5986,7 @@ def render_theory_section():
 3. EK berechnen: 0,4608 Kubikmeter x 420 Euro pro Kubikmeter = 193,54 Euro.
 4. DB berücksichtigen: Bei 25 Prozent DB bleibt der Kostenanteil 0,75. VK = 193,54 Euro / 0,75 = 258,05 Euro.
 """
-    )
+        )
 
 
 def guided_completed_entry(text, kind="success"):
@@ -7305,16 +7305,8 @@ def init_state():
         st.session_state.task_number = 1
         st.session_state.recent_task_types = []
         st.session_state.pending_next_task = False
-        st.session_state.show_theory = False
-        st.session_state.show_usage = False
         create_next_task()
         return
-
-    if "show_theory" not in st.session_state:
-        st.session_state.show_theory = False
-
-    if "show_usage" not in st.session_state:
-        st.session_state.show_usage = False
 
     if "main_input_locked" not in st.session_state:
         st.session_state.main_input_locked = False
@@ -7885,24 +7877,6 @@ def render_development_section():
             "Dort wird Volumen mit Kilogramm pro Kubikmeter verbunden."
         )
 
-    with st.expander("Wie läuft eine Übungsaufgabe ab?"):
-        st.write(
-            "Die Aufgaben werden zufällig erzeugt und wechseln zwischen verschiedenen Produkten, Schwierigkeitsgraden und "
-            "Rechenrichtungen. Es gibt keine feste letzte Aufgabe. Man kann also so lange weiterüben, wie es sinnvoll ist."
-        )
-        st.write(
-            "Bei jeder Aufgabe kann man entweder das Endergebnis oder einen Rechenweg eingeben. Der Rechner wertet die Formel "
-            "direkt aus. Dabei funktionieren unterschiedliche Schreibweisen wie x, *, /, :, Klammern, Gleichheitszeichen, "
-            "deutsche Kommas und Tausendertrennzeichen."
-        )
-        st.write(
-            "Wenn eine Eingabe falsch ist, bekommt man nicht sofort die vollständige Musterlösung. Zuerst gibt es KI-Hinweise. "
-            "Nach zwei falschen Versuchen führt die App durch geführte Zwischenschritte. Jeder Zwischenschritt wird einzeln "
-            "geprüft. Wenn auch ein Zwischenschritt zweimal falsch ist, löst der Rechner genau diesen Schritt auf und zeigt, "
-            "mit welchem korrekten Wert weitergerechnet werden kann. Am Ende erscheint eine Musterlösung mit vollständigem "
-            "Rechenweg und Einheiten."
-        )
-
     with st.expander("Wo wird KI eingesetzt und wo nicht?"):
         st.write(
             "Die eigentliche Mathematik wird bewusst nicht der KI überlassen. Die Aufgaben, Werte, erwarteten Ergebnisse und "
@@ -7937,15 +7911,17 @@ def render_development_section():
             "nachvollziehbar und jede Änderung kann später wiedergefunden werden."
         )
 
-    with st.expander("Wie wurde der KI-Holzrechner mit Codex entwickelt?"):
+    with st.expander("Wie wurde der KI-Holzrechner entwickelt?"):
         st.write(
-            "Dieses Projekt ist auch ein Beispiel dafür, wie man mit KI-gestützter Softwareentwicklung arbeiten kann. Die zentrale "
-            "Datei liegt lokal auf dem Rechner. Änderungen wurden Schritt für Schritt mit Codex besprochen, umgesetzt, getestet "
-            "und gepusht."
+            "Dieses Projekt ist auch ein Beispiel dafür, wie man mit KI-gestützter Softwareentwicklung arbeiten kann. "
+            "Codex ist ein Entwicklungswerkzeug von OpenAI, das Code lesen, ändern, testen und über Git für die Veröffentlichung "
+            "vorbereiten kann. Die zentrale Datei liegt lokal auf dem Rechner; Änderungen wurden Schritt für Schritt besprochen, "
+            "umgesetzt, getestet und gepusht."
         )
         st.write(
             "Besonders hilfreich ist dabei die Spracheingabe: Fachliche Anforderungen können zuerst natürlich formuliert werden, "
-            "zum Beispiel aus Sicht des Holzhandels, und Codex übersetzt diese Anforderungen dann in konkrete Codeänderungen."
+            "zum Beispiel aus Sicht des Holzhandels. Codex übersetzt diese Anforderungen dann in konkrete Codeänderungen und "
+            "achtet darauf, dass bestehende Logik, Tests und Veröffentlichungsablauf zusammenpassen."
         )
         st.write(
             "So entsteht eine andere Arbeitsweise als bei klassischer Programmierung. Der fachliche Experte beschreibt, was "
@@ -7982,28 +7958,10 @@ def render_development_section():
 
 def render_learning_sections():
     st.subheader("Theorie auffrischen")
-    if st.button(
-        "Theorie ausblenden" if st.session_state.show_theory else "Theorie anzeigen",
-        key="theory_toggle_button",
-    ):
-        st.session_state.show_theory = not st.session_state.show_theory
-        st.rerun()
-
-    if st.session_state.show_theory:
-        render_theory_section()
-        if st.button("Theorie ausblenden", key="theory_hide_bottom_button"):
-            st.session_state.show_theory = False
-            st.rerun()
+    render_theory_section()
 
     st.subheader("Bedienung des Holzrechners")
-    if st.button(
-        "Bedienung ausblenden" if st.session_state.show_usage else "Bedienung anzeigen",
-        key="usage_toggle_button",
-    ):
-        st.session_state.show_usage = not st.session_state.show_usage
-        st.rerun()
-
-    if st.session_state.show_usage:
+    with st.expander("Wie ist der grundlegende Ablauf?"):
         st.write(
             "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
             "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
@@ -8017,11 +7975,15 @@ def render_learning_sections():
             "Am Ende erscheint eine Musterlösung mit dem vollständigen Rechenweg, und zu diesem Rechenweg kannst du dir zusätzlich "
             "KI-generierte Erklärungen geben lassen."
         )
+
+    with st.expander("Wie entscheide ich nach einer Aufgabe, ob ich weiterüben oder wechseln soll?"):
         st.write(
             "Nach jeder abgeschlossenen Aufgabe entscheidest du selbst, wie es weitergeht: Wenn der Aufgabentyp sitzt, wählst du "
             "„Weiter mit anderem Aufgabentyp“. Wenn du noch unsicher bist, ist „Weiter mit gleichem Aufgabentyp“ sinnvoll, damit du "
             "direkt noch einmal eine ähnliche Aufgabe bekommst und die Logik festigen kannst."
         )
+
+    with st.expander("Welche Eingaben funktionieren im Rechner?"):
         st.markdown(
             """
 Beispiele, die funktionieren:
@@ -8035,18 +7997,19 @@ Beispiele, die funktionieren:
 - **Leerzeichen und Tausendertrennzeichen:** Leerzeichen sind egal; deutsche Tausendertrennzeichen wie `3.465` werden ebenfalls erkannt.
 """
         )
+
+    with st.expander("Kann ich den Taschenrechner zur Seite legen?"):
         st.markdown(
             "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
             "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
             "ganz entspannt zur Seite legen.**"
         )
+
+    with st.expander("Auf welchem Gerät funktioniert der KI-Holzrechner am besten?"):
         st.write(
             "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
             "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
         )
-        if st.button("Bedienung ausblenden", key="usage_hide_bottom_button"):
-            st.session_state.show_usage = False
-            st.rerun()
 
     st.subheader("FAQ zur Entwicklung des KI-Holzrechners")
     render_development_section()
