@@ -6082,8 +6082,11 @@ def render_theory_section():
 
     with st.expander("Warum wird beim Deckungsbeitrag durch 1 minus DB-Satz geteilt?"):
         st.write(
-            "Wenn ein Ziel-DB vorgegeben ist, bleibt der andere Anteil als Kostenanteil übrig. Bei 30 Prozent DB bleiben 70 Prozent "
-            "als Kostenanteil. Darum rechnest du den Verkaufspreis aus dem Einkaufspreis mit Einkaufspreis / 0,70."
+            "Wenn ein Ziel-DB vorgegeben ist, wird der Verkaufspreis vom Ende her gedacht: Ein bestimmter Anteil des Verkaufspreises "
+            "soll als Deckungsbeitrag übrig bleiben, der restliche Anteil ist der Warenkostenanteil. Mit Kostenanteil ist hier also "
+            "nicht Personal, Miete, Fuhrpark oder Verwaltung gemeint, sondern der Anteil des Verkaufspreises, der auf den Einkaufspreis "
+            "der Ware entfällt. Bei 30 Prozent DB dürfen 70 Prozent des Verkaufspreises für den Wareneinkauf stehen. Wenn der Einkaufspreis "
+            "100 Euro beträgt, sind diese 100 Euro also die 70 Prozent; deshalb rechnest du 100 Euro / 0,70 = 142,86 Euro Verkaufspreis."
         )
 
     with st.expander("Wie rechne ich mit Deckungsbeitrag?"):
@@ -6101,7 +6104,10 @@ def render_theory_section():
 | EK aus VK und DB | EK = VK x (1 - DB-Satz) | 142,86 Euro x 0,70 bei 30 Prozent DB |
 """
         )
-        st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
+        st.write(
+            "Bei 30 Prozent DB bleiben 70 Prozent des Verkaufspreises als Warenkostenanteil für den Einkaufspreis übrig. "
+            "Darum wird beim Verkaufspreis durch 0,70 geteilt."
+        )
 
     with st.expander("Warum muss bei Paketen, Bund oder Stück immer aufgerundet werden?"):
         st.write(
