@@ -619,6 +619,24 @@ def product_name(product):
     return str(product)
 
 
+def plural_product_name(product):
+    name = product_name(product)
+    special_plurals = {
+        "Multiplexplatte Birke": "Birke-Multiplexplatten",
+    }
+    if name in special_plurals:
+        return special_plurals[name]
+    if "Platte" in name:
+        return name.replace("Platte", "Platten", 1)
+    if "platte" in name:
+        return name.replace("platte", "platten", 1)
+    return name
+
+
+def counted_product(count, product):
+    return f"{count} {plural_product_name(product)}"
+
+
 def structural_cm_number(value_m):
     return format_cm(value_m)
 
@@ -951,7 +969,7 @@ def generate_whole_volume_position_details(level):
         total_volume_places = precise_decimal_places(total_volume)
         thickness_text = display_measure(thickness_m, ("mm", "cm"))
         context = (
-            f"{panel_count} Platten {product['name']} im Format {panel_format} "
+            f"{counted_product(panel_count, product)} im Format {panel_format} "
             f"bei {thickness_text} Dicke"
         )
         return {
@@ -2464,9 +2482,9 @@ def task_m2_db_sale_price(level):
 
     prompt = random.choice(
         [
-            f"Für ein Angebot liegen {panel_count} Platten {product['name']} im Format {panel_format} vor. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte VK?",
-            f"{request_intro()}: {panel_count} Stück {product['name']} im Format {panel_format}. Kalkuliert wird mit {format_decimal(ek_price_m2, 2)} Euro EK pro Quadratmeter und {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der Verkaufspreis für diese Position?",
-            f"Ein Lieferant bietet {panel_count} Platten {product['name']} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter im EK an. Für das Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB stehen bleiben.\n\nWelchen Mindestpreis müssen wir für diese Position anbieten?",
+            f"Für ein Angebot liegen {counted_product(panel_count, product)} im Format {panel_format} vor. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der gesamte VK?",
+            f"{request_intro()}: {counted_product(panel_count, product)} im Format {panel_format}. Kalkuliert wird mit {format_decimal(ek_price_m2, 2)} Euro EK pro Quadratmeter und {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der Verkaufspreis für diese Position?",
+            f"Ein Lieferant bietet {counted_product(panel_count, product)} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter im EK an. Für das Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB stehen bleiben.\n\nWelchen Mindestpreis müssen wir für diese Position anbieten?",
         ]
     )
 
@@ -3792,9 +3810,9 @@ def task_m2_ek_from_vk_db(level):
 
     prompt = random.choice(
         [
-            f"Ein Angebot über {panel_count} Platten {product['name']} im Format {panel_format} endet bei {format_decimal(total_vk, 2)} Euro VK. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Quadratmeter?",
-            f"Für {product['name']} liegen {panel_count} Stück im Format {panel_format} vor. Der Gesamt-VK beträgt {format_decimal(total_vk, 2)} Euro, der DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
-            f"Ein Kundenangebot über {panel_count} Platten {product['name']} im Format {panel_format} hat einen Gesamt-VK von {format_decimal(total_vk, 2)} Euro. Intern soll dabei ein DB von {format_decimal(db_percent, 0)} % erreicht werden.\n\nWelchen Quadratmeter-EK hat der Lieferant rechnerisch angesetzt?",
+            f"Ein Angebot über {counted_product(panel_count, product)} im Format {panel_format} endet bei {format_decimal(total_vk, 2)} Euro VK. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Quadratmeter?",
+            f"Für {counted_product(panel_count, product)} im Format {panel_format} liegt ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro vor, der DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
+            f"Ein Kundenangebot über {counted_product(panel_count, product)} im Format {panel_format} hat einen Gesamt-VK von {format_decimal(total_vk, 2)} Euro. Intern soll dabei ein DB von {format_decimal(db_percent, 0)} % erreicht werden.\n\nWelchen Quadratmeter-EK hat der Lieferant rechnerisch angesetzt?",
         ]
     )
 
@@ -4033,8 +4051,8 @@ def task_panel_package_price(level):
 
     prompt = random.choice(
         [
-            f"Für ein Angebot liegt ein Plattenpaket {product['name']} im Format {panel_format} vor. Im Paket liegen {package_count} Platten, der Preis beträgt {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Paketpreis?",
-            f"Ein Kunde fragt ein ganzes Paket {product['name']} an. Eine Platte hat das Format {panel_format}, im Paket sind {package_count} Stück enthalten und kalkuliert wird mit {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Preis für das Paket?",
+            f"Für ein Angebot liegt ein Plattenpaket {product['name']} im Format {panel_format} vor. Im Paket liegen {counted_product(package_count, product)}, der Preis beträgt {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Paketpreis?",
+            f"Ein Kunde fragt ein ganzes Paket {plural_product_name(product)} an. Eine Platte hat das Format {panel_format}, im Paket sind {package_count} Stück enthalten und kalkuliert wird mit {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Preis für das Paket?",
         ]
     )
 
@@ -4135,9 +4153,9 @@ def task_panel_package_db_sale_price(level):
 
     prompt = random.choice(
         [
-            f"Für ein Angebot soll ein Plattenpaket {product['name']} kalkuliert werden. Eine Platte hat das Format {panel_format}, im Paket liegen {package_count} Platten. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Paket-VK?",
-            f"Eine Kundin interessiert sich für ein komplettes Paket {product['name']} im Format {panel_format}. Enthalten sind {package_count} Platten, der EK liegt bei {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Verkaufspreis für das Paket?",
-            f"Der Lieferant bietet ein Paket {product['name']} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter EK an. Im Paket liegen {package_count} Platten, im Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB erreicht werden.\n\nZu welchem Mindestpreis können wir das Paket verkaufen?",
+            f"Für ein Angebot soll ein Plattenpaket {product['name']} kalkuliert werden. Eine Platte hat das Format {panel_format}, im Paket liegen {counted_product(package_count, product)}. Der EK beträgt {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der Paket-VK?",
+            f"Eine Kundin interessiert sich für ein komplettes Paket {product['name']} im Format {panel_format}. Enthalten sind {counted_product(package_count, product)}, der EK liegt bei {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter und es soll ein DB von {format_decimal(db_percent, 0)} % erzielt werden.\n\nWie hoch ist der Verkaufspreis für das Paket?",
+            f"Der Lieferant bietet ein Paket {product['name']} im Format {panel_format} zu {format_decimal(ek_price_m2, 2)} Euro pro Quadratmeter EK an. Im Paket liegen {counted_product(package_count, product)}, im Kundenangebot sollen mindestens {format_decimal(db_percent, 0)} % DB erreicht werden.\n\nZu welchem Mindestpreis können wir das Paket verkaufen?",
         ]
     )
 
@@ -4269,8 +4287,8 @@ def task_panel_package_ek_from_vk_db(level):
 
     prompt = random.choice(
         [
-            f"Ein Plattenpaket {product['name']} im Format {panel_format} wurde für {format_decimal(package_vk, 2)} Euro verkauft. Im Paket liegen {package_count} Platten und der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWie hoch war der EK pro Quadratmeter?",
-            f"Für ein Paket {product['name']} mit {package_count} Platten im Format {panel_format} liegt ein VK von {format_decimal(package_vk, 2)} Euro vor. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
+            f"Ein Plattenpaket {product['name']} im Format {panel_format} wurde für {format_decimal(package_vk, 2)} Euro verkauft. Im Paket liegen {counted_product(package_count, product)} und der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWie hoch war der EK pro Quadratmeter?",
+            f"Für ein Paket mit {counted_product(package_count, product)} im Format {panel_format} liegt ein VK von {format_decimal(package_vk, 2)} Euro vor. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
         ]
     )
 
