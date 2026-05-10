@@ -5878,6 +5878,13 @@ def render_musterloesung(task):
 
 
 def render_theory_section():
+    with st.expander("Warum muss ich vor dem Rechnen oft alle Maße in Meter umwandeln?"):
+        st.write(
+            "Laufmeter, Quadratmeter und Kubikmeter bauen rechnerisch auf Meterwerten auf. Wenn eine Breite mit 12 Zentimeter "
+            "angegeben ist, muss daraus vor einer Volumenrechnung 0,12 Meter werden. Sonst entsteht schnell ein Ergebnis, das "
+            "um den Faktor 10, 100 oder 1000 danebenliegt."
+        )
+
     with st.expander("Wie rechne ich Maßeinheiten um?"):
         st.write(
             "Einheiten sind die Grundlage für jede saubere Rechnung. Besonders bei Zentimeter, Millimeter und Meter "
@@ -5897,19 +5904,14 @@ def render_theory_section():
         )
         st.write("Merksatz: Wenn die Einheit größer wird, wird die Zahl kleiner. Wenn die Einheit kleiner wird, wird die Zahl größer.")
 
-    with st.expander("Wie rechne ich Dichte und Gewicht um?"):
+    with st.expander("Wann rechne ich mit Laufmetern, Quadratmetern oder Kubikmetern?"):
         st.write(
-            "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
-            "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
-            "verwendest du Kilogramm pro Kubikmeter."
+            "Laufmeter beschreiben nur eine Länge. Quadratmeter beschreiben eine Fläche, zum Beispiel bei Platten oder Boden. "
+            "Kubikmeter beschreiben ein Volumen und werden bei Holz häufig genutzt, wenn Länge, Breite und Stärke zusammen eine Rolle spielen."
         )
-        st.markdown(
-            """
-| Gesucht | Rechenweg | Beispiel |
-| --- | --- | --- |
-| Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
-| Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
-"""
+        st.write(
+            "Die wichtigste Kontrollfrage lautet immer: Welche Einheit ist gegeben und welche Einheit wird gesucht? Daraus ergibt sich, "
+            "ob du mit Breite oder Dicke multiplizierst oder durch diese Werte teilst."
         )
 
     with st.expander("Wie rechne ich Volumen und Mengen um?"):
@@ -5930,6 +5932,28 @@ def render_theory_section():
 """
         )
 
+    with st.expander("Wie rechne ich Dichte und Gewicht um?"):
+        st.write(
+            "Die Dichte brauchst du, wenn aus einem Volumen ein Gewicht werden soll, zum Beispiel für Transport, Handling "
+            "oder eine Plausibilitätskontrolle. Gerechnet wird ähnlich wie beim Preis pro Kubikmeter: Statt Euro pro Kubikmeter "
+            "verwendest du Kilogramm pro Kubikmeter."
+        )
+        st.markdown(
+            """
+| Gesucht | Rechenweg | Beispiel |
+| --- | --- | --- |
+| Gewicht | Kubikmeter x Dichte | 1,250 Kubikmeter x 620 Kilogramm pro Kubikmeter |
+| Dichte | Gewicht / Kubikmeter | 775 Kilogramm / 1,250 Kubikmeter |
+"""
+        )
+
+    with st.expander("Warum ist bei Preisen die Einheit so entscheidend?"):
+        st.write(
+            "Ein Preis ist nur sinnvoll, wenn klar ist, worauf er sich bezieht. 350 Euro pro Kubikmeter, 18 Euro pro Quadratmeter "
+            "und 4 Euro pro Laufmeter können für dieselbe Ware völlig unterschiedliche Bedeutungen haben. Erst wenn Preisbasis "
+            "und Mengenbasis zusammenpassen, ist die Rechnung fachlich korrekt."
+        )
+
     with st.expander("Wie rechne ich Preise um?"):
         st.write(
             "Preise hängen immer an einer Einheit. Darum ist entscheidend, ob ein Preis pro Laufmeter, Quadratmeter "
@@ -5948,12 +5972,20 @@ def render_theory_section():
 """
         )
 
-    with st.expander("Wie rechne ich mit Deckungsbeitrag?"):
+    with st.expander("Was ist der Unterschied zwischen absolutem und relativem Deckungsbeitrag?"):
         st.write(
-            "Der Deckungsbeitrag zeigt, was vom Verkaufspreis nach Abzug des Einkaufspreises übrig bleibt. "
-            "Absolut ist das ein Eurobetrag, relativ ein Prozentwert bezogen auf den Verkaufspreis. "
-            "Der Gesamt-DB ist die Summe dieser Eurobeträge über mehrere Positionen oder einen Auftrag hinweg; im Handel wird das oft als Rohertrag betrachtet."
+            "Der absolute Deckungsbeitrag ist ein Eurobetrag: Verkaufspreis minus Einkaufspreis. Der relative Deckungsbeitrag "
+            "ist ein Prozentwert und zeigt, welcher Anteil vom Verkaufspreis als Rohertrag übrig bleibt. Bei mehreren Positionen "
+            "spricht man beim gesamten Eurobetrag oft vom Gesamt-DB oder Rohertrag."
         )
+
+    with st.expander("Warum wird beim Deckungsbeitrag durch 1 minus DB-Satz geteilt?"):
+        st.write(
+            "Wenn ein Ziel-DB vorgegeben ist, bleibt der andere Anteil als Kostenanteil übrig. Bei 30 Prozent DB bleiben 70 Prozent "
+            "als Kostenanteil. Darum rechnest du den Verkaufspreis aus dem Einkaufspreis mit Einkaufspreis / 0,70."
+        )
+
+    with st.expander("Wie rechne ich mit Deckungsbeitrag?"):
         st.write(
             "Ein durchschnittlicher Holzhandel braucht grob etwa 24 Prozent Deckungsbeitrag, damit aus dem Rohertrag die laufenden Kosten bezahlt werden können. "
             "Der Wareneinsatz ist im EK schon enthalten; vom DB müssen dann zum Beispiel Personal, Lager, Miete, Energie, Fuhrpark, Sprit, Verwaltung, IT, Finanzierung, Schwund und Risiko getragen werden."
@@ -5969,6 +6001,27 @@ def render_theory_section():
 """
         )
         st.write("Bei 30 Prozent DB bleiben 70 Prozent als Kostenanteil übrig. Darum wird beim VK durch 0,70 geteilt.")
+
+    with st.expander("Warum muss bei Paketen, Bund oder Stück immer aufgerundet werden?"):
+        st.write(
+            "Viele Waren können nicht in beliebigen Bruchteilen geliefert werden. Wenn rechnerisch 16,2 Pakete, 7,4 Bund oder "
+            "20,3 Bretter benötigt werden, reicht die kleinere ganze Zahl nicht aus. Deshalb wird auf die nächste volle Einheit "
+            "aufgerundet."
+        )
+
+    with st.expander("Was ist der Unterschied zwischen Rohmaß und Deckmaß?"):
+        st.write(
+            "Das Rohmaß ist die tatsächliche Breite eines Bretts. Das Deckmaß ist die sichtbare beziehungsweise wirksame Breite, "
+            "zum Beispiel bei Profilbrettern mit Nut und Feder. Für die benötigte Stückzahl ist die Deckbreite wichtig; für die "
+            "abgerechnete Rohmaßfläche kann anschließend das Rohmaß entscheidend sein."
+        )
+
+    with st.expander("Warum ist eine Plausibilitätsprüfung wichtig?"):
+        st.write(
+            "Viele Rechenfehler lassen sich erkennen, bevor man die genaue Lösung kennt. Ein Preis pro Kubikmeter sollte nicht "
+            "plötzlich kleiner sein als ein Preis pro Quadratmeter derselben Ware, und ein kleines Brett sollte keine riesigen "
+            "Kubikmeter ergeben. Solche Plausibilitätschecks helfen, Kommafehler, fehlende Faktoren oder falsche Einheiten zu finden."
+        )
 
     with st.expander("Wie kombiniere ich mehrere Rechenschritte?"):
         st.write(
@@ -7879,26 +7932,69 @@ def render_development_section():
             "Dort wird Volumen mit Kilogramm pro Kubikmeter verbunden."
         )
 
-    with st.expander("Wo wird KI eingesetzt und wo nicht?"):
+    with st.expander("Warum werden die Aufgaben zufällig erzeugt?"):
+        st.write(
+            "Die Aufgaben sollen nicht auswendig gelernt werden, sondern die Rechenlogik trainieren. Deshalb werden Produkte, "
+            "Maße, Preise, Stückzahlen und Aufgabentypen variiert. So entstehen immer wieder neue Kombinationen, die fachlich "
+            "ähnlich sind, aber nicht einfach nach Schema auswendig beantwortet werden können."
+        )
+
+    with st.expander("Warum gibt es unterschiedliche Schwierigkeitsgrade?"):
+        st.write(
+            "Nicht jede Aufgabe ist gleich schwer. Eine einfache Einheitenumrechnung ist etwas anderes als eine Aufgabe mit "
+            "Volumen, Einkaufspreis, Verkaufspreis und Deckungsbeitrag. Die Schwierigkeitsgrade helfen dabei, die Aufgaben zu "
+            "mischen und trotzdem nach und nach komplexere Situationen einzubauen."
+        )
+
+    with st.expander("Warum berechnet Python die Ergebnisse und nicht die KI?"):
         st.write(
             "Die eigentliche Mathematik wird bewusst nicht der KI überlassen. Die Aufgaben, Werte, erwarteten Ergebnisse und "
             "Zwischenschritte werden im Python-Code berechnet. Dadurch bleibt die fachliche Prüfung stabil und reproduzierbar."
         )
+        st.write(
+            "Die KI soll erklären, nicht raten. Wenn die mathematische Lösung fest im Code berechnet wird, kann der Rechner "
+            "zuverlässig prüfen, ob eine Eingabe richtig oder falsch ist. Die KI bekommt danach die Aufgabe, den Fehler verständlich "
+            "zu erklären."
+        )
+
+    with st.expander("Wo wird KI eingesetzt und wo nicht?"):
         st.write(
             "Die KI wird für die Erklärung eingesetzt. Wenn eine Eingabe nicht zur berechneten Lösung passt, werden der "
             "Aufgabentext, die erwartete Lösung, die Nutzereingabe, der aktuelle Zwischenschritt und mögliche Fehlerdiagnosen "
             "an ein Sprachmodell übergeben. Daraus entsteht ein KI-Hinweis, der erklären soll, was wahrscheinlich schiefgelaufen ist."
         )
         st.write(
+            "Nicht von der KI stammen die Zahlen der Aufgabe, die richtige Lösung, die Prüfung der Eingabe und die geführten "
+            "Zwischenschritte. Diese Teile liegen in der festen Programmlogik."
+        )
+
+    with st.expander("Wie erkennt der Rechner typische Fehler?"):
+        st.write(
             "Zusätzlich prüft der Code vor der KI-Anfrage typische Fehlerquellen: fehlende Faktoren, zusätzliche Faktoren, "
             "Faktor-10-, Faktor-100- oder Faktor-1000-Probleme, falsche Richtung bei mal und geteilt, vertauschte DB-Rechnung, "
             "falsche Maßeinheit oder vergessene Preis- und Volumenbasis. Nur wenn so ein Muster wirklich passt, wird es der KI "
             "als möglicher Hinweis mitgegeben. Dadurch bleibt der Prompt kürzer und die KI bekommt bessere fachliche Leitplanken."
         )
+
+    with st.expander("Wie wird verhindert, dass die KI zu viel verrät?"):
+        st.write(
+            "Die Prompts geben der KI klare Grenzen. Beim ersten Hinweis soll sie eher auf Denkfehler, Einheit oder Richtung "
+            "hinweisen und nicht sofort die vollständige Musterlösung nennen. Erst wenn ein Zwischenschritt aufgelöst wird oder "
+            "die Musterlösung sichtbar ist, darf die Erklärung konkreter werden."
+        )
+
+    with st.expander("Wie kann ich nach der Musterlösung noch Fragen stellen?"):
         st.write(
             "Nach der Musterlösung kann man außerdem eine freie Frage zum Rechenweg stellen. Dann bekommt die KI den Aufgabentext, "
             "den vollständigen Rechenweg und die konkrete Frage. Dadurch kann man zum Beispiel fragen, warum an einer Stelle "
             "geteilt oder multipliziert wird oder warum ein bestimmter DB-Faktor verwendet wird."
+        )
+
+    with st.expander("Warum wurde Streamlit für die App gewählt?"):
+        st.write(
+            "Streamlit ist praktisch, weil aus einer Python-Datei sehr schnell eine nutzbare Weboberfläche entsteht. Für diesen "
+            "KI-Holzrechner ist das ideal: Die Rechenlogik bleibt in Python, und die Oberfläche kann trotzdem direkt im Browser "
+            "bedient werden."
         )
 
     with st.expander("Welche Technik steckt dahinter?"):
@@ -7934,15 +8030,21 @@ def render_development_section():
     with st.expander("Wie werden die KI-Antworten gesteuert?"):
         st.write(
             "Die KI-Antworten werden durch Prompts begrenzt. Sie sollen kurz, deutsch, konkret und auf den jeweiligen Fehler "
-            "bezogen sein. Außerdem wird gesteuert, dass beim ersten Hinweis nicht sofort die komplette Lösung verraten wird. "
-            "Erst wenn der Lernprozess weiter fortgeschritten ist oder ein Zwischenschritt aufgelöst wird, darf die Antwort "
-            "konkreter werden."
+            "bezogen sein. Die KI bekommt also nicht einfach nur die Nutzereingabe, sondern auch Kontext: Aufgabe, erwartete "
+            "Lösung, Zwischenschritt und mögliche Fehlerdiagnose."
         )
         st.write(
             "Auch das verwendete Modell kann ausgetauscht werden. Für diese App ist ein kleines, schnelles Modell sinnvoll, "
             "weil viele kurze Hinweise erzeugt werden und die Wartezeit gering bleiben soll. Größere Modelle können grundsätzlich "
             "ausführlicher analysieren, sind aber langsamer und teurer. Deshalb ist der KI-Einsatz hier bewusst auf kurze "
             "Rückmeldungen und konkrete Erklärfragen begrenzt."
+        )
+
+    with st.expander("Kann dieses Prinzip auch für andere Branchen genutzt werden?"):
+        st.write(
+            "Ja. Das Grundprinzip ist nicht auf Holz beschränkt: Eine feste Programmlogik berechnet korrekte Lösungen, und KI "
+            "erklärt individuelle Fehler. Das könnte auch für andere Branchen funktionieren, in denen Menschen wiederkehrende "
+            "Rechenwege, Einheiten, Kalkulationen oder Prozesslogiken üben müssen."
         )
 
     with st.expander("Wo liegen Grenzen und mögliche Weiterentwicklungen?"):
@@ -7968,6 +8070,22 @@ def render_learning_sections():
             "Die Aufgaben werden zufällig ausgewählt und die Aufgabentypen wechseln sich laufend ab. "
             "Es gibt keine feste Endaufgabe; du kannst also so lange weiterüben, wie du möchtest."
         )
+
+    with st.expander("Was soll ich eingeben: Rechenweg oder Ergebnis?"):
+        st.write(
+            "Beides ist möglich. Du kannst direkt das Endergebnis eingeben, wenn du es sicher weißt, oder den Rechenweg als "
+            "Formel notieren. Sinnvoller zum Üben ist meistens der Rechenweg, weil du dadurch siehst, ob die Richtung, die "
+            "Einheiten und die verwendeten Faktoren stimmen."
+        )
+
+    with st.expander("Warum bekomme ich manchmal zuerst nur einen Hinweis und nicht direkt die Lösung?"):
+        st.write(
+            "Der Rechner soll beim Lernen helfen und nicht sofort die komplette Lösung vorwegnehmen. Deshalb gibt es bei einer "
+            "falschen Eingabe zuerst einen KI-Hinweis, der auf den wahrscheinlichen Denkfehler lenkt. So kann man die Aufgabe "
+            "noch einmal selbst korrigieren."
+        )
+
+    with st.expander("Was passiert nach zwei falschen Eingaben?"):
         st.write(
             "Bei Fehleingaben bekommst du KI-generiertes Feedback: Die Eingabe wird mit der Aufgabenstellung und der passenden "
             "Lösung verglichen, damit der Hinweis möglichst genau auf den wahrscheinlichen Denkfehler eingeht. "
@@ -7978,11 +8096,30 @@ def render_learning_sections():
             "KI-generierte Erklärungen geben lassen."
         )
 
-    with st.expander("Wie entscheide ich nach einer Aufgabe, ob ich weiterüben oder wechseln soll?"):
+    with st.expander("Wie funktionieren die geführten Zwischenschritte?"):
         st.write(
-            "Nach jeder abgeschlossenen Aufgabe entscheidest du selbst, wie es weitergeht: Wenn der Aufgabentyp sitzt, wählst du "
-            "„Weiter mit anderem Aufgabentyp“. Wenn du noch unsicher bist, ist „Weiter mit gleichem Aufgabentyp“ sinnvoll, damit du "
-            "direkt noch einmal eine ähnliche Aufgabe bekommst und die Logik festigen kannst."
+            "Die geführten Zwischenschritte zerlegen eine längere Aufgabe in kleine Rechenabschnitte. Du rechnest immer nur den "
+            "aktuellen Schritt aus. Sobald dieser Schritt passt oder nach mehreren Versuchen aufgelöst wurde, erscheint der nächste "
+            "Schritt. So bleibt die Aufgabe kontrollierbar, auch wenn sie aus Volumen, Preis und Deckungsbeitrag besteht."
+        )
+
+    with st.expander("Warum bleibt ein falscher Zwischenschritt sichtbar?"):
+        st.write(
+            "Ein falscher Zwischenschritt bleibt sichtbar, damit du den Fehler mit dem korrekten Wert vergleichen kannst. Gerade "
+            "bei Einheiten, Faktoren oder DB-Rechnungen ist dieser Vergleich hilfreich: Man erkennt besser, ob ein Wert vergessen, "
+            "zu viel eingerechnet oder in die falsche Richtung gerechnet wurde."
+        )
+
+    with st.expander("Wann sollte ich mit dem gleichen Aufgabentyp weiterüben?"):
+        st.write(
+            "Wenn du bei einer Aufgabe mehrere Hinweise oder Zwischenschritte gebraucht hast, ist „Weiter mit gleichem Aufgabentyp“ "
+            "sinnvoll. Dann bekommst du direkt noch einmal eine ähnliche Aufgabe und kannst dieselbe Logik festigen."
+        )
+
+    with st.expander("Wann sollte ich mit einem anderen Aufgabentyp weitermachen?"):
+        st.write(
+            "Wenn der Rechenweg sicher sitzt, kannst du „Weiter mit anderem Aufgabentyp“ wählen. Dann wechselt der Rechner in eine "
+            "andere Richtung, zum Beispiel von Volumen zu Preis, von Preis zu DB oder von Paketlogik zu Einheiten."
         )
 
     with st.expander("Welche Eingaben funktionieren im Rechner?"):
@@ -8009,8 +8146,8 @@ Beispiele, die funktionieren:
 
     with st.expander("Auf welchem Gerät funktioniert der KI-Holzrechner am besten?"):
         st.write(
-            "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC oder Laptop bedienen, weil Formeln, Zwischenschritte "
-            "und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
+            "Am angenehmsten lässt sich der Holzrechner an einem Desktop-PC, Laptop oder größeren Tablet bedienen, weil Formeln, "
+            "Zwischenschritte und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
         )
 
     st.subheader("FAQ zur Entwicklung des KI-Holzrechners")
