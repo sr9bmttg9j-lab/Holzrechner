@@ -7307,7 +7307,6 @@ def init_state():
         st.session_state.pending_next_task = False
         st.session_state.show_theory = False
         st.session_state.show_usage = False
-        st.session_state.show_development = False
         create_next_task()
         return
 
@@ -7316,9 +7315,6 @@ def init_state():
 
     if "show_usage" not in st.session_state:
         st.session_state.show_usage = False
-
-    if "show_development" not in st.session_state:
-        st.session_state.show_development = False
 
     if "main_input_locked" not in st.session_state:
         st.session_state.main_input_locked = False
@@ -8052,19 +8048,8 @@ Beispiele, die funktionieren:
             st.session_state.show_usage = False
             st.rerun()
 
-    st.subheader("Entwicklung des KI-Holzrechners")
-    if st.button(
-        "Entwicklung ausblenden" if st.session_state.show_development else "Entwicklung anzeigen",
-        key="development_toggle_button",
-    ):
-        st.session_state.show_development = not st.session_state.show_development
-        st.rerun()
-
-    if st.session_state.show_development:
-        render_development_section()
-        if st.button("Entwicklung ausblenden", key="development_hide_bottom_button"):
-            st.session_state.show_development = False
-            st.rerun()
+    st.subheader("FAQ zur Entwicklung des KI-Holzrechners")
+    render_development_section()
 
 
 st.subheader(f"Aufgabe {st.session_state.task_number}")
