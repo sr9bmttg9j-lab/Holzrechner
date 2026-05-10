@@ -146,9 +146,9 @@ THICKNESSES_BY_LEVEL = {
     3: [Decimal("0.019"), Decimal("0.022"), Decimal("0.025"), Decimal("0.032"), Decimal("0.038"), Decimal("0.045"), Decimal("0.050")],
 }
 M3_PRICES_BY_LEVEL = {
-    1: [Decimal("280"), Decimal("320"), Decimal("350"), Decimal("420"), Decimal("560"), Decimal("720")],
-    2: [Decimal("295"), Decimal("365"), Decimal("420"), Decimal("445"), Decimal("585"), Decimal("760")],
-    3: [Decimal("337"), Decimal("398"), Decimal("478"), Decimal("525"), Decimal("693"), Decimal("815")],
+    1: [Decimal("420"), Decimal("480"), Decimal("560"), Decimal("650"), Decimal("820"), Decimal("980")],
+    2: [Decimal("460"), Decimal("540"), Decimal("640"), Decimal("760"), Decimal("950"), Decimal("1180")],
+    3: [Decimal("520"), Decimal("620"), Decimal("760"), Decimal("920"), Decimal("1150"), Decimal("1450")],
 }
 TOTAL_VOLUMES_BY_LEVEL = {
     1: [Decimal("0.72"), Decimal("0.96"), Decimal("1.20"), Decimal("1.44"), Decimal("1.80"), Decimal("2.40")],
@@ -156,9 +156,9 @@ TOTAL_VOLUMES_BY_LEVEL = {
     3: [Decimal("0.945"), Decimal("1.155"), Decimal("1.485"), Decimal("1.890"), Decimal("2.310"), Decimal("2.625")],
 }
 RUNNING_METER_PRICES_BY_LEVEL = {
-    1: [Decimal("4.80"), Decimal("6.20"), Decimal("7.50"), Decimal("9.60"), Decimal("12.40")],
-    2: [Decimal("5.35"), Decimal("6.85"), Decimal("8.40"), Decimal("10.25"), Decimal("13.75")],
-    3: [Decimal("5.95"), Decimal("7.40"), Decimal("9.35"), Decimal("11.80"), Decimal("14.60")],
+    1: [Decimal("5.95"), Decimal("6.95"), Decimal("7.95"), Decimal("8.95"), Decimal("10.95")],
+    2: [Decimal("6.95"), Decimal("7.95"), Decimal("9.95"), Decimal("12.95"), Decimal("15.95")],
+    3: [Decimal("8.95"), Decimal("10.95"), Decimal("13.95"), Decimal("16.95"), Decimal("22.95")],
 }
 FLOORING_LENGTHS = [Decimal("1.80"), Decimal("1.90"), Decimal("2.00"), Decimal("2.10"), Decimal("2.20")]
 FLOORING_PRODUCTS = [
@@ -199,9 +199,9 @@ FLOORING_PRODUCTS = [
     },
 ]
 PANEL_M2_PRICES_BY_LEVEL = {
-    1: [Decimal("8.90"), Decimal("12.50"), Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
-    2: [Decimal("9.80"), Decimal("14.90"), Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
-    3: [Decimal("11.40"), Decimal("17.80"), Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+    1: [Decimal("11.95"), Decimal("14.95"), Decimal("19.95"), Decimal("24.95"), Decimal("34.95")],
+    2: [Decimal("14.95"), Decimal("19.95"), Decimal("29.95"), Decimal("39.95"), Decimal("54.95")],
+    3: [Decimal("19.95"), Decimal("29.95"), Decimal("44.95"), Decimal("59.95"), Decimal("79.95")],
 }
 PANEL_COUNTS_BY_LEVEL = {
     1: [6, 8, 10, 12, 15, 18, 20],
@@ -720,69 +720,69 @@ def m3_price_for_product(product, level):
     name = product_name(product)
     pools = {
         "KVH": {
-            1: [Decimal("350"), Decimal("390"), Decimal("420"), Decimal("460")],
-            2: [Decimal("380"), Decimal("420"), Decimal("460"), Decimal("520")],
-            3: [Decimal("398"), Decimal("445"), Decimal("495"), Decimal("560")],
+            1: [Decimal("420"), Decimal("460"), Decimal("520"), Decimal("580")],
+            2: [Decimal("460"), Decimal("520"), Decimal("580"), Decimal("650")],
+            3: [Decimal("520"), Decimal("590"), Decimal("660"), Decimal("740")],
         },
         "BSH": {
-            1: [Decimal("560"), Decimal("640"), Decimal("720"), Decimal("780")],
-            2: [Decimal("585"), Decimal("690"), Decimal("760"), Decimal("845")],
-            3: [Decimal("640"), Decimal("760"), Decimal("890"), Decimal("980")],
+            1: [Decimal("720"), Decimal("820"), Decimal("920"), Decimal("1040")],
+            2: [Decimal("780"), Decimal("890"), Decimal("1020"), Decimal("1160")],
+            3: [Decimal("860"), Decimal("980"), Decimal("1150"), Decimal("1320")],
         },
         "KERTO": {
-            1: [Decimal("720"), Decimal("840"), Decimal("960")],
-            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
-            3: [Decimal("890"), Decimal("1050"), Decimal("1180"), Decimal("1320")],
+            1: [Decimal("920"), Decimal("1080"), Decimal("1240")],
+            2: [Decimal("1040"), Decimal("1220"), Decimal("1420")],
+            3: [Decimal("1180"), Decimal("1380"), Decimal("1620"), Decimal("1840")],
         },
         "Hobelware": {
-            1: [Decimal("720"), Decimal("840"), Decimal("960")],
-            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
-            3: [Decimal("890"), Decimal("1050"), Decimal("1180"), Decimal("1320")],
+            1: [Decimal("760"), Decimal("920"), Decimal("1080")],
+            2: [Decimal("890"), Decimal("1080"), Decimal("1280")],
+            3: [Decimal("1040"), Decimal("1260"), Decimal("1480"), Decimal("1720")],
         },
         "OSB-Platte": {
-            1: [Decimal("280"), Decimal("320"), Decimal("350")],
-            2: [Decimal("295"), Decimal("337"), Decimal("365")],
-            3: [Decimal("320"), Decimal("365"), Decimal("398")],
+            1: [Decimal("520"), Decimal("620"), Decimal("720")],
+            2: [Decimal("580"), Decimal("680"), Decimal("820")],
+            3: [Decimal("640"), Decimal("760"), Decimal("920")],
         },
         "Siebdruckplatte": {
-            1: [Decimal("560"), Decimal("720"), Decimal("840")],
-            2: [Decimal("585"), Decimal("760"), Decimal("890")],
-            3: [Decimal("693"), Decimal("815"), Decimal("980")],
+            1: [Decimal("1500"), Decimal("1750"), Decimal("2050")],
+            2: [Decimal("1680"), Decimal("1980"), Decimal("2320")],
+            3: [Decimal("1860"), Decimal("2200"), Decimal("2600")],
         },
         "3-Schicht-Platte": {
-            1: [Decimal("720"), Decimal("840"), Decimal("960")],
-            2: [Decimal("760"), Decimal("890"), Decimal("1050")],
-            3: [Decimal("815"), Decimal("980"), Decimal("1180")],
+            1: [Decimal("980"), Decimal("1180"), Decimal("1380")],
+            2: [Decimal("1120"), Decimal("1360"), Decimal("1580")],
+            3: [Decimal("1280"), Decimal("1520"), Decimal("1820")],
         },
         "Dekorplatte": {
-            1: [Decimal("560"), Decimal("720"), Decimal("840")],
-            2: [Decimal("585"), Decimal("760"), Decimal("890")],
-            3: [Decimal("693"), Decimal("815"), Decimal("980")],
+            1: [Decimal("950"), Decimal("1180"), Decimal("1420")],
+            2: [Decimal("1080"), Decimal("1320"), Decimal("1580")],
+            3: [Decimal("1220"), Decimal("1480"), Decimal("1780")],
         },
         "Dekorspanplatte": {
-            1: [Decimal("420"), Decimal("520"), Decimal("620")],
-            2: [Decimal("460"), Decimal("585"), Decimal("693")],
-            3: [Decimal("520"), Decimal("640"), Decimal("760")],
+            1: [Decimal("760"), Decimal("920"), Decimal("1120")],
+            2: [Decimal("880"), Decimal("1080"), Decimal("1320")],
+            3: [Decimal("1020"), Decimal("1240"), Decimal("1520")],
         },
         "Multiplexplatte Birke": {
-            1: [Decimal("720"), Decimal("840"), Decimal("960")],
-            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
-            3: [Decimal("890"), Decimal("1050"), Decimal("1180")],
+            1: [Decimal("1700"), Decimal("2050"), Decimal("2400")],
+            2: [Decimal("1900"), Decimal("2300"), Decimal("2700")],
+            3: [Decimal("2150"), Decimal("2600"), Decimal("3050")],
         },
         "Tischlerplatte": {
-            1: [Decimal("560"), Decimal("640"), Decimal("720")],
-            2: [Decimal("640"), Decimal("760"), Decimal("840")],
-            3: [Decimal("720"), Decimal("840"), Decimal("960")],
+            1: [Decimal("1200"), Decimal("1450"), Decimal("1680")],
+            2: [Decimal("1380"), Decimal("1620"), Decimal("1900")],
+            3: [Decimal("1560"), Decimal("1850"), Decimal("2180")],
         },
         "Leimholzplatte": {
-            1: [Decimal("720"), Decimal("840"), Decimal("960")],
-            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
-            3: [Decimal("950"), Decimal("1080"), Decimal("1320")],
+            1: [Decimal("1100"), Decimal("1320"), Decimal("1580")],
+            2: [Decimal("1280"), Decimal("1520"), Decimal("1820")],
+            3: [Decimal("1450"), Decimal("1780"), Decimal("2160")],
         },
         "Sperrholzplatte": {
-            1: [Decimal("520"), Decimal("640"), Decimal("760")],
-            2: [Decimal("585"), Decimal("720"), Decimal("840")],
-            3: [Decimal("640"), Decimal("815"), Decimal("960")],
+            1: [Decimal("980"), Decimal("1180"), Decimal("1450")],
+            2: [Decimal("1120"), Decimal("1380"), Decimal("1680")],
+            3: [Decimal("1280"), Decimal("1580"), Decimal("1950")],
         },
     }
     return random.choice(pools.get(name, M3_PRICES_BY_LEVEL)[level])
@@ -792,49 +792,49 @@ def panel_m2_price_for_product(product, level):
     name = product_name(product)
     pools = {
         "OSB-Platte": {
-            1: [Decimal("8.90"), Decimal("11.90"), Decimal("14.90")],
-            2: [Decimal("9.80"), Decimal("12.90"), Decimal("16.90")],
-            3: [Decimal("11.40"), Decimal("14.90"), Decimal("18.90")],
+            1: [Decimal("11.95"), Decimal("14.04"), Decimal("16.95")],
+            2: [Decimal("14.04"), Decimal("18.95"), Decimal("24.95")],
+            3: [Decimal("18.95"), Decimal("24.95"), Decimal("32.95")],
         },
         "Siebdruckplatte": {
-            1: [Decimal("24.90"), Decimal("32.50"), Decimal("38.50")],
-            2: [Decimal("29.90"), Decimal("38.50"), Decimal("44.50")],
-            3: [Decimal("34.90"), Decimal("44.50"), Decimal("54.90")],
+            1: [Decimal("39.95"), Decimal("45.48"), Decimal("52.95")],
+            2: [Decimal("45.48"), Decimal("56.95"), Decimal("68.95")],
+            3: [Decimal("52.95"), Decimal("68.95"), Decimal("84.95")],
         },
         "3-Schicht-Platte": {
-            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
-            2: [Decimal("26.90"), Decimal("34.90"), Decimal("42.50")],
-            3: [Decimal("32.50"), Decimal("39.90"), Decimal("49.90")],
+            1: [Decimal("34.95"), Decimal("42.95"), Decimal("54.95")],
+            2: [Decimal("42.95"), Decimal("54.95"), Decimal("68.95")],
+            3: [Decimal("54.95"), Decimal("68.95"), Decimal("84.95")],
         },
         "Dekorplatte": {
-            1: [Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
-            2: [Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
-            3: [Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+            1: [Decimal("24.95"), Decimal("29.95"), Decimal("36.95")],
+            2: [Decimal("29.95"), Decimal("39.95"), Decimal("49.95")],
+            3: [Decimal("39.95"), Decimal("49.95"), Decimal("64.95")],
         },
         "Dekorspanplatte": {
-            1: [Decimal("12.90"), Decimal("18.90"), Decimal("24.90")],
-            2: [Decimal("16.90"), Decimal("22.50"), Decimal("29.90")],
-            3: [Decimal("19.90"), Decimal("26.90"), Decimal("34.90")],
+            1: [Decimal("16.95"), Decimal("22.95"), Decimal("29.95")],
+            2: [Decimal("22.95"), Decimal("29.95"), Decimal("39.95")],
+            3: [Decimal("29.95"), Decimal("39.95"), Decimal("54.95")],
         },
         "Multiplexplatte Birke": {
-            1: [Decimal("24.90"), Decimal("32.50"), Decimal("39.90")],
-            2: [Decimal("29.90"), Decimal("38.50"), Decimal("49.90")],
-            3: [Decimal("34.90"), Decimal("44.50"), Decimal("59.90")],
+            1: [Decimal("44.95"), Decimal("53.20"), Decimal("62.50")],
+            2: [Decimal("53.20"), Decimal("62.50"), Decimal("69.95")],
+            3: [Decimal("62.50"), Decimal("69.95"), Decimal("84.95")],
         },
         "Tischlerplatte": {
-            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
-            2: [Decimal("26.90"), Decimal("34.90"), Decimal("42.50")],
-            3: [Decimal("32.50"), Decimal("39.90"), Decimal("49.90")],
+            1: [Decimal("34.95"), Decimal("44.95"), Decimal("54.95")],
+            2: [Decimal("44.95"), Decimal("54.95"), Decimal("64.95")],
+            3: [Decimal("54.95"), Decimal("64.95"), Decimal("79.95")],
         },
         "Leimholzplatte": {
-            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
-            2: [Decimal("29.90"), Decimal("39.90"), Decimal("49.90")],
-            3: [Decimal("39.90"), Decimal("54.90"), Decimal("69.90")],
+            1: [Decimal("29.95"), Decimal("39.95"), Decimal("49.95")],
+            2: [Decimal("39.95"), Decimal("54.95"), Decimal("69.95")],
+            3: [Decimal("54.95"), Decimal("69.95"), Decimal("89.95")],
         },
         "Sperrholzplatte": {
-            1: [Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
-            2: [Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
-            3: [Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+            1: [Decimal("24.95"), Decimal("32.95"), Decimal("39.95")],
+            2: [Decimal("32.95"), Decimal("39.95"), Decimal("49.95")],
+            3: [Decimal("39.95"), Decimal("49.95"), Decimal("64.95")],
         },
     }
     return random.choice(pools.get(name, PANEL_M2_PRICES_BY_LEVEL)[level])
@@ -7881,7 +7881,23 @@ st.write(
 
 
 def render_development_section():
-    with st.expander("Warum ist dieser KI-Holzrechner entstanden?"):
+    with st.expander("Was war der theoretische Hintergrund?"):
+        st.write(
+            "Der theoretische Auslöser war das Modul Generative Artificial Intelligence im VAWi-Fernstudium. "
+            "Im Rahmen dieses Moduls sollte eine Hausarbeit beziehungsweise Hands-On-Fallstudie entstehen, bei der "
+            "generative KI nicht nur abstrakt beschrieben, sondern in einem konkreten Anwendungsszenario umgesetzt wird."
+        )
+        st.write(
+            "Der KI-Holzrechner ist deshalb auch ein Beispiel dafür, wie aus einem fachlichen Problem ein GenAI-basiertes "
+            "Lernwerkzeug entstehen kann: Python berechnet die fachlich richtigen Werte, Streamlit macht daraus eine Web-App, "
+            "und ein Sprachmodell erklärt bei Fehlern den wahrscheinlichen Denkweg."
+        )
+        st.markdown(
+            "Link zum Modul: [VAWi Generative Artificial Intelligence]"
+            "(https://www.vawi.de/live/Studiengangsinhalte-Generative-Artificial-Intelligence/generative-artificial-intelligence.aspx)"
+        )
+
+    with st.expander("Was war der praktische Hintergrund im Holzhandel?"):
         st.write(
             "Der fachliche Ausgangspunkt ist ein sehr praktisches Problem im Holzhandel: Viele Auszubildende und neue "
             "Mitarbeitende kennen einzelne Formeln, verlieren aber bei echten Aufgaben schnell die Orientierung. Im Tagesgeschäft "
@@ -7937,6 +7953,19 @@ def render_development_section():
             "Die Aufgaben sollen nicht auswendig gelernt werden, sondern die Rechenlogik trainieren. Deshalb werden Produkte, "
             "Maße, Preise, Stückzahlen und Aufgabentypen variiert. So entstehen immer wieder neue Kombinationen, die fachlich "
             "ähnlich sind, aber nicht einfach nach Schema auswendig beantwortet werden können."
+        )
+
+    with st.expander("Wie wurden realistischere Preisniveaus eingebaut?"):
+        st.write(
+            "Für die Übungswerte wurden öffentlich einsehbare Online-Preisniveaus aus Baumarkt- und Holzhandels-Shops als "
+            "Orientierung genutzt. Daraus wurden keine tagesaktuellen Verkaufspreise kopiert, sondern plausible Preisbereiche "
+            "für die Übungen abgeleitet."
+        )
+        st.write(
+            "Bei Kubikmeterpreisen und Laufmeterpreisen werden die Werte bewusst auf glatte Eurobeträge beziehungsweise gut "
+            "rechenbare Beträge gerundet. Bei Quadratmeterpreisen bleiben Centbeträge erhalten, weil Platten- und Bodenware "
+            "im Handel häufig genau so ausgezeichnet wird. Die Werte sind damit realitätsnäher, bleiben aber weiterhin "
+            "Übungswerte und können sich im echten Handel je nach Lieferant, Region, Qualität und Zeitpunkt deutlich verändern."
         )
 
     with st.expander("Warum gibt es unterschiedliche Schwierigkeitsgrade?"):
@@ -8150,7 +8179,7 @@ Beispiele, die funktionieren:
             "Zwischenschritte und Erklärungen dort deutlich übersichtlicher bleiben als auf dem Handy."
         )
 
-    st.subheader("FAQ zur Entwicklung des KI-Holzrechners")
+    st.subheader("Entwicklung des KI-Holzrechners")
     render_development_section()
 
 
