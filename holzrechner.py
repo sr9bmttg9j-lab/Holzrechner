@@ -7821,7 +7821,9 @@ def render_task_reminder():
 st.title("KI-Holzrechner")
 st.write(
     "Das ist dein KI-Holzrechner zum Üben: Hier trainierst du die Rechenwege, die im Holzhandel für Mengen, "
-    "Einheiten, Preise und Deckungsbeitrag wichtig sind."
+    "Einheiten, Preise und Deckungsbeitrag wichtig sind. Die beste Erfahrung hast du am Desktop-PC oder Tablet, "
+    "auf dem Handy ist die Nutzung durch die längeren Rechenwege weniger komfortabel. Alle weiteren Fragen werden unten "
+    "ausführlich erklärt."
 )
 
 
@@ -7988,21 +7990,21 @@ def render_learning_sections():
             """
 Beispiele, die funktionieren:
 
-- **Dividieren mit Schrägstrich:** `0,4536 / 0,0054`
-- **Dividieren mit Doppelpunkt und Ergebnis:** `0,4536 : 0,0054 = 84`
-- **Multiplizieren mit x:** `6 x 0,08 x 0,12`
-- **Multiplizieren mit Sternchen und Ergebnis:** `6*0,08*0,12=0,0576`
-- **Mit Klammern rechnen:** `(142,86 - 100) / 142,86 * 100`
-- **Klammern beim Dividieren nutzen:** `0,4536 / (0,20 x 0,027)`
-- **Leerzeichen und Tausendertrennzeichen:** Leerzeichen sind egal; deutsche Tausendertrennzeichen wie `3.465` werden ebenfalls erkannt.
+- Dividieren mit Schrägstrich: `0,4536 / 0,0054`
+- Dividieren mit Doppelpunkt und Ergebnis: `0,4536 : 0,0054 = 84`
+- Multiplizieren mit x: `6 x 0,08 x 0,12`
+- Multiplizieren mit Sternchen und Ergebnis: `6*0,08*0,12=0,0576`
+- Mit Klammern rechnen: `(142,86 - 100) / 142,86 * 100`
+- Klammern beim Dividieren nutzen: `0,4536 / (0,20 x 0,027)`
+- Leerzeichen und Tausendertrennzeichen: Leerzeichen sind egal; deutsche Tausendertrennzeichen wie `3.465` werden ebenfalls erkannt.
 """
         )
 
     with st.expander("Kann ich den Taschenrechner zur Seite legen?"):
-        st.markdown(
-            "**Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
+        st.write(
+            "Du kannst direkt das Endergebnis eingeben, den Rechenweg als Formel notieren oder beides mit Gleichheitszeichen "
             "verbinden. Alle Rechenwege und Ergebnisse können direkt hier geprüft werden. Deswegen kannst du deinen Taschenrechner "
-            "ganz entspannt zur Seite legen.**"
+            "ganz entspannt zur Seite legen."
         )
 
     with st.expander("Auf welchem Gerät funktioniert der KI-Holzrechner am besten?"):
