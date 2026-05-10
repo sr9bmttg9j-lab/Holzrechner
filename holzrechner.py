@@ -5718,6 +5718,21 @@ def format_value_for_task(value, task):
     return format_decimal(value, task["display_places"])
 
 
+def rounding_note(value, config):
+    if config.get("match_mode") != "ceil_integer":
+        return ""
+
+    rounded = round_up_to_whole(value)
+    if value == rounded:
+        return ""
+
+    unit = unit_label(config["unit"])
+    return (
+        f"Ich habe dir das Ergebnis von {format_decimal(value, 3).rstrip('0').rstrip(',')} "
+        f"auf {format_decimal(rounded, 0)} {unit} aufgerundet."
+    )
+
+
 def format_user_result(value, task):
     if task.get("match_mode") == "ceil_integer":
         rounded = round_up_to_whole(value)
@@ -7253,6 +7268,7 @@ def create_next_task():
     st.session_state.feedback_kind = None
     st.session_state.feedback_text = ""
     st.session_state.result_text = ""
+    st.session_state.rounding_text = ""
     st.session_state.last_answer_display = ""
     st.session_state.solution_visible = False
     st.session_state.show_success_solution = False
@@ -7324,6 +7340,7 @@ def handle_submission():
     task = st.session_state.task
     st.session_state.last_answer_display = format_user_result(answer_value, task)
     st.session_state.result_text = f"Dein Ergebnis: {format_user_result(answer_value, task)} {unit_label(task['unit'])}"
+    st.session_state.rounding_text = rounding_note(answer_value, task)
     st.session_state.last_diagnostic_hint = diagnose_common_mistake(task, answer_value, task["expected"])
 
     if values_match(answer_value, task["expected"], task["round_for_check"], task.get("match_mode")):
@@ -7415,9 +7432,11 @@ def handle_guided_submission():
         step.get("match_mode"),
     ):
         if exact_step_match:
+            note = rounding_note(answer_value, step)
             success_text = (
                 f"{step['label']}: {raw_value} = "
                 f"{format_value_for_step(answer_value, step)} {unit_label(step['unit'])}. Passt."
+                f"{' ' + note if note else ''}"
             )
         else:
             success_text = (
@@ -7612,7 +7631,7 @@ def go_to_next_task(same_task_type=False):
     st.rerun()
 
 
-st.set_page_config(page_title="Holzrechner", page_icon="🪵", layout="centered")
+st.set_page_config(page_title="KI-Holzrechner", page_icon="🪵", layout="centered")
 init_state()
 
 st.markdown(
@@ -7807,12 +7826,10 @@ def render_task_reminder():
     )
 
 
-st.title("Holzrechner")
+st.title("KI-Holzrechner")
 st.write(
-    "Das ist dein Holzrechner zum Üben: Hier kannst du dir in Ruhe das Rechenwissen aneignen, "
-    "das du im Holzhandel für Mengen, Preise, Einheiten und Deckungsbeitrag brauchst. "
-    "Sauberes Umrechnen ist jeden Tag entscheidend: Volumen, Fläche, Laufmeter, Preise und DB müssen sicher sitzen, "
-    "damit Angebote, Kalkulationen und Kundengespräche fachlich stimmen."
+    "Das ist dein KI-Holzrechner zum Üben: Hier trainierst du die Rechenwege, die im Holzhandel für Mengen, "
+    "Einheiten, Preise und Deckungsbeitrag wichtig sind."
 )
 
 def render_learning_sections():
@@ -7919,6 +7936,8 @@ if st.session_state.feedback_text:
 
 if st.session_state.result_text and not st.session_state.solution_visible:
     st.write(st.session_state.result_text)
+    if st.session_state.get("rounding_text"):
+        st.caption(st.session_state.rounding_text)
 
 if (
     st.session_state.hint_text
