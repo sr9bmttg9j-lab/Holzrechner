@@ -2769,6 +2769,8 @@ def task_volume_from_total_price(level):
         [
             f"Für {context} liegt ein Gesamtpreis von {format_decimal(total_price, 2)} Euro vor. Der Preis beträgt {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter sind angeboten?",
             f"Ein Angebot über {context} endet bei {format_decimal(total_price, 2)} Euro. Berechnet wird mit {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWie viele Kubikmeter Ware stecken dahinter?",
+            f"Für {context} wurde ein Gesamtpreis von {format_decimal(total_price, 2)} Euro angesetzt. Der Kubikmeterpreis liegt bei {format_decimal(m3_price, 0)} Euro.\n\nWie viel Volumen ergibt sich daraus?",
+            f"Ein Kundenangebot über {context} liegt bei {format_decimal(total_price, 2)} Euro. Gerechnet wurde mit {format_decimal(m3_price, 0)} Euro pro Kubikmeter.\n\nWelches Volumen ergibt sich daraus?",
         ]
     )
 
@@ -3644,6 +3646,8 @@ def task_m3_ek_from_vk_db(level):
         [
             f"Für {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} wurde ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro angeboten. Der DB beträgt {format_decimal(db_percent, 0)} %. Bei diesem Querschnitt liegen {package_count} Stück im Paket.\n\nWie viel Euro pro Kubikmeter hat der Lieferant rechnerisch im EK berechnet?",
             f"Ein Kundenauftrag über {count} Stück {product['name']} im Maß {format_m(length_m)} m x {width_text} x {height_text} endet bei {format_decimal(total_vk, 2)} Euro Gesamt-VK. Aus der Kalkulation sollen {format_decimal(db_percent, 0)} % DB übrig bleiben.\n\nWelcher EK pro Kubikmeter steckt dahinter?",
+            f"Für {count} Stück {product['name']} im Format {format_m(length_m)} m x {width_text} x {height_text} wurde ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro kalkuliert. Der DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWelcher Einkaufspreis pro Kubikmeter ergibt sich daraus?",
+            f"Eine Position {product['name']} umfasst {count} Stück im Maß {format_m(length_m)} m x {width_text} x {height_text}. Verkauft wird die Position für {format_decimal(total_vk, 2)} Euro, geplant sind {format_decimal(db_percent, 0)} % DB.\n\nZu welchem Kubikmeter-EK wurde die Ware eingekauft?",
         ]
     )
 
@@ -3786,6 +3790,8 @@ def task_lfm_ek_from_vk_db(level):
             f"Ein Angebot über {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} endet bei {format_decimal(total_vk, 2)} Euro VK. Die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Laufmeter?",
             f"{request_intro()}: {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name}. Der gesamte VK beträgt {format_decimal(total_vk, 2)} Euro, der DB liegt bei {format_decimal(db_percent, 0)} %. Ein Brett ist {format_m(board_length)} m lang.\n\nWelcher EK pro Laufmeter steckt dahinter?",
             f"Für {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} wurde dem Kunden ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro genannt. In der Kalkulation sind {format_decimal(db_percent, 0)} % DB vorgesehen; die Bretter sind {format_m(board_length)} m lang, {width_text} breit und {thickness_text} stark.\n\nWelchen Laufmeter-EK hat der Lieferant rechnerisch berechnet?",
+            f"Eine Anfrage über {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} wurde mit {format_decimal(total_vk, 2)} Euro VK kalkuliert. Der DB beträgt {format_decimal(db_percent, 0)} %, ein Brett ist {format_m(board_length)} m lang.\n\nWelcher Einkaufspreis pro Laufmeter ergibt sich daraus?",
+            f"Für {format_decimal(running_meters, running_meters_places)} Laufmeter {display_name} liegt ein Verkaufspreis von {format_decimal(total_vk, 2)} Euro vor. In der Kalkulation sollen {format_decimal(db_percent, 0)} % DB stehen bleiben.\n\nZu welchem Laufmeter-EK wurde die Ware eingekauft?",
         ]
     )
 
@@ -3903,6 +3909,8 @@ def task_m2_ek_from_vk_db(level):
             f"Ein Angebot über {counted_product(panel_count, product)} im Format {panel_format} endet bei {format_decimal(total_vk, 2)} Euro VK. Kalkuliert wurde mit {format_decimal(db_percent, 0)} % DB.\n\nWie hoch ist der EK pro Quadratmeter?",
             f"Für {counted_product(panel_count, product)} im Format {panel_format} liegt ein Gesamt-VK von {format_decimal(total_vk, 2)} Euro vor, der DB liegt bei {format_decimal(db_percent, 0)} %.\n\nWelcher EK pro Quadratmeter steckt dahinter?",
             f"Ein Kundenangebot über {counted_product(panel_count, product)} im Format {panel_format} hat einen Gesamt-VK von {format_decimal(total_vk, 2)} Euro. Intern soll dabei ein DB von {format_decimal(db_percent, 0)} % erreicht werden.\n\nWelchen Quadratmeter-EK hat der Lieferant rechnerisch angesetzt?",
+            f"Für {counted_product(panel_count, product)} im Format {panel_format} wurde ein Verkaufspreis von {format_decimal(total_vk, 2)} Euro kalkuliert. Der DB beträgt {format_decimal(db_percent, 0)} %.\n\nWelcher Einkaufspreis pro Quadratmeter ergibt sich daraus?",
+            f"Eine Plattenposition mit {counted_product(panel_count, product)} im Format {panel_format} wird für {format_decimal(total_vk, 2)} Euro verkauft. In der Kalkulation bleiben {format_decimal(db_percent, 0)} % DB stehen.\n\nZu welchem Quadratmeter-EK wurde die Ware eingekauft?",
         ]
     )
 
