@@ -238,6 +238,7 @@ INSULATION_VOLUMES = [
 ]
 WOOD_FIBER_INSULATION_DENSITY = Decimal("40")
 VAT_FACTOR = Decimal("1.19")
+PRIVATE_CUSTOMER_DB_SURCHARGE = Decimal("5")
 FLOORING_NEEDS_BY_LEVEL = {
     1: [Decimal("25"), Decimal("40"), Decimal("60"), Decimal("80")],
     2: [Decimal("45"), Decimal("70"), Decimal("90"), Decimal("100"), Decimal("120")],
@@ -2214,14 +2215,14 @@ def task_running_meters_from_square_meters(level):
     }
 
 
-def task_db_sale_price(level):
+def task_db_sale_price(level, db_surcharge=Decimal("0")):
     product = generate_structural_product()
     length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
     width_m, height_m = generate_structural_dimensions(level, length_m)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = db_percent_for_product(product, level) + db_surcharge
 
     piece_volume = length_m * width_m * height_m
     total_volume = piece_volume * Decimal(count)
@@ -2378,7 +2379,7 @@ def task_db_sale_price(level):
     }
 
 
-def task_lfm_db_sale_price(level):
+def task_lfm_db_sale_price(level, db_surcharge=Decimal("0")):
     product = generate_hobelware_product()
     display_name = hobelware_display_name(product)
     width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
@@ -2387,7 +2388,7 @@ def task_lfm_db_sale_price(level):
     board_count = board_count_for_level(level)
     running_meters = board_length * Decimal(board_count)
     ek_price_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = db_percent_for_product(product, level) + db_surcharge
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     total_ek = running_meters * ek_price_lfm
     result = total_ek / divisor
@@ -2481,13 +2482,13 @@ def task_lfm_db_sale_price(level):
     }
 
 
-def task_m2_db_sale_price(level):
+def task_m2_db_sale_price(level, db_surcharge=Decimal("0")):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
     length_m, width_m = panel_format_dimensions(panel_format)
     panel_count = panel_count_for_level(level)
     ek_price_m2 = panel_m2_price_for_product(product, level)
-    db_percent = db_percent_for_product(product, level)
+    db_percent = db_percent_for_product(product, level) + db_surcharge
     divisor = (Decimal("100") - db_percent) / Decimal("100")
 
     sheet_area = length_m * width_m
@@ -2739,15 +2740,24 @@ def make_private_customer_gross_task(task, task_type):
 
 
 def task_private_customer_db_sale_price(level):
-    return make_private_customer_gross_task(task_db_sale_price(level), "private_customer_db_sale_price")
+    return make_private_customer_gross_task(
+        task_db_sale_price(level, PRIVATE_CUSTOMER_DB_SURCHARGE),
+        "private_customer_db_sale_price",
+    )
 
 
 def task_private_customer_lfm_db_sale_price(level):
-    return make_private_customer_gross_task(task_lfm_db_sale_price(level), "private_customer_lfm_db_sale_price")
+    return make_private_customer_gross_task(
+        task_lfm_db_sale_price(level, PRIVATE_CUSTOMER_DB_SURCHARGE),
+        "private_customer_lfm_db_sale_price",
+    )
 
 
 def task_private_customer_m2_db_sale_price(level):
-    return make_private_customer_gross_task(task_m2_db_sale_price(level), "private_customer_m2_db_sale_price")
+    return make_private_customer_gross_task(
+        task_m2_db_sale_price(level, PRIVATE_CUSTOMER_DB_SURCHARGE),
+        "private_customer_m2_db_sale_price",
+    )
 
 
 def task_volume_from_total_price(level):
