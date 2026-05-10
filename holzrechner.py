@@ -5669,6 +5669,7 @@ TASK_TYPE_TO_GENERATOR = {
     task_func.__name__.replace("task_", ""): task_func
     for task_func in TASK_GENERATORS
 }
+TASK_COMPLEXITY_WEIGHT_FACTOR = 0.8
 
 TASKS_BY_LEVEL = {
     1: [
@@ -7370,9 +7371,20 @@ def polish_task_prompt(text):
     return text
 
 
+def task_complexity_weight(task):
+    step_count = max(1, len(task.get("guided_steps", [])))
+    return TASK_COMPLEXITY_WEIGHT_FACTOR ** (step_count - 1)
+
+
+def choose_weighted_task(task_generators, level):
+    tasks = [task_func(level) for task_func in task_generators]
+    weights = [task_complexity_weight(task) for task in tasks]
+    return random.choices(tasks, weights=weights, k=1)[0]
+
+
 def choose_task(level, recent_task_types, task_number, forced_task_type=None):
     if forced_task_type in TASK_TYPE_TO_GENERATOR:
-        return TASK_TYPE_TO_GENERATOR[forced_task_type]
+        return TASK_TYPE_TO_GENERATOR[forced_task_type](level)
 
     candidates = TASKS_BY_LEVEL[level]
     if 2 <= task_number <= 4 and not any("db" in task_type for task_type in recent_task_types):
@@ -7382,10 +7394,10 @@ def choose_task(level, recent_task_types, task_number, forced_task_type=None):
             if "db" in task_func.__name__ and "private_customer" not in task_func.__name__
         ]
         if db_candidates:
-            return random.choice(db_candidates)
+            return choose_weighted_task(db_candidates, level)
 
     if not recent_task_types:
-        return random.choice(candidates)
+        return choose_weighted_task(candidates, level)
 
     filtered = []
     for task_func in candidates:
@@ -7394,15 +7406,15 @@ def choose_task(level, recent_task_types, task_number, forced_task_type=None):
             filtered.append(task_func)
 
     if filtered:
-        return random.choice(filtered)
-    return random.choice(candidates)
+        return choose_weighted_task(filtered, level)
+    return choose_weighted_task(candidates, level)
 
 
 def create_next_task():
     task_number = st.session_state.task_number
     level = pick_level(task_number)
     forced_task_type = st.session_state.get("next_task_type_override")
-    task = choose_task(level, st.session_state.recent_task_types, task_number, forced_task_type)(level)
+    task = choose_task(level, st.session_state.recent_task_types, task_number, forced_task_type)
     task["prompt"] = polish_task_prompt(task["prompt"])
     st.session_state.task = task
     st.session_state.level = level
