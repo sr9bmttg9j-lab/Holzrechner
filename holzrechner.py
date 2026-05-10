@@ -84,6 +84,30 @@ STRUCTURAL_HEIGHTS_BY_LEVEL = {
     2: [Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24")],
     3: [Decimal("0.06"), Decimal("0.08"), Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.24"), Decimal("0.28")],
 }
+BSH_DIMENSIONS_BY_LEVEL = {
+    1: [
+        (Decimal("0.08"), Decimal("0.16")),
+        (Decimal("0.10"), Decimal("0.20")),
+        (Decimal("0.12"), Decimal("0.24")),
+        (Decimal("0.14"), Decimal("0.28")),
+    ],
+    2: [
+        (Decimal("0.08"), Decimal("0.16")),
+        (Decimal("0.10"), Decimal("0.20")),
+        (Decimal("0.12"), Decimal("0.24")),
+        (Decimal("0.14"), Decimal("0.28")),
+        (Decimal("0.16"), Decimal("0.32")),
+    ],
+    3: [
+        (Decimal("0.08"), Decimal("0.16")),
+        (Decimal("0.10"), Decimal("0.20")),
+        (Decimal("0.12"), Decimal("0.24")),
+        (Decimal("0.14"), Decimal("0.28")),
+        (Decimal("0.16"), Decimal("0.32")),
+        (Decimal("0.18"), Decimal("0.36")),
+        (Decimal("0.20"), Decimal("0.40")),
+    ],
+}
 STRUCTURAL_LENGTHS_BY_LEVEL = {
     1: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0")],
     2: [Decimal("5.0"), Decimal("6.0"), Decimal("7.0"), Decimal("8.0"), Decimal("9.0"), Decimal("10.0")],
@@ -277,8 +301,8 @@ ERROR_PATTERN_GUIDE = """
 - Richtungen wie m zu m2, m2 zu m3 oder der Rückweg werden falsch gedacht.
 
 2. Maße nicht vollständig berücksichtigt:
-- Breite, Höhe oder Dicke wird vergessen.
-- Klassiker sind lfm zu m2 ohne Breite oder m2 zu m3 ohne Dicke.
+- Breite oder Stärke wird vergessen.
+- Klassiker sind lfm zu m2 ohne Breite oder m2 zu m3 ohne Stärke.
 
 3. Preisbasis falsch angewendet:
 - Ein Preis pro Quadratmeter, Laufmeter oder Kubikmeter wird mit der falschen Mengeneinheit verknüpft.
@@ -310,18 +334,18 @@ Sprich nur dann von falscher Reihenfolge oder fehlender Struktur, wenn kein plau
 
 FORMULA_GUIDE = """
 Preisumrechnung:
-- Euro pro Kubikmeter zu Euro pro Quadratmeter: Preis pro Kubikmeter x Dicke
-- Euro pro Kubikmeter zu Euro pro Laufmeter: Preis pro Kubikmeter x Breite x Höhe
+- Euro pro Kubikmeter zu Euro pro Quadratmeter: Preis pro Kubikmeter x Stärke
+- Euro pro Kubikmeter zu Euro pro Laufmeter: Preis pro Kubikmeter x Breite x Stärke
 - Euro pro Quadratmeter zu Euro pro Laufmeter: Preis pro Quadratmeter x Breite
-- Euro pro Quadratmeter zu Euro pro Kubikmeter: Preis pro Quadratmeter / Dicke
+- Euro pro Quadratmeter zu Euro pro Kubikmeter: Preis pro Quadratmeter / Stärke
 - Euro pro Laufmeter zu Euro pro Quadratmeter: Preis pro Laufmeter / Breite
-- Euro pro Laufmeter zu Euro pro Kubikmeter: Preis pro Laufmeter / (Breite x Höhe)
+- Euro pro Laufmeter zu Euro pro Kubikmeter: Preis pro Laufmeter / (Breite x Stärke)
 
 Mengen- und Volumenumrechnung:
-- Kubikmeter zu Quadratmeter: Kubikmeter / Dicke
-- Quadratmeter zu Kubikmeter: Quadratmeter x Dicke
-- Kubikmeter zu Laufmeter: Kubikmeter / (Breite x Höhe)
-- Laufmeter zu Kubikmeter: Laufmeter x Breite x Höhe
+- Kubikmeter zu Quadratmeter: Kubikmeter / Stärke
+- Quadratmeter zu Kubikmeter: Quadratmeter x Stärke
+- Kubikmeter zu Laufmeter: Kubikmeter / (Breite x Stärke)
+- Laufmeter zu Kubikmeter: Laufmeter x Breite x Stärke
 - Quadratmeter zu Laufmeter: Quadratmeter / Breite
 - Laufmeter zu Quadratmeter: Laufmeter x Breite
 
@@ -654,7 +678,16 @@ def structural_cm_number(value_m):
     return format_cm(value_m)
 
 
-def generate_structural_dimensions(level, length_m=None):
+def structural_length_for_product(product, level):
+    if product_name(product) == "BSH":
+        return Decimal("12.0")
+    return choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
+
+
+def generate_structural_dimensions(level, length_m=None, product=None):
+    if product_name(product) == "BSH":
+        return list(random.choice(BSH_DIMENSIONS_BY_LEVEL[level]))
+
     forbidden_numbers = {format_m(length_m)} if length_m is not None else set()
     valid_pairs = []
 
@@ -906,8 +939,8 @@ def generate_whole_volume_position_details(level):
     kind = product["kind"]
 
     if kind == "structural_beam":
-        length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-        width_m, height_m = generate_structural_dimensions(level, length_m)
+        length_m = structural_length_for_product(product, level)
+        width_m, height_m = generate_structural_dimensions(level, length_m, product)
         count = random.choice(COUNTS_BY_LEVEL[level])
         piece_volume = length_m * width_m * height_m
         total_volume = piece_volume * Decimal(count)
@@ -930,7 +963,7 @@ def generate_whole_volume_position_details(level):
             "volume_solution_steps": [
                 (
                     "Volumen pro Stück",
-                    "Volumen pro Stück = Länge x Breite x Höhe",
+                    "Volumen pro Stück = Länge x Breite x Stärke",
                     f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
                     f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
                 ),
@@ -948,8 +981,8 @@ def generate_whole_volume_position_details(level):
                     "m3",
                     piece_volume_places,
                     False,
-                    "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
-                    "Länge x Breite x Höhe",
+                    "Rechne zuerst Länge x Breite x Stärke für ein einzelnes Stück.",
+                    "Länge x Breite x Stärke",
                 ),
                 make_guided_step(
                     "Gesamtvolumen",
@@ -964,7 +997,7 @@ def generate_whole_volume_position_details(level):
             "volume_factor_checks": [
                 factor_check(f"Länge {format_m(length_m)} Meter", length_m),
                 factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-                factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+                factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
                 factor_check(f"Stückzahl {count}", Decimal(count)),
             ],
         }
@@ -983,7 +1016,7 @@ def generate_whole_volume_position_details(level):
         thickness_text = display_measure(thickness_m, ("mm",))
         context = (
             f"{counted_product(panel_count, product)} im Format {panel_format} "
-            f"bei {thickness_text} Dicke"
+            f"bei {thickness_text} Stärke"
         )
         return {
             "product": product,
@@ -1009,7 +1042,7 @@ def generate_whole_volume_position_details(level):
                 ),
                 (
                     "Gesamtvolumen",
-                    "Gesamtvolumen = Gesamtfläche x Dicke",
+                    "Gesamtvolumen = Gesamtfläche x Stärke",
                     f"{format_decimal(total_area, total_area_places)} Quadratmeter x "
                     f"{format_decimal(thickness_m, 3)} Meter = {format_decimal(total_volume, total_volume_places)} Kubikmeter",
                 ),
@@ -1039,15 +1072,15 @@ def generate_whole_volume_position_details(level):
                     "m3",
                     total_volume_places,
                     False,
-                    "Multipliziere die Gesamtfläche mit der Dicke in Meter.",
-                    "Gesamtfläche x Dicke",
+                    "Multipliziere die Gesamtfläche mit der Stärke in Meter.",
+                    "Gesamtfläche x Stärke",
                 ),
             ],
             "volume_factor_checks": [
                 factor_check(f"Länge {format_decimal(length_m, 2)} Meter", length_m),
                 factor_check(f"Breite {format_decimal(width_m, 3)} Meter", width_m),
                 factor_check(f"Plattenanzahl {panel_count}", Decimal(panel_count)),
-                factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+                factor_check(f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
             ],
         }
 
@@ -1387,8 +1420,8 @@ def ignored_board_length_checks(correct_value, board_length, unit, target_label)
 
 def task_volume_beam(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     piece_volume = length_m * width_m * height_m
@@ -1399,16 +1432,16 @@ def task_volume_beam(level):
 
     prompt = random.choice(
         [
-            f"{request_intro()}: {count} Stück {product['name']} mit je {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Höhe. In diesem Querschnitt liegen normalerweise {package_count} Stück im Paket.\n\nWie viele Kubikmeter sind das insgesamt?",
+            f"{request_intro()}: {count} Stück {product['name']} mit je {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Stärke. In diesem Querschnitt liegen normalerweise {package_count} Stück im Paket.\n\nWie viele Kubikmeter sind das insgesamt?",
             f"Für eine Lieferung {product['name']} liegen {count} Stück mit {format_m(length_m)} m Länge sowie {width_text} x {height_text} Querschnitt vor. Ein volles Paket würde hier {package_count} Stück enthalten.\n\nWie viele Kubikmeter ergeben sich daraus?",
-            f"Eine Kundin interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Höhe. Im Paket liegen bei diesem Maß normalerweise {package_count} Stück.\n\nWie viele Kubikmeter Ware sind das?",
+            f"Eine Kundin interessiert sich für {count} Stück {product['name']} mit {format_m(length_m)} m Länge, {width_text} Breite und {height_text} Stärke. Im Paket liegen bei diesem Maß normalerweise {package_count} Stück.\n\nWie viele Kubikmeter Ware sind das?",
         ]
     )
 
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -1427,7 +1460,7 @@ def task_volume_beam(level):
         "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_beam",
-        "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Höhe zu berechnen und danach mit der Stückzahl zu multiplizieren.",
+        "correction": "Achte darauf, zuerst das Volumen pro Stück aus Länge x Breite x Stärke zu berechnen und danach mit der Stückzahl zu multiplizieren.",
         "solution": solution,
         "perfect_formula": (
             f"{format_m(length_m)} x {format_decimal(width_m, 2)} x "
@@ -1436,7 +1469,7 @@ def task_volume_beam(level):
         "factor_checks": [
             {"label": f"Länge {format_m(length_m)} Meter", "value": length_m},
             {"label": f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", "value": width_m},
-            {"label": f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", "value": height_m},
+            {"label": f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", "value": height_m},
             {"label": f"Stückzahl {count}", "value": Decimal(count)},
         ],
         "wrong_value_checks": [
@@ -1456,7 +1489,7 @@ def task_volume_beam(level):
                 "m3",
                 piece_volume_places,
                 False,
-                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
+                "Rechne zuerst Länge x Breite x Stärke für ein einzelnes Stück.",
             ),
             make_guided_step(
                 "Gesamtvolumen",
@@ -1499,7 +1532,7 @@ def task_unit_conversion(level):
                 "from_unit": "mm",
                 "to_unit": "cm",
                 "factor": Decimal("10"),
-                "dimension": "Dicke",
+                "dimension": "Stärke",
                 "question": "Wie viele Zentimeter sind das?",
                 "operation": "/",
             },
@@ -1509,7 +1542,7 @@ def task_unit_conversion(level):
                 "from_unit": "mm",
                 "to_unit": "m",
                 "factor": Decimal("1000"),
-                "dimension": "Dicke",
+                "dimension": "Stärke",
                 "question": "Wie viele Meter sind das?",
                 "operation": "/",
             },
@@ -1666,15 +1699,15 @@ def task_price_per_square_meter(level):
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie hoch ist der Quadratmeterpreis dieser Platte?",
-            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {thickness_text} dick.\n\nWie hoch ist der Quadratmeterpreis?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} stark. Ein Kubikmeter kostet {format_decimal(m3_price, 0)} Euro.\n\nWie hoch ist der Quadratmeterpreis dieser Platte?",
+            f"Für eine {product['name']} im Format {panel_format} liegt ein Preis von {format_decimal(m3_price, 0)} Euro pro Kubikmeter vor. Die Platte ist {thickness_text} stark.\n\nWie hoch ist der Quadratmeterpreis?",
         ]
     )
 
     solution = format_solution_steps(
         (
             "Preis je Quadratmeter",
-            "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke",
+            "Euro pro Quadratmeter = Euro pro Kubikmeter x Stärke",
             f"{format_decimal(m3_price, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(result, 2)} Euro",
         ),
@@ -1687,18 +1720,18 @@ def task_price_per_square_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "price_per_square_meter",
-        "correction": "Hier brauchst du nur die Dicke der Platte. Ein Quadratmeter mal Dicke ergibt das Volumen, und dieses Volumen wird mit dem Kubikmeterpreis multipliziert.",
+        "correction": "Hier brauchst du nur die Stärke der Platte. Ein Quadratmeter mal Stärke ergibt das Volumen, und dieses Volumen wird mit dem Kubikmeterpreis multipliziert.",
         "solution": solution,
         "factor_checks": [
-            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
             factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
         ],
         "wrong_value_checks": [
             wrong_value_check(
                 m3_price / thickness_m,
                 (
-                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Kubikmeterpreis offenbar durch die Dicke geteilt. "
-                    "Bei Euro pro Quadratmeter wird aus einem Quadratmeter Platte erst das kleine Volumen über die Dicke gebildet."
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Kubikmeterpreis offenbar durch die Stärke geteilt. "
+                    "Bei Euro pro Quadratmeter wird aus einem Quadratmeter Platte erst das kleine Volumen über die Stärke gebildet."
                 ),
                 "EUR",
             ),
@@ -1710,8 +1743,8 @@ def task_price_per_square_meter(level):
                 "EUR",
                 2,
                 True,
-                "Rechne hier direkt Dicke in Meter x Preis pro Kubikmeter.",
-                "Formel: Dicke in Meter x Preis pro Kubikmeter",
+                "Rechne hier direkt Stärke in Meter x Preis pro Kubikmeter.",
+                "Formel: Stärke in Meter x Preis pro Kubikmeter",
             ),
         ],
     }
@@ -1727,7 +1760,7 @@ def task_m3_price_from_square_meter(level):
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick und kostet {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Kubikmeterpreis?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} stark und kostet {format_decimal(m2_price, 2)} Euro pro Quadratmeter.\n\nWie hoch ist der Kubikmeterpreis?",
             f"Für eine {product['name']} im Format {panel_format} liegt ein Quadratmeterpreis von {format_decimal(m2_price, 2)} Euro vor. Die Platte ist {thickness_text} stark.\n\nWie hoch ist der entsprechende Kubikmeterpreis?",
         ]
     )
@@ -1735,7 +1768,7 @@ def task_m3_price_from_square_meter(level):
     solution = format_solution_steps(
         (
             "Preis je Kubikmeter",
-            "Euro pro Kubikmeter = Euro pro Quadratmeter / Dicke",
+            "Euro pro Kubikmeter = Euro pro Quadratmeter / Stärke",
             f"{format_decimal(m2_price, 2)} Euro pro Quadratmeter / {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(result, 2)} Euro pro Kubikmeter",
         ),
@@ -1748,13 +1781,13 @@ def task_m3_price_from_square_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "m3_price_from_square_meter",
-        "correction": "Gehe rückwärts vom Quadratmeterpreis zum Kubikmeterpreis. Ein Kubikmeter enthält bei dünnen Platten viele Quadratmeter, deshalb wird durch die Dicke in Metern geteilt.",
+        "correction": "Gehe rückwärts vom Quadratmeterpreis zum Kubikmeterpreis. Ein Kubikmeter enthält bei dünnen Platten viele Quadratmeter, deshalb wird durch die Stärke in Metern geteilt.",
         "solution": solution,
         "perfect_formula": f"{format_decimal(m2_price, 2)} / {format_decimal(thickness_m, 3)}",
         "factor_checks": [
             factor_check(f"Quadratmeterpreis {format_decimal(m2_price, 2)} Euro", m2_price),
             factor_check(
-                f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
+                f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
                 thickness_m,
                 missing_when_ratio_is_value=True,
             ),
@@ -1763,7 +1796,7 @@ def task_m3_price_from_square_meter(level):
             wrong_value_check(
                 m2_price * thickness_m,
                 (
-                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Quadratmeterpreis offenbar mit der Dicke multipliziert. "
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast den Quadratmeterpreis offenbar mit der Stärke multipliziert. "
                     "Für Euro pro Kubikmeter muss der Quadratmeterpreis auf einen ganzen Kubikmeter hochgerechnet werden."
                 ),
                 "EUR",
@@ -1776,8 +1809,8 @@ def task_m3_price_from_square_meter(level):
                 "EUR",
                 2,
                 True,
-                "Teile den Quadratmeterpreis durch die Dicke in Metern.",
-                "Quadratmeterpreis / Dicke in Meter",
+                "Teile den Quadratmeterpreis durch die Stärke in Metern.",
+                "Quadratmeterpreis / Stärke in Meter",
                 placeholder=f"Zum Beispiel {format_decimal(m2_price, 2)} / {format_decimal(thickness_m, 3)}",
             ),
         ],
@@ -1800,15 +1833,15 @@ def task_square_meters_from_volume(level):
 
     prompt = random.choice(
         [
-            f"Es liegt eine Ware von {format_decimal(total_volume, total_volume_places)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {thickness_text} dick.\n\nWie viele Quadratmeter sind das?",
-            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, total_volume_places)} Kubikmeter bei {thickness_text} Dicke.\n\nWie viele Quadratmeter ergeben sich?",
+            f"Es liegt eine Ware von {format_decimal(total_volume, total_volume_places)} Kubikmeter {product['name']} im Format {panel_format} vor. Die Platte ist {thickness_text} stark.\n\nWie viele Quadratmeter sind das?",
+            f"Ein Kunde fragt nach der Fläche einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(total_volume, total_volume_places)} Kubikmeter bei {thickness_text} Stärke.\n\nWie viele Quadratmeter ergeben sich?",
         ]
     )
 
     solution = format_solution_steps(
         (
             "Quadratmeter",
-            "Quadratmeter = Kubikmeter / Dicke",
+            "Quadratmeter = Kubikmeter / Stärke",
             f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(result, square_meters_places)} Quadratmeter",
         ),
@@ -1821,11 +1854,11 @@ def task_square_meters_from_volume(level):
         "display_places": square_meters_places,
         "round_for_check": False,
         "task_type": "square_meters_from_volume",
-        "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Dicke.",
+        "correction": "Denk an die Grundformel Quadratmeter = Kubikmeter / Stärke.",
         "solution": solution,
         "factor_checks": [
             factor_check(
-                f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
+                f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)",
                 thickness_m,
                 missing_when_ratio_is_value=True,
             ),
@@ -1834,8 +1867,8 @@ def task_square_meters_from_volume(level):
             wrong_value_check(
                 total_volume * thickness_m,
                 (
-                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar mit der Dicke multipliziert. "
-                    "Wenn Kubikmeter in Quadratmeter zurückgeführt werden, muss die Dicke herausgerechnet werden."
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast das Volumen offenbar mit der Stärke multipliziert. "
+                    "Wenn Kubikmeter in Quadratmeter zurückgeführt werden, muss die Stärke herausgerechnet werden."
                 ),
                 "m2",
                 round_for_check=False,
@@ -1843,12 +1876,12 @@ def task_square_meters_from_volume(level):
         ],
         "guided_steps": [
             make_guided_step(
-                "Dicke in Meter",
+                "Stärke in Meter",
                 thickness_m.normalize(),
                 "m",
                 3,
                 False,
-                "Wandle die Dicke gedanklich sauber in Meter um.",
+                "Wandle die Stärke gedanklich sauber in Meter um.",
             ),
             make_guided_step(
                 "Quadratmeter",
@@ -1856,7 +1889,7 @@ def task_square_meters_from_volume(level):
                 "m2",
                 square_meters_places,
                 False,
-                "Teile das Volumen durch die Dicke.",
+                "Teile das Volumen durch die Stärke.",
             ),
         ],
     }
@@ -1877,15 +1910,15 @@ def task_volume_from_square_meters(level):
 
     prompt = random.choice(
         [
-            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, square_meters_places)} Quadratmeter vor. Die Platte ist {thickness_text} dick.\n\nWie viele Kubikmeter sind das?",
-            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, square_meters_places)} Quadratmeter bei {thickness_text} Dicke.\n\nWie viele Kubikmeter ergeben sich?",
+            f"Für eine {product['name']} im Format {panel_format} liegen {format_decimal(square_meters, square_meters_places)} Quadratmeter vor. Die Platte ist {thickness_text} stark.\n\nWie viele Kubikmeter sind das?",
+            f"Ein Kunde fragt nach dem Volumen einer {product['name']} im Format {panel_format}. Verfügbar sind {format_decimal(square_meters, square_meters_places)} Quadratmeter bei {thickness_text} Stärke.\n\nWie viele Kubikmeter ergeben sich?",
         ]
     )
 
     solution = format_solution_steps(
         (
             "Kubikmeter",
-            "Kubikmeter = Quadratmeter x Dicke",
+            "Kubikmeter = Quadratmeter x Stärke",
             f"{format_decimal(square_meters, square_meters_places)} Quadratmeter x {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(result, result_places)} Kubikmeter",
         ),
@@ -1898,17 +1931,17 @@ def task_volume_from_square_meters(level):
         "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_from_square_meters",
-        "correction": "Multipliziere die Quadratmeter mit der Dicke in Meter, um auf das Volumen zu kommen.",
+        "correction": "Multipliziere die Quadratmeter mit der Stärke in Meter, um auf das Volumen zu kommen.",
         "solution": solution,
         "factor_checks": [
-            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
         ],
         "wrong_value_checks": [
             wrong_value_check(
                 square_meters / thickness_m,
                 (
-                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Quadratmeter offenbar durch die Dicke geteilt. "
-                    "Für Kubikmeter muss die Fläche mit der Dicke in Meter weitergerechnet werden."
+                    "Deine Eingabe wirkt wie die Gegenrichtung: Du hast die Quadratmeter offenbar durch die Stärke geteilt. "
+                    "Für Kubikmeter muss die Fläche mit der Stärke in Meter weitergerechnet werden."
                 ),
                 "m3",
                 round_for_check=False,
@@ -1921,8 +1954,8 @@ def task_volume_from_square_meters(level):
                 "m3",
                 result_places,
                 False,
-                "Rechne hier direkt Quadratmeter x Dicke in Meter.",
-                "Formel: Quadratmeter x Dicke",
+                "Rechne hier direkt Quadratmeter x Stärke in Meter.",
+                "Formel: Quadratmeter x Stärke",
             ),
         ],
     }
@@ -2084,7 +2117,7 @@ def task_running_meters_from_volume(level):
     solution = format_solution_steps(
         (
             "Laufmeter",
-            "Laufmeter = Kubikmeter / (Breite x Höhe)",
+            "Laufmeter = Kubikmeter / (Breite x Stärke)",
             f"{format_decimal(total_volume, total_volume_places)} Kubikmeter / "
             f"({format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter) = "
             f"{format_decimal(running_meters, running_meters_places)} Laufmeter",
@@ -2136,7 +2169,7 @@ def task_running_meters_from_volume(level):
                 running_meters_places,
                 False,
                 "Teile das Gesamtvolumen direkt durch Breite x Stärke in Meter.",
-                "Formel: Laufmeter = Kubikmeter / (Breite x Höhe)",
+                "Formel: Laufmeter = Kubikmeter / (Breite x Stärke)",
             ),
         ],
     }
@@ -2217,8 +2250,8 @@ def task_running_meters_from_square_meters(level):
 
 def task_db_sale_price(level, db_surcharge=Decimal("0")):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
@@ -2244,7 +2277,7 @@ def task_db_sale_price(level, db_surcharge=Decimal("0")):
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -2284,7 +2317,7 @@ def task_db_sale_price(level, db_surcharge=Decimal("0")):
         "factor_checks": [
             factor_check(f"Länge {format_m(length_m)} Meter", length_m),
             factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
             factor_check(f"Stückzahl {count}", Decimal(count)),
             factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
@@ -2343,8 +2376,8 @@ def task_db_sale_price(level, db_surcharge=Decimal("0")):
                 "m3",
                 piece_volume_places,
                 False,
-                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
-                "Länge x Breite x Höhe",
+                "Rechne zuerst Länge x Breite x Stärke für ein einzelnes Stück.",
+                "Länge x Breite x Stärke",
                 placeholder="Zum Beispiel 9 * 0,12 * 0,10",
             ),
             make_guided_step(
@@ -2642,7 +2675,7 @@ def task_volume_from_running_meters(level):
     solution = format_solution_steps(
         (
             "Gesamtvolumen",
-            "Kubikmeter = Laufmeter x Breite x Höhe",
+            "Kubikmeter = Laufmeter x Breite x Stärke",
             f"{format_decimal(running_meters, running_meters_places)} Laufmeter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 3)} Meter = {format_decimal(result, result_places)} Kubikmeter",
         ),
@@ -2655,7 +2688,7 @@ def task_volume_from_running_meters(level):
         "display_places": result_places,
         "round_for_check": False,
         "task_type": "volume_from_running_meters",
-        "correction": "Rechne die Laufmeter direkt mit Breite und Höhe in Meter zu Kubikmeter um.",
+        "correction": "Rechne die Laufmeter direkt mit Breite und Stärke in Meter zu Kubikmeter um.",
         "solution": solution,
         "factor_checks": [
             factor_check(f"Laufmeter {format_decimal(running_meters, running_meters_places)}", running_meters),
@@ -2681,8 +2714,8 @@ def task_volume_from_running_meters(level):
                 "m3",
                 result_places,
                 False,
-                "Rechne hier direkt Laufmeter x Breite x Höhe.",
-                "Formel: Laufmeter x Breite x Höhe",
+                "Rechne hier direkt Laufmeter x Breite x Stärke.",
+                "Formel: Laufmeter x Breite x Stärke",
             ),
         ],
     }
@@ -2887,8 +2920,8 @@ def task_weight_from_volume(level):
 
 def task_weight_from_dimensions(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     density = density_for_product(product)
@@ -2909,7 +2942,7 @@ def task_weight_from_dimensions(level):
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 2)} Meter = "
             f"{format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -2943,7 +2976,7 @@ def task_weight_from_dimensions(level):
         "factor_checks": [
             factor_check(f"Länge {format_m(length_m)} Meter", length_m),
             factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
             factor_check(f"Stückzahl {count}", Decimal(count)),
             factor_check(f"Dichte {format_decimal(density, 0)} Kilogramm pro Kubikmeter", density),
         ],
@@ -2974,7 +3007,7 @@ def task_weight_from_dimensions(level):
                 piece_volume_places,
                 False,
                 "Beginne mit dem Volumen eines einzelnen Stücks.",
-                "Länge x Breite x Höhe",
+                "Länge x Breite x Stärke",
                 placeholder=f"Zum Beispiel {format_m(length_m)} * {format_decimal(width_m, 2)} * {format_decimal(height_m, 2)}",
             ),
             make_guided_step(
@@ -3100,8 +3133,8 @@ def task_m3_price_from_running_meter(level):
 
     solution = format_solution_steps(
         (
-            "Breite x Höhe",
-            "Querschnitt = Breite x Höhe",
+            "Breite x Stärke",
+            "Querschnitt = Breite x Stärke",
             f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
             f"{format_decimal(cross_section, 5)} Quadratmeter",
         ),
@@ -3120,7 +3153,7 @@ def task_m3_price_from_running_meter(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "m3_price_from_running_meter",
-        "correction": "Teile den Laufmeterpreis durch Breite x Höhe in Meter, um auf den Kubikmeterpreis zu kommen.",
+        "correction": "Teile den Laufmeterpreis durch Breite x Stärke in Meter, um auf den Kubikmeterpreis zu kommen.",
         "solution": solution,
         "perfect_formula": (
             f"{format_decimal(price_per_lfm, 2)} / "
@@ -3151,13 +3184,13 @@ def task_m3_price_from_running_meter(level):
         ],
         "guided_steps": [
             make_guided_step(
-                "Breite x Höhe",
+                "Breite x Stärke",
                 cross_section.normalize(),
                 "m2",
                 5,
                 False,
-                "Rechne zuerst Breite x Höhe mit Meterwerten.",
-                "Formel: Breite x Höhe",
+                "Rechne zuerst Breite x Stärke mit Meterwerten.",
+                "Formel: Breite x Stärke",
                 placeholder="Zum Beispiel 0,16 * 0,019",
             ),
             make_guided_step(
@@ -3167,7 +3200,7 @@ def task_m3_price_from_running_meter(level):
                 2,
                 True,
                 "Teile den Laufmeterpreis durch den Querschnitt.",
-                "Formel: Laufmeterpreis / (Breite x Höhe)",
+                "Formel: Laufmeterpreis / (Breite x Stärke)",
             ),
         ],
     }
@@ -3346,7 +3379,7 @@ def task_lfm_price_from_m3_with_db(level):
     solution = format_solution_steps(
         (
             "Querschnitt",
-            "Querschnitt = Breite x Höhe",
+            "Querschnitt = Breite x Stärke",
             f"{format_decimal(width_m, 2)} Meter x {format_decimal(height_m, 3)} Meter = "
             f"{format_decimal(cross_section, 5)} Quadratmeter",
         ),
@@ -3452,15 +3485,15 @@ def task_m2_price_from_m3_with_db(level):
 
     prompt = random.choice(
         [
-            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} dick. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Quadratmeter?",
-            f"Für eine {product['name']} im Format {panel_format} soll aus {format_decimal(ek_price_m3, 0)} Euro EK pro Kubikmeter ein Quadratmeter-VK mit {format_decimal(db_percent, 0)} % DB kalkuliert werden. Die Platte ist {thickness_text} dick.\n\nWie hoch ist der VK pro Quadratmeter?",
+            f"Eine {product['name']} im Format {panel_format} ist {thickness_text} stark. Der EK beträgt {format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter, Ziel-DB {format_decimal(db_percent, 0)} %.\n\nWie hoch ist der VK pro Quadratmeter?",
+            f"Für eine {product['name']} im Format {panel_format} soll aus {format_decimal(ek_price_m3, 0)} Euro EK pro Kubikmeter ein Quadratmeter-VK mit {format_decimal(db_percent, 0)} % DB kalkuliert werden. Die Platte ist {thickness_text} stark.\n\nWie hoch ist der VK pro Quadratmeter?",
         ]
     )
 
     solution = format_solution_steps(
         (
             "EK je Quadratmeter",
-            "EK je Quadratmeter = EK pro Kubikmeter x Dicke",
+            "EK je Quadratmeter = EK pro Kubikmeter x Stärke",
             f"{format_decimal(ek_price_m3, 0)} Euro pro Kubikmeter x {format_decimal(thickness_m, 3)} Meter = "
             f"{format_decimal(ek_m2, 2)} Euro",
         ),
@@ -3478,13 +3511,13 @@ def task_m2_price_from_m3_with_db(level):
         "display_places": 2,
         "round_for_check": True,
         "task_type": "m2_price_from_m3_with_db",
-        "correction": "Rechne zuerst den EK pro Quadratmeter über die Dicke aus dem Kubikmeterpreis. Danach kalkulierst du den VK mit dem Ziel-DB.",
+        "correction": "Rechne zuerst den EK pro Quadratmeter über die Stärke aus dem Kubikmeterpreis. Danach kalkulierst du den VK mit dem Ziel-DB.",
         "solution": solution,
         "perfect_formula": (
             f"{format_decimal(ek_price_m3, 0)} x {format_decimal(thickness_m, 3)} / {format_decimal(divisor, 2)}"
         ),
         "factor_checks": [
-            factor_check(f"Dicke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
+            factor_check(f"Stärke {thickness_text} ({format_decimal(thickness_m, 3)} Meter)", thickness_m),
             factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
         ],
@@ -3511,8 +3544,8 @@ def task_m2_price_from_m3_with_db(level):
                 "EUR",
                 2,
                 True,
-                "Multipliziere den Kubikmeterpreis mit der Dicke in Metern.",
-                "EK pro Kubikmeter x Dicke",
+                "Multipliziere den Kubikmeterpreis mit der Stärke in Metern.",
+                "EK pro Kubikmeter x Stärke",
                 placeholder=f"Zum Beispiel {format_decimal(ek_price_m3, 0)} * {format_decimal(thickness_m, 3)}",
             ),
             make_guided_step(
@@ -3531,8 +3564,8 @@ def task_m2_price_from_m3_with_db(level):
 
 def task_ek_from_vk_db(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     db_percent = db_percent_for_product(product, level)
@@ -3626,8 +3659,8 @@ def task_ek_from_vk_db(level):
 
 def task_m3_ek_from_vk_db(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     count = random.choice(COUNTS_BY_LEVEL[level])
     package_count = structural_package_count(width_m, height_m)
     db_percent = db_percent_for_product(product, level)
@@ -3654,7 +3687,7 @@ def task_m3_ek_from_vk_db(level):
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -3693,7 +3726,7 @@ def task_m3_ek_from_vk_db(level):
         "factor_checks": [
             factor_check(f"Länge {format_m(length_m)} Meter", length_m),
             factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
             factor_check(f"Stückzahl {count}", Decimal(count)),
             factor_check(f"VK {format_decimal(total_vk, 2)} Euro", total_vk),
             db_factor_check(db_percent, divisor),
@@ -3730,8 +3763,8 @@ def task_m3_ek_from_vk_db(level):
                 "m3",
                 piece_volume_places,
                 False,
-                "Rechne zuerst Länge x Breite x Höhe für ein einzelnes Stück.",
-                "Länge x Breite x Höhe",
+                "Rechne zuerst Länge x Breite x Stärke für ein einzelnes Stück.",
+                "Länge x Breite x Stärke",
                 placeholder=f"Zum Beispiel {format_m(length_m)} * {format_decimal(width_m, 2)} * {format_decimal(height_m, 2)}",
             ),
             make_guided_step(
@@ -4039,8 +4072,8 @@ def task_m2_ek_from_vk_db(level):
 
 def task_package_price(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     package_count = structural_package_count(width_m, height_m)
     m3_price = m3_price_for_product(product, level)
     piece_volume = length_m * width_m * height_m
@@ -4060,7 +4093,7 @@ def task_package_price(level):
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -4094,7 +4127,7 @@ def task_package_price(level):
         "factor_checks": [
             factor_check(f"Länge {format_m(length_m)} Meter", length_m),
             factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
             factor_check(f"Paketstückzahl {package_count}", Decimal(package_count)),
             factor_check(f"Kubikmeterpreis {format_decimal(m3_price, 0)} Euro", m3_price),
         ],
@@ -4110,7 +4143,7 @@ def task_package_price(level):
                 piece_volume_places,
                 False,
                 "Beginne mit dem Volumen eines einzelnen Stücks.",
-                "Länge, Breite und Höhe als Meterwerte einsetzen",
+                "Länge, Breite und Stärke als Meterwerte einsetzen",
             ),
             make_guided_step(
                 "Paketvolumen",
@@ -4502,8 +4535,8 @@ def task_panel_package_ek_from_vk_db(level):
 
 def task_package_db_sale_price(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = package_db_percent_for_product(product, level)
@@ -4528,7 +4561,7 @@ def task_package_db_sale_price(level):
     solution = format_solution_steps(
         (
             "Volumen pro Stück",
-            "Volumen pro Stück = Länge x Breite x Höhe",
+            "Volumen pro Stück = Länge x Breite x Stärke",
             f"{format_m(length_m)} Meter x {format_decimal(width_m, 2)} Meter x "
             f"{format_decimal(height_m, 2)} Meter = {format_decimal(piece_volume, piece_volume_places)} Kubikmeter",
         ),
@@ -4568,7 +4601,7 @@ def task_package_db_sale_price(level):
         "factor_checks": [
             factor_check(f"Länge {format_m(length_m)} Meter", length_m),
             factor_check(f"Breite {width_text} ({format_decimal(width_m, 2)} Meter)", width_m),
-            factor_check(f"Höhe {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
+            factor_check(f"Stärke {height_text} ({format_decimal(height_m, 2)} Meter)", height_m),
             factor_check(f"Paketstückzahl {package_count}", Decimal(package_count)),
             factor_check(f"Kubikmeterpreis {format_decimal(ek_price_m3, 0)} Euro", ek_price_m3),
             db_factor_check(db_percent, divisor),
@@ -4620,7 +4653,7 @@ def task_package_db_sale_price(level):
                 piece_volume_places,
                 False,
                 "Beginne mit dem Volumen eines einzelnen Stücks.",
-                "Länge, Breite und Höhe als Meterwerte einsetzen",
+                "Länge, Breite und Stärke als Meterwerte einsetzen",
             ),
             make_guided_step(
                 "Paketvolumen",
@@ -4655,8 +4688,8 @@ def task_package_db_sale_price(level):
 
 def task_package_ek_from_vk_db(level):
     product = generate_structural_product()
-    length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-    width_m, height_m = generate_structural_dimensions(level, length_m)
+    length_m = structural_length_for_product(product, level)
+    width_m, height_m = generate_structural_dimensions(level, length_m, product)
     package_count = structural_package_count(width_m, height_m)
     ek_price_m3 = m3_price_for_product(product, level)
     db_percent = package_db_percent_for_product(product, level)
@@ -4989,8 +5022,8 @@ def task_panel_count_from_area(level):
 
     prompt = random.choice(
         [
-            f"Für eine Anfrage werden {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} benötigt. Eine Platte hat das Format {panel_format} und ist {thickness_text} dick.\n\nWie viele Platten sind das?",
-            f"Ein Angebot umfasst {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} im Format {panel_format}. Die Dicke beträgt {thickness_text}.\n\nWie viele einzelne Platten werden benötigt?",
+            f"Für eine Anfrage werden {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} benötigt. Eine Platte hat das Format {panel_format} und ist {thickness_text} stark.\n\nWie viele Platten sind das?",
+            f"Ein Angebot umfasst {format_decimal(total_area, total_area_places)} Quadratmeter {product['name']} im Format {panel_format}. Die Stärke beträgt {thickness_text}.\n\nWie viele einzelne Platten werden benötigt?",
         ]
     )
 
@@ -5038,7 +5071,7 @@ def task_panel_count_from_area(level):
             ),
             wrong_value_check(
                 total_area / thickness_m,
-                "Deine Eingabe wirkt so, als wäre die Dicke verwendet worden. Für die Anzahl der Platten brauchst du hier aber die Fläche pro Platte.",
+                "Deine Eingabe wirkt so, als wäre die Stärke verwendet worden. Für die Anzahl der Platten brauchst du hier aber die Fläche pro Platte.",
                 "Stück",
             ),
         ],
@@ -5087,8 +5120,8 @@ def task_running_meter_piece_count(level):
     else:
         product = {"name": "KVH", "kind": "structural_beam"}
         display_name = product["name"]
-        length_m = choice_for_level(STRUCTURAL_LENGTHS_BY_LEVEL, level)
-        width_m, height_m = generate_structural_dimensions(level, length_m)
+        length_m = structural_length_for_product(product, level)
+        width_m, height_m = generate_structural_dimensions(level, length_m, product)
         width_text, height_text = display_measure_pair_same_unit(width_m, height_m, ("cm", "m"))
         extra_context = f"Der Querschnitt beträgt {width_text} x {height_text}."
 
@@ -5877,7 +5910,7 @@ def default_step_placeholder(step):
 
     if "db-faktor" in label:
         return "Zum Beispiel 1 - 0,23"
-    if "querschnitt" in label or "breite x höhe" in label:
+    if "querschnitt" in label or "breite x stärke" in label:
         return "Zum Beispiel 0,16 * 0,019"
     if "preis je laufmeter" in label:
         return "Zum Beispiel 0,00304 * 350"
@@ -6012,7 +6045,7 @@ def render_theory_section():
         )
         st.write(
             "Die wichtigste Kontrollfrage lautet immer: Welche Einheit ist gegeben und welche Einheit wird gesucht? Daraus ergibt sich, "
-            "ob du mit Breite oder Dicke multiplizierst oder durch diese Werte teilst."
+            "ob du mit Breite oder Stärke multiplizierst oder durch diese Werte teilst."
         )
 
     with st.expander("Wie rechne ich Volumen und Mengen um?"):
@@ -6026,10 +6059,10 @@ def render_theory_section():
 | --- | --- | --- | --- |
 | Laufmeter | Quadratmeter | Laufmeter x Breite | 24 Laufmeter x 0,16 Meter = 3,84 Quadratmeter |
 | Quadratmeter | Laufmeter | Quadratmeter / Breite | 3,84 Quadratmeter / 0,16 Meter = 24 Laufmeter |
-| Quadratmeter | Kubikmeter | Quadratmeter x Dicke | 51,25 Quadratmeter x 0,04 Meter = 2,05 Kubikmeter |
-| Kubikmeter | Quadratmeter | Kubikmeter / Dicke | 2,05 Kubikmeter / 0,04 Meter = 51,25 Quadratmeter |
-| Laufmeter | Kubikmeter | Laufmeter x Breite x Höhe | 30 Laufmeter x 0,08 Meter x 0,10 Meter = 0,240 Kubikmeter |
-| Kubikmeter | Laufmeter | Kubikmeter / (Breite x Höhe) | 0,240 Kubikmeter / (0,08 Meter x 0,10 Meter) = 30 Laufmeter |
+| Quadratmeter | Kubikmeter | Quadratmeter x Stärke | 51,25 Quadratmeter x 0,04 Meter = 2,05 Kubikmeter |
+| Kubikmeter | Quadratmeter | Kubikmeter / Stärke | 2,05 Kubikmeter / 0,04 Meter = 51,25 Quadratmeter |
+| Laufmeter | Kubikmeter | Laufmeter x Breite x Stärke | 30 Laufmeter x 0,08 Meter x 0,10 Meter = 0,240 Kubikmeter |
+| Kubikmeter | Laufmeter | Kubikmeter / (Breite x Stärke) | 0,240 Kubikmeter / (0,08 Meter x 0,10 Meter) = 30 Laufmeter |
 """
         )
 
@@ -6066,10 +6099,10 @@ def render_theory_section():
 | --- | --- | --- | --- |
 | Euro pro Laufmeter | Euro pro Quadratmeter | Euro pro Laufmeter / Breite | 4,80 Euro pro Laufmeter / 0,16 Meter = 30,00 Euro pro Quadratmeter |
 | Euro pro Quadratmeter | Euro pro Laufmeter | Euro pro Quadratmeter x Breite | 30,00 Euro pro Quadratmeter x 0,16 Meter = 4,80 Euro pro Laufmeter |
-| Euro pro Quadratmeter | Euro pro Kubikmeter | Euro pro Quadratmeter / Dicke | 12,00 Euro pro Quadratmeter / 0,04 Meter = 300,00 Euro pro Kubikmeter |
-| Euro pro Kubikmeter | Euro pro Quadratmeter | Euro pro Kubikmeter x Dicke | 300,00 Euro pro Kubikmeter x 0,04 Meter = 12,00 Euro pro Quadratmeter |
-| Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Höhe) | 4,80 Euro pro Laufmeter / (0,08 Meter x 0,10 Meter) = 600,00 Euro pro Kubikmeter |
-| Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Höhe | 600,00 Euro pro Kubikmeter x 0,08 Meter x 0,10 Meter = 4,80 Euro pro Laufmeter |
+| Euro pro Quadratmeter | Euro pro Kubikmeter | Euro pro Quadratmeter / Stärke | 12,00 Euro pro Quadratmeter / 0,04 Meter = 300,00 Euro pro Kubikmeter |
+| Euro pro Kubikmeter | Euro pro Quadratmeter | Euro pro Kubikmeter x Stärke | 300,00 Euro pro Kubikmeter x 0,04 Meter = 12,00 Euro pro Quadratmeter |
+| Euro pro Laufmeter | Euro pro Kubikmeter | Euro pro Laufmeter / (Breite x Stärke) | 4,80 Euro pro Laufmeter / (0,08 Meter x 0,10 Meter) = 600,00 Euro pro Kubikmeter |
+| Euro pro Kubikmeter | Euro pro Laufmeter | Euro pro Kubikmeter x Breite x Stärke | 600,00 Euro pro Kubikmeter x 0,08 Meter x 0,10 Meter = 4,80 Euro pro Laufmeter |
 """
         )
 
@@ -6138,7 +6171,7 @@ def render_theory_section():
         )
         st.markdown(
             """
-**Musteraufgabe:** Für 8 Stück KVH mit 6 Meter Länge, 8 Zentimeter Breite und 12 Zentimeter Höhe liegt der EK bei 420 Euro pro Kubikmeter. Es soll ein DB von 25 Prozent erzielt werden.
+**Musteraufgabe:** Für 8 Stück KVH mit 6 Meter Länge, 8 Zentimeter Breite und 12 Zentimeter Stärke liegt der EK bei 420 Euro pro Kubikmeter. Es soll ein DB von 25 Prozent erzielt werden.
 
 **Rechenweg:**
 1. Maße umrechnen: 8 Zentimeter = 0,08 Meter und 12 Zentimeter = 0,12 Meter.
@@ -6440,13 +6473,13 @@ def diagnose_common_mistake(task, answer_value, expected_value, include_task_wro
         if is_close_factor(ratio, Decimal("10")):
             return (
                 "Dein Ergebnis ist ungefähr zehnmal so hoch wie die richtige Lösung. "
-                "Das sieht stark danach aus, dass die Dicke in Zentimetern nicht sauber in Meter umgerechnet wurde, "
+                "Das sieht stark danach aus, dass die Stärke in Zentimetern nicht sauber in Meter umgerechnet wurde, "
                 "zum Beispiel 5 cm als 0,5 m statt 0,05 m."
             )
         if is_close_factor(ratio, Decimal("100")):
             return (
                 "Dein Ergebnis ist ungefähr hundertmal so hoch wie die richtige Lösung. "
-                "Prüfe die Umrechnung der Dicke sehr genau. Hier liegt sehr wahrscheinlich ein Fehler beim Sprung von Zentimeter oder Millimeter auf Meter vor."
+                "Prüfe die Umrechnung der Stärke sehr genau. Hier liegt sehr wahrscheinlich ein Fehler beim Sprung von Zentimeter oder Millimeter auf Meter vor."
             )
 
     if task["task_type"] == "unit_conversion":
@@ -6535,7 +6568,7 @@ def diagnose_step_mistake(task, step, answer_value):
     if step["unit"] == "m3" and (is_close_factor(ratio, Decimal("10")) or is_close_factor(ratio, Decimal("100"))):
         return (
             "Dein Ergebnis liegt ungefähr um einen typischen Umrechnungsfaktor daneben. "
-            "Prüfe noch einmal, ob Breite, Höhe oder Dicke wirklich in Meter eingesetzt wurden."
+            "Prüfe noch einmal, ob Breite oder Stärke wirklich in Meter eingesetzt wurden."
         )
     return ""
 
@@ -6545,14 +6578,14 @@ def likely_error_focus(task):
         "volume_beam": "Achte besonders auf vollständige Maße, auf die Stückzahl und auf die Volumenlogik.",
         "unit_conversion": "Achte besonders auf den Einheitenfaktor zwischen Millimeter, Zentimeter und Meter.",
         "price_per_running_meter": "Achte besonders auf Querschnitt, Volumen von 1 Laufmeter und die richtige Preisbasis.",
-        "price_per_square_meter": "Achte besonders auf die Dicke der Platte und auf die Preisbasis pro Kubikmeter.",
-        "m3_price_from_square_meter": "Achte besonders auf die Rückrichtung vom Quadratmeterpreis zum Kubikmeterpreis über die Dicke.",
+        "price_per_square_meter": "Achte besonders auf die Stärke der Platte und auf die Preisbasis pro Kubikmeter.",
+        "m3_price_from_square_meter": "Achte besonders auf die Rückrichtung vom Quadratmeterpreis zum Kubikmeterpreis über die Stärke.",
         "running_meter_price_from_square_meter": "Achte besonders auf die Breite als Verbindung zwischen Quadratmeterpreis und Laufmeterpreis.",
         "square_meter_price_from_running_meter": "Achte besonders darauf, den Laufmeterpreis durch die Breite zu teilen.",
         "lfm_price_from_m3_with_db": "Achte besonders auf Querschnitt, Kubikmeterpreis und danach den Ziel-DB.",
-        "m2_price_from_m3_with_db": "Achte besonders auf Dicke, Kubikmeterpreis und danach den Ziel-DB.",
+        "m2_price_from_m3_with_db": "Achte besonders auf Stärke, Kubikmeterpreis und danach den Ziel-DB.",
         "square_meters_from_volume": "Achte besonders auf die Richtung der Umrechnung zwischen Kubikmeter und Quadratmeter.",
-        "volume_from_square_meters": "Achte besonders auf die Richtung der Umrechnung von Quadratmeter zu Kubikmeter über die Dicke.",
+        "volume_from_square_meters": "Achte besonders auf die Richtung der Umrechnung von Quadratmeter zu Kubikmeter über die Stärke.",
         "total_price_from_volume": "Achte besonders darauf, ob Volumen und Preisbasis wirklich zur Zielgröße Gesamtpreis passen.",
         "running_meters_from_volume": "Achte besonders auf die Richtung Kubikmeter zu Laufmeter sowie auf Breite und Stärke in Meter.",
         "square_meters_from_running_meters": "Achte besonders auf die Richtung Laufmeter zu Quadratmeter über die Breite der Hobelware.",
@@ -7111,7 +7144,7 @@ def fallback_focused_block_explanation(task, block, question_text):
     if "volumen pro stück" in lower_title:
         return (
             f"In Schritt {block['number']} wird bewusst nur ein einzelnes Stück betrachtet. "
-            "So verhinderst du, dass Stückzahl, Länge, Breite und Höhe durcheinandergeraten. "
+            "So verhinderst du, dass Stückzahl, Länge, Breite und Stärke durcheinandergeraten. "
             f"Das Ergebnis {result_value if separator else 'aus diesem Schritt'} beschreibt den Rauminhalt eines Stücks; erst danach wird daraus die Gesamtmenge der Position."
         )
 
@@ -7239,7 +7272,7 @@ def fallback_step_explanation(task, question_text):
             "Darum wird das Volumen in Kubikmeter mit Kilogramm pro Kubikmeter multipliziert."
         )
 
-    if "Kubikmeter = Quadratmeter x Dicke" in joined and (
+    if "Kubikmeter = Quadratmeter x Stärke" in joined and (
         "geteilt" in lower_question
         or "durch" in lower_question
         or "/" in lower_question
@@ -7253,43 +7286,43 @@ def fallback_step_explanation(task, question_text):
             area_value, thickness_value, volume_value = match.groups()
             return (
                 f"Hier wird nicht durch {thickness_value} Meter geteilt, weil du von einer Fläche zu einem Volumen gehst. "
-                f"Die {area_value} Quadratmeter sind nur die Fläche; mit der Dicke {thickness_value} Meter gibst du dieser Fläche die dritte Dimension. "
+                f"Die {area_value} Quadratmeter sind nur die Fläche; mit der Stärke {thickness_value} Meter gibst du dieser Fläche die dritte Dimension. "
                 f"Darum rechnest du {area_value} Quadratmeter x {thickness_value} Meter und kommst auf {volume_value} Kubikmeter. "
-                "Teilen durch die Dicke wäre die Gegenrichtung: Dann hättest du Kubikmeter gegeben und würdest daraus Quadratmeter zurückrechnen."
+                "Teilen durch die Stärke wäre die Gegenrichtung: Dann hättest du Kubikmeter gegeben und würdest daraus Quadratmeter zurückrechnen."
             )
         return (
-            "Hier wird nicht durch die Dicke geteilt, weil du von Quadratmetern zu Kubikmetern gehst. "
-            "Quadratmeter beschreiben nur die Fläche; die Dicke kommt als dritte Dimension dazu. "
-            "Darum wird Fläche mal Dicke gerechnet. "
-            "Geteilt durch die Dicke würdest du nur rechnen, wenn Kubikmeter gegeben wären und Quadratmeter gesucht sind."
+            "Hier wird nicht durch die Stärke geteilt, weil du von Quadratmetern zu Kubikmetern gehst. "
+            "Quadratmeter beschreiben nur die Fläche; die Stärke kommt als dritte Dimension dazu. "
+            "Darum wird Fläche mal Stärke gerechnet. "
+            "Geteilt durch die Stärke würdest du nur rechnen, wenn Kubikmeter gegeben wären und Quadratmeter gesucht sind."
         )
 
-    if ("dicke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Dicke" in joined:
+    if ("stärke" in lower_question or "quadratmeter" in lower_question or "0,018" in lower_question or "0,022" in lower_question or "0,023" in lower_question or "0,025" in lower_question) and "Euro pro Quadratmeter = Euro pro Kubikmeter x Stärke" in joined:
         return (
-            "Stell dir einen Kubikmeter Plattenware vor. Ein Quadratmeter dieser Platte hat nur die Dicke als dritte Dimension. "
-            "Deshalb brauchst du genau die Dicke in Meter, um vom Preis pro Kubikmeter auf den Preis pro Quadratmeter zu kommen. "
-            "Du nimmst also den Preis pro Kubikmeter und multiplizierst ihn mit der Dicke der Platte."
+            "Stell dir einen Kubikmeter Plattenware vor. Ein Quadratmeter dieser Platte hat nur die Stärke als dritte Dimension. "
+            "Deshalb brauchst du genau die Stärke in Meter, um vom Preis pro Kubikmeter auf den Preis pro Quadratmeter zu kommen. "
+            "Du nimmst also den Preis pro Kubikmeter und multiplizierst ihn mit der Stärke der Platte."
         )
 
-    if ("laufmeter" in lower_question or "breite" in lower_question or "höhe" in lower_question) and "Laufmeter = Kubikmeter / (Breite x Höhe)" in joined:
+    if ("laufmeter" in lower_question or "breite" in lower_question or "stärke" in lower_question) and "Laufmeter = Kubikmeter / (Breite x Stärke)" in joined:
         return (
             "Hier suchst du die Länge, die in einem gegebenen Volumen steckt. "
-            "Breite mal Höhe beschreibt den Querschnitt der Ware. Wenn du das Volumen durch diesen Querschnitt teilst, "
+            "Breite mal Stärke beschreibt den Querschnitt der Ware. Wenn du das Volumen durch diesen Querschnitt teilst, "
             "bleibt als Ergebnis die Länge in Laufmetern übrig."
         )
 
-    if ("kubikmeter" in lower_question or "laufmeter" in lower_question) and "Kubikmeter = Laufmeter x Breite x Höhe" in joined:
+    if ("kubikmeter" in lower_question or "laufmeter" in lower_question) and "Kubikmeter = Laufmeter x Breite x Stärke" in joined:
         return (
             "Hier wird aus einer Länge wieder ein Volumen aufgebaut. "
-            "Du hast die Laufmeter als Länge und multiplizierst sie mit Breite und Höhe in Meter. "
+            "Du hast die Laufmeter als Länge und multiplizierst sie mit Breite und Stärke in Meter. "
             "So entsteht direkt das Volumen in Kubikmetern."
         )
 
-    if ("preis" in lower_question or "kubikmeter" in lower_question or "laufmeter" in lower_question) and "Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Höhe)" in joined:
+    if ("preis" in lower_question or "kubikmeter" in lower_question or "laufmeter" in lower_question) and "Euro pro Kubikmeter = Euro pro Laufmeter / (Breite x Stärke)" in joined:
         return (
             "Hier gehst du vom Preis pro Laufmeter zurück auf den Preis pro Kubikmeter. "
-            "Breite mal Höhe beschreibt, wie viel Kubikmeter in einem Laufmeter stecken. "
-            "Deshalb wird der Laufmeterpreis durch Breite mal Höhe geteilt."
+            "Breite mal Stärke beschreibt, wie viel Kubikmeter in einem Laufmeter stecken. "
+            "Deshalb wird der Laufmeterpreis durch Breite mal Stärke geteilt."
         )
 
     return (
@@ -8055,7 +8088,7 @@ def render_development_section():
     with st.expander("Welche Rechenwege und Aufgabentypen werden geübt?"):
         st.write(
             "Die Aufgaben decken mehrere Rechenwelten ab. Dazu gehören einfache Einheitenumrechnungen zwischen Millimeter, "
-            "Zentimeter und Meter, Volumenberechnungen aus Länge, Breite, Höhe und Stückzahl, Umrechnungen zwischen Laufmeter, "
+            "Zentimeter und Meter, Volumenberechnungen aus Länge, Breite, Stärke und Stückzahl, Umrechnungen zwischen Laufmeter, "
             "Quadratmeter und Kubikmeter sowie Preisumrechnungen zwischen Kubikmeterpreis, Quadratmeterpreis und Laufmeterpreis."
         )
         st.write(
