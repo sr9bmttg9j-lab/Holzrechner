@@ -160,38 +160,39 @@ RUNNING_METER_PRICES_BY_LEVEL = {
     2: [Decimal("5.35"), Decimal("6.85"), Decimal("8.40"), Decimal("10.25"), Decimal("13.75")],
     3: [Decimal("5.95"), Decimal("7.40"), Decimal("9.35"), Decimal("11.80"), Decimal("14.60")],
 }
+FLOORING_LENGTHS = [Decimal("1.80"), Decimal("1.90"), Decimal("2.00"), Decimal("2.10"), Decimal("2.20")]
 FLOORING_PRODUCTS = [
     {
         "name": "Eiche-Massivholzdiele",
-        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
+        "lengths": FLOORING_LENGTHS,
         "widths": [Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
         "thicknesses": [Decimal("0.018"), Decimal("0.020"), Decimal("0.021")],
         "package_counts": [4, 5],
     },
     {
         "name": "Parkett",
-        "lengths": [Decimal("0.60"), Decimal("0.90"), Decimal("1.20"), Decimal("1.50"), Decimal("1.80")],
+        "lengths": FLOORING_LENGTHS,
         "widths": [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
         "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014")],
         "package_counts": [6, 7, 8],
     },
     {
         "name": "Fertigparkett",
-        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
+        "lengths": FLOORING_LENGTHS,
         "widths": [Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
         "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014"), Decimal("0.015")],
         "package_counts": [4, 5],
     },
     {
         "name": "Laminat",
-        "lengths": [Decimal("1.20"), Decimal("1.28"), Decimal("1.38"), Decimal("1.50")],
+        "lengths": FLOORING_LENGTHS,
         "widths": [Decimal("0.18"), Decimal("0.19"), Decimal("0.20"), Decimal("0.24")],
         "thicknesses": [Decimal("0.007"), Decimal("0.008"), Decimal("0.010"), Decimal("0.012")],
         "package_counts": [10, 12, 14, 16],
     },
     {
         "name": "Vinylboden",
-        "lengths": [Decimal("0.90"), Decimal("1.00"), Decimal("1.20"), Decimal("1.22"), Decimal("1.50")],
+        "lengths": FLOORING_LENGTHS,
         "widths": [Decimal("0.12"), Decimal("0.15"), Decimal("0.18"), Decimal("0.20"), Decimal("0.23")],
         "thicknesses": [Decimal("0.003"), Decimal("0.004"), Decimal("0.005")],
         "package_counts": [10, 12, 16, 20],
@@ -967,7 +968,7 @@ def generate_whole_volume_position_details(level):
         sheet_area_places = precise_decimal_places(sheet_area)
         total_area_places = precise_decimal_places(total_area)
         total_volume_places = precise_decimal_places(total_volume)
-        thickness_text = display_measure(thickness_m, ("mm", "cm"))
+        thickness_text = display_measure(thickness_m, ("mm",))
         context = (
             f"{counted_product(panel_count, product)} im Format {panel_format} "
             f"bei {thickness_text} Dicke"
@@ -1047,8 +1048,8 @@ def generate_whole_volume_position_details(level):
     total_volume = piece_volume * Decimal(board_count)
     piece_volume_places = precise_decimal_places(piece_volume)
     total_volume_places = precise_decimal_places(total_volume)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
     context = (
         f"{board_count} Bretter {hobelware_display_name(product)} mit je {format_m(board_length)} m Länge, "
         f"{width_text} Breite und {thickness_text} Stärke"
@@ -1570,8 +1571,8 @@ def task_price_per_running_meter(level):
     m3_price = m3_price_for_product(product, level)
     cross_section = width_m * height_m
     result = width_m * height_m * m3_price
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -1644,7 +1645,7 @@ def task_price_per_square_meter(level):
     thickness_m = panel_thickness_for_product(product, level)
     m3_price = m3_price_for_product(product, level)
     result = thickness_m * m3_price
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -1705,7 +1706,7 @@ def task_m3_price_from_square_meter(level):
     thickness_m = panel_thickness_for_product(product, level)
     m2_price = panel_m2_price_for_product(product, level)
     result = m2_price / thickness_m
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -1778,7 +1779,7 @@ def task_square_meters_from_volume(level):
     result = square_meters
     square_meters_places = precise_decimal_places(square_meters, 2, 4)
     total_volume_places = precise_decimal_places(total_volume)
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -1855,7 +1856,7 @@ def task_volume_from_square_meters(level):
     result = square_meters * thickness_m
     square_meters_places = precise_decimal_places(square_meters, 2, 4)
     result_places = precise_decimal_places(result)
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -1983,8 +1984,8 @@ def task_square_meters_from_running_meters(level):
     result = running_meters * width_m
     running_meters_places = precise_decimal_places(running_meters, 0, 1)
     result_places = precise_decimal_places(result)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -2052,8 +2053,8 @@ def task_running_meters_from_volume(level):
     total_volume = width_m * height_m * running_meters
     total_volume_places = precise_decimal_places(total_volume)
     running_meters_places = precise_decimal_places(running_meters, 0, 1)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -2135,8 +2136,8 @@ def task_running_meters_from_square_meters(level):
     square_meters = result * width_m
     square_meters_places = precise_decimal_places(square_meters)
     result_places = precise_decimal_places(result, 0, 1)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -2375,8 +2376,8 @@ def task_lfm_db_sale_price(level):
     total_ek = running_meters * ek_price_lfm
     result = total_ek / divisor
     running_meters_places = precise_decimal_places(running_meters, 0, 1)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -2611,8 +2612,8 @@ def task_volume_from_running_meters(level):
     result = width_m * height_m * running_meters
     result_places = precise_decimal_places(result)
     running_meters_places = precise_decimal_places(running_meters, 0, 1)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -2996,8 +2997,8 @@ def task_m3_price_from_running_meter(level):
     price_per_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
     cross_section = width_m * height_m
     result = price_per_lfm / cross_section
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -3089,8 +3090,8 @@ def task_running_meter_price_from_square_meter(level):
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     m2_price = choice_for_level(PANEL_M2_PRICES_BY_LEVEL, level)
     result = m2_price * width_m
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -3161,8 +3162,8 @@ def task_square_meter_price_from_running_meter(level):
     board_length = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
     price_per_lfm = choice_for_level(RUNNING_METER_PRICES_BY_LEVEL, level)
     result = price_per_lfm / width_m
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -3241,8 +3242,8 @@ def task_lfm_price_from_m3_with_db(level):
     cross_section = width_m * height_m
     ek_lfm = cross_section * ek_price_m3
     result = ek_lfm / divisor
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -3356,7 +3357,7 @@ def task_m2_price_from_m3_with_db(level):
     divisor = (Decimal("100") - db_percent) / Decimal("100")
     ek_m2 = thickness_m * ek_price_m3
     result = ek_m2 / divisor
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -3688,8 +3689,8 @@ def task_lfm_ek_from_vk_db(level):
     total_ek = running_meters * ek_price_lfm
     total_vk = total_ek / divisor
     running_meters_places = precise_decimal_places(running_meters, 0, 1)
-    width_text = display_measure(width_m, ("cm", "m"))
-    thickness_text = display_measure(height_m, ("mm", "cm"))
+    width_text = display_measure(width_m, ("mm",))
+    thickness_text = display_measure(height_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -4671,7 +4672,7 @@ def task_flooring_packages(level):
     if product["name"] == "Vinylboden":
         thickness_text = display_measure(thickness_m, ("mm",))
     else:
-        thickness_text = display_measure(thickness_m, ("cm", "mm"))
+        thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -4774,7 +4775,7 @@ def task_profile_board_raw_area(level):
 
     raw_width_text = display_measure(raw_width_m, ("mm",))
     deck_width_text = display_measure(deck_width_m, ("mm",))
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -4887,7 +4888,7 @@ def task_panel_count_from_area(level):
     total_area = sheet_area * Decimal(panel_count)
     sheet_area_places = precise_decimal_places(sheet_area)
     total_area_places = precise_decimal_places(total_area)
-    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+    thickness_text = display_measure(thickness_m, ("mm",))
 
     prompt = random.choice(
         [
@@ -4980,8 +4981,8 @@ def task_running_meter_piece_count(level):
         bundle_count = random.choice(HOBEL_BUNDLE_COUNTS)
         width_m = choice_for_level(HOBEL_WIDTHS_BY_LEVEL, level)
         height_m = choice_for_level(HOBEL_THICKNESSES_BY_LEVEL, level)
-        width_text = display_measure(width_m, ("cm", "m"))
-        height_text = display_measure(height_m, ("mm", "cm"))
+        width_text = display_measure(width_m, ("mm",))
+        height_text = display_measure(height_m, ("mm",))
         extra_context = (
             f"Die Bretter sind {width_text} breit und {height_text} stark. "
             f"Ein Bund enthält {bundle_count} Bretter."
@@ -7178,6 +7179,37 @@ def generate_step_explanation(task, question_text):
         return fallback_step_explanation(task, question_text)
 
 
+def polish_task_prompt(text):
+    replacements = [
+        (
+            "Welchen Laufmeter-EK hat der Lieferant rechnerisch berechnet?",
+            "Zu welchem Einkaufspreis pro Laufmeter haben wir die Ware beim Lieferanten eingekauft?",
+        ),
+        (
+            "Welchen Quadratmeter-EK hat der Lieferant rechnerisch angesetzt?",
+            "Zu welchem Einkaufspreis pro Quadratmeter haben wir die Ware beim Lieferanten eingekauft?",
+        ),
+        (
+            "Wie viel Euro pro Kubikmeter hat der Lieferant rechnerisch im EK berechnet?",
+            "Zu welchem Einkaufspreis pro Kubikmeter haben wir die Ware beim Lieferanten eingekauft?",
+        ),
+        ("Mindest-VK", "Mindest-Verkaufspreis"),
+        ("Gesamt-VK", "Gesamt-Verkaufspreis"),
+        ("Paket-VK", "Paket-Verkaufspreis"),
+        ("Laufmeter-VK", "Verkaufspreis pro Laufmeter"),
+        ("Quadratmeter-VK", "Verkaufspreis pro Quadratmeter"),
+        ("Ziel-VK", "Ziel-Verkaufspreis"),
+        ("im EK", "im Einkauf"),
+        ("im VK", "im Verkauf"),
+    ]
+    for old, new in replacements:
+        text = text.replace(old, new)
+
+    text = re.sub(r"\bEK\b", "Einkaufspreis", text)
+    text = re.sub(r"\bVK\b", "Verkaufspreis", text)
+    return text
+
+
 def choose_task(level, recent_task_types, task_number, forced_task_type=None):
     if forced_task_type in TASK_TYPE_TO_GENERATOR:
         return TASK_TYPE_TO_GENERATOR[forced_task_type]
@@ -7207,6 +7239,7 @@ def create_next_task():
     level = pick_level(task_number)
     forced_task_type = st.session_state.get("next_task_type_override")
     task = choose_task(level, st.session_state.recent_task_types, task_number, forced_task_type)(level)
+    task["prompt"] = polish_task_prompt(task["prompt"])
     st.session_state.task = task
     st.session_state.level = level
     st.session_state.attempt = 1
