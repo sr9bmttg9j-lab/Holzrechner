@@ -16,6 +16,12 @@ load_dotenv()
 load_dotenv("env")
 
 
+LEIMHOLZ_FORMATS = [
+    f"{length_cm} x {width_cm} cm"
+    for length_cm in range(100, 201, 10)
+    for width_cm in (60, 70)
+]
+
 PRODUCTS = [
     {"name": "KVH", "kind": "structural_beam"},
     {"name": "BSH", "kind": "structural_beam"},
@@ -24,7 +30,12 @@ PRODUCTS = [
     {
         "name": "OSB-Platte",
         "kind": "panel",
-        "formats": ["250 x 62,5 cm", "250 x 67,5 cm"],
+        "formats": ["250 x 62,5 cm", "250 x 67,5 cm", "208 x 270 cm"],
+    },
+    {
+        "name": "Dekorspanplatte",
+        "kind": "panel",
+        "formats": ["208 x 270 cm"],
     },
     {
         "name": "Siebdruckplatte",
@@ -40,6 +51,26 @@ PRODUCTS = [
         "name": "Dekorplatte",
         "kind": "panel",
         "formats": ["280 x 207 cm", "410 x 130 cm"],
+    },
+    {
+        "name": "Multiplexplatte Birke",
+        "kind": "panel",
+        "formats": ["125 x 250 cm"],
+    },
+    {
+        "name": "Tischlerplatte",
+        "kind": "panel",
+        "formats": ["205 x 520 cm"],
+    },
+    {
+        "name": "Leimholzplatte",
+        "kind": "panel",
+        "formats": LEIMHOLZ_FORMATS,
+    },
+    {
+        "name": "Sperrholzplatte",
+        "kind": "panel",
+        "formats": ["125 x 250 cm"],
     },
 ]
 
@@ -74,6 +105,31 @@ HOBEL_LENGTHS_BY_LEVEL = {
     3: [Decimal("2.70"), Decimal("3.00"), Decimal("3.30"), Decimal("3.60"), Decimal("3.90"), Decimal("4.20"), Decimal("4.50"), Decimal("4.80"), Decimal("5.10"), Decimal("5.40")],
 }
 HOBEL_BUNDLE_COUNTS = [4, 5, 6, 7, 8]
+PROFILE_PRODUCTS = [
+    {
+        "name": "Profilbrett",
+        "raw_widths": [Decimal("0.121"), Decimal("0.146"), Decimal("0.171")],
+        "loss": Decimal("0.010"),
+        "thicknesses": [Decimal("0.019"), Decimal("0.021"), Decimal("0.023")],
+    },
+    {
+        "name": "Keilspundprofil",
+        "raw_widths": [Decimal("0.121"), Decimal("0.146")],
+        "loss": Decimal("0.010"),
+        "thicknesses": [Decimal("0.019"), Decimal("0.023")],
+    },
+    {
+        "name": "Rauspund",
+        "raw_widths": [Decimal("0.121"), Decimal("0.146"), Decimal("0.196")],
+        "loss": Decimal("0.010"),
+        "thicknesses": [Decimal("0.019"), Decimal("0.023"), Decimal("0.027")],
+    },
+]
+PROFILE_AREA_NEEDS_BY_LEVEL = {
+    1: [Decimal("18"), Decimal("24"), Decimal("30"), Decimal("36")],
+    2: [Decimal("32"), Decimal("45"), Decimal("60"), Decimal("75")],
+    3: [Decimal("55"), Decimal("80"), Decimal("100"), Decimal("125")],
+}
 COUNTS_BY_LEVEL = {
     1: [4, 6, 8, 10, 12, 16, 20],
     2: [5, 6, 8, 10, 12, 14, 18, 24, 30],
@@ -110,7 +166,7 @@ FLOORING_PRODUCTS = [
         "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
         "widths": [Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20"), Decimal("0.22")],
         "thicknesses": [Decimal("0.018"), Decimal("0.020"), Decimal("0.021")],
-        "package_counts": [4, 5, 6, 7, 8],
+        "package_counts": [4, 5],
     },
     {
         "name": "Parkett",
@@ -118,6 +174,20 @@ FLOORING_PRODUCTS = [
         "widths": [Decimal("0.12"), Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
         "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014")],
         "package_counts": [6, 7, 8],
+    },
+    {
+        "name": "Fertigparkett",
+        "lengths": [Decimal("1.20"), Decimal("1.50"), Decimal("1.80"), Decimal("2.00"), Decimal("2.20")],
+        "widths": [Decimal("0.14"), Decimal("0.16"), Decimal("0.18"), Decimal("0.20")],
+        "thicknesses": [Decimal("0.010"), Decimal("0.012"), Decimal("0.014"), Decimal("0.015")],
+        "package_counts": [4, 5],
+    },
+    {
+        "name": "Laminat",
+        "lengths": [Decimal("1.20"), Decimal("1.28"), Decimal("1.38"), Decimal("1.50")],
+        "widths": [Decimal("0.18"), Decimal("0.19"), Decimal("0.20"), Decimal("0.24")],
+        "thicknesses": [Decimal("0.007"), Decimal("0.008"), Decimal("0.010"), Decimal("0.012")],
+        "package_counts": [10, 12, 14, 16],
     },
     {
         "name": "Vinylboden",
@@ -143,9 +213,14 @@ PRODUCT_DENSITIES = {
     "KERTO": [Decimal("500"), Decimal("510"), Decimal("530")],
     "Hobelware": [Decimal("470"), Decimal("520"), Decimal("560")],
     "OSB-Platte": [Decimal("590"), Decimal("620"), Decimal("650")],
+    "Dekorspanplatte": [Decimal("620"), Decimal("650"), Decimal("680")],
     "Siebdruckplatte": [Decimal("650"), Decimal("700"), Decimal("750")],
     "3-Schicht-Platte": [Decimal("450"), Decimal("500"), Decimal("550")],
     "Dekorplatte": [Decimal("620"), Decimal("650"), Decimal("700")],
+    "Multiplexplatte Birke": [Decimal("650"), Decimal("680"), Decimal("700")],
+    "Tischlerplatte": [Decimal("430"), Decimal("460"), Decimal("500")],
+    "Leimholzplatte": [Decimal("470"), Decimal("520"), Decimal("560")],
+    "Sperrholzplatte": [Decimal("520"), Decimal("560"), Decimal("600")],
 }
 INSULATION_VOLUMES = [
     Decimal("5"),
@@ -593,6 +668,31 @@ def panel_thickness_for_product(product, level):
             2: [Decimal("0.008"), Decimal("0.010"), Decimal("0.016"), Decimal("0.019"), Decimal("0.022")],
             3: [Decimal("0.008"), Decimal("0.010"), Decimal("0.016"), Decimal("0.019"), Decimal("0.022"), Decimal("0.025")],
         },
+        "Dekorspanplatte": {
+            1: [Decimal("0.019"), Decimal("0.025"), Decimal("0.038")],
+            2: [Decimal("0.019"), Decimal("0.025"), Decimal("0.038")],
+            3: [Decimal("0.019"), Decimal("0.025"), Decimal("0.038")],
+        },
+        "Multiplexplatte Birke": {
+            1: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022")],
+            2: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022"), Decimal("0.024"), Decimal("0.026")],
+            3: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022"), Decimal("0.024"), Decimal("0.026"), Decimal("0.028"), Decimal("0.030")],
+        },
+        "Tischlerplatte": {
+            1: [Decimal("0.029")],
+            2: [Decimal("0.029")],
+            3: [Decimal("0.029")],
+        },
+        "Leimholzplatte": {
+            1: [Decimal("0.019"), Decimal("0.026")],
+            2: [Decimal("0.019"), Decimal("0.026"), Decimal("0.040")],
+            3: [Decimal("0.019"), Decimal("0.026"), Decimal("0.040"), Decimal("0.045")],
+        },
+        "Sperrholzplatte": {
+            1: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022")],
+            2: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022"), Decimal("0.024"), Decimal("0.026")],
+            3: [Decimal("0.016"), Decimal("0.018"), Decimal("0.020"), Decimal("0.022"), Decimal("0.024"), Decimal("0.026"), Decimal("0.028"), Decimal("0.030")],
+        },
     }
     return random.choice(pools.get(name, THICKNESSES_BY_LEVEL)[level])
 
@@ -640,6 +740,31 @@ def m3_price_for_product(product, level):
             2: [Decimal("585"), Decimal("760"), Decimal("890")],
             3: [Decimal("693"), Decimal("815"), Decimal("980")],
         },
+        "Dekorspanplatte": {
+            1: [Decimal("420"), Decimal("520"), Decimal("620")],
+            2: [Decimal("460"), Decimal("585"), Decimal("693")],
+            3: [Decimal("520"), Decimal("640"), Decimal("760")],
+        },
+        "Multiplexplatte Birke": {
+            1: [Decimal("720"), Decimal("840"), Decimal("960")],
+            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
+            3: [Decimal("890"), Decimal("1050"), Decimal("1180")],
+        },
+        "Tischlerplatte": {
+            1: [Decimal("560"), Decimal("640"), Decimal("720")],
+            2: [Decimal("640"), Decimal("760"), Decimal("840")],
+            3: [Decimal("720"), Decimal("840"), Decimal("960")],
+        },
+        "Leimholzplatte": {
+            1: [Decimal("720"), Decimal("840"), Decimal("960")],
+            2: [Decimal("815"), Decimal("950"), Decimal("1080")],
+            3: [Decimal("950"), Decimal("1080"), Decimal("1320")],
+        },
+        "Sperrholzplatte": {
+            1: [Decimal("520"), Decimal("640"), Decimal("760")],
+            2: [Decimal("585"), Decimal("720"), Decimal("840")],
+            3: [Decimal("640"), Decimal("815"), Decimal("960")],
+        },
     }
     return random.choice(pools.get(name, M3_PRICES_BY_LEVEL)[level])
 
@@ -667,6 +792,31 @@ def panel_m2_price_for_product(product, level):
             2: [Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
             3: [Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
         },
+        "Dekorspanplatte": {
+            1: [Decimal("12.90"), Decimal("18.90"), Decimal("24.90")],
+            2: [Decimal("16.90"), Decimal("22.50"), Decimal("29.90")],
+            3: [Decimal("19.90"), Decimal("26.90"), Decimal("34.90")],
+        },
+        "Multiplexplatte Birke": {
+            1: [Decimal("24.90"), Decimal("32.50"), Decimal("39.90")],
+            2: [Decimal("29.90"), Decimal("38.50"), Decimal("49.90")],
+            3: [Decimal("34.90"), Decimal("44.50"), Decimal("59.90")],
+        },
+        "Tischlerplatte": {
+            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
+            2: [Decimal("26.90"), Decimal("34.90"), Decimal("42.50")],
+            3: [Decimal("32.50"), Decimal("39.90"), Decimal("49.90")],
+        },
+        "Leimholzplatte": {
+            1: [Decimal("22.50"), Decimal("29.90"), Decimal("36.90")],
+            2: [Decimal("29.90"), Decimal("39.90"), Decimal("49.90")],
+            3: [Decimal("39.90"), Decimal("54.90"), Decimal("69.90")],
+        },
+        "Sperrholzplatte": {
+            1: [Decimal("18.90"), Decimal("24.90"), Decimal("32.50")],
+            2: [Decimal("22.50"), Decimal("29.90"), Decimal("38.50")],
+            3: [Decimal("26.90"), Decimal("34.90"), Decimal("44.50")],
+        },
     }
     return random.choice(pools.get(name, PANEL_M2_PRICES_BY_LEVEL)[level])
 
@@ -675,12 +825,22 @@ def panel_format_dimensions(format_text):
     dimensions = {
         "250 x 62,5 cm": (Decimal("2.50"), Decimal("0.625")),
         "250 x 67,5 cm": (Decimal("2.50"), Decimal("0.675")),
+        "208 x 270 cm": (Decimal("2.08"), Decimal("2.70")),
         "125 x 250 cm": (Decimal("1.25"), Decimal("2.50")),
         "125 x 205 cm": (Decimal("1.25"), Decimal("2.05")),
+        "205 x 520 cm": (Decimal("2.05"), Decimal("5.20")),
         "280 x 207 cm": (Decimal("2.80"), Decimal("2.07")),
         "410 x 130 cm": (Decimal("4.10"), Decimal("1.30")),
     }
-    return dimensions.get(format_text, (Decimal("1.25"), Decimal("2.50")))
+    if format_text in dimensions:
+        return dimensions[format_text]
+
+    match = re.fullmatch(r"\s*(\d+(?:,\d+)?)\s*x\s*(\d+(?:,\d+)?)\s*cm\s*", format_text)
+    if match:
+        first, second = match.groups()
+        return Decimal(first.replace(",", ".")) / Decimal("100"), Decimal(second.replace(",", ".")) / Decimal("100")
+
+    return Decimal("1.25"), Decimal("2.50")
 
 
 def panel_package_count(product):
@@ -689,6 +849,12 @@ def panel_package_count(product):
         return random.choice([40, 50, 60])
     if name == "Siebdruckplatte":
         return random.choice([15, 20, 25])
+    if name in {"Multiplexplatte Birke", "Sperrholzplatte", "Dekorspanplatte"}:
+        return random.choice([15, 20, 25])
+    if name == "Tischlerplatte":
+        return random.choice([5, 10, 12])
+    if name == "Leimholzplatte":
+        return random.choice([10, 15, 20])
     return random.choice([20, 25, 30])
 
 
@@ -4569,6 +4735,130 @@ def task_flooring_packages(level):
     }
 
 
+def task_profile_board_raw_area(level):
+    product = random.choice(PROFILE_PRODUCTS)
+    length_m = choice_for_level(HOBEL_LENGTHS_BY_LEVEL, level)
+    raw_width_m = random.choice(product["raw_widths"])
+    deck_width_m = raw_width_m - product["loss"]
+    thickness_m = random.choice(product["thicknesses"])
+    needed_deck_area = choice_for_level(PROFILE_AREA_NEEDS_BY_LEVEL, level)
+
+    deck_area_per_board = length_m * deck_width_m
+    raw_area_per_board = length_m * raw_width_m
+    raw_board_count = needed_deck_area / deck_area_per_board
+    board_count = round_up_to_whole(raw_board_count)
+    result = raw_area_per_board * Decimal(board_count)
+
+    deck_area_places = precise_decimal_places(deck_area_per_board)
+    raw_area_places = precise_decimal_places(raw_area_per_board)
+    raw_board_places = precise_decimal_places(raw_board_count, 3, 4)
+    result_places = precise_decimal_places(result, 2, 3)
+
+    raw_width_text = display_measure(raw_width_m, ("mm",))
+    deck_width_text = display_measure(deck_width_m, ("mm",))
+    thickness_text = display_measure(thickness_m, ("mm", "cm"))
+
+    prompt = random.choice(
+        [
+            f"Ein Kunde benötigt {format_decimal(needed_deck_area, 0)} Quadratmeter sichtbare Fläche {product['name']}. Ein Brett ist {format_m(length_m)} m lang, hat {raw_width_text} Rohmaß und {deck_width_text} Deckbreite. Die Stärke beträgt {thickness_text}.\n\nWie viele Quadratmeter müssen über das Rohmaß berechnet werden?",
+            f"Für ein Angebot über {product['name']} werden {format_decimal(needed_deck_area, 0)} Quadratmeter Deckfläche gebraucht. Die Bretter sind {format_m(length_m)} m lang, {raw_width_text} breit im Rohmaß und haben durch Nut und Feder {deck_width_text} Deckbreite.\n\nWelche Quadratmeterzahl ist nach Rohmaß anzusetzen?",
+            f"Eine Kundin möchte eine Fläche mit {product['name']} bekleiden. Sichtbar benötigt werden {format_decimal(needed_deck_area, 0)} Quadratmeter. Ein Brett misst {format_m(length_m)} m Länge, {raw_width_text} Rohbreite und {deck_width_text} Deckbreite.\n\nWie viele Quadratmeter werden rechnerisch verkauft?",
+        ]
+    )
+
+    solution = format_solution_steps(
+        (
+            "Deckfläche pro Brett",
+            "Deckfläche pro Brett = Länge x Deckbreite",
+            f"{format_m(length_m)} Meter x {format_decimal(deck_width_m, 3)} Meter = "
+            f"{format_decimal(deck_area_per_board, deck_area_places)} Quadratmeter",
+        ),
+        (
+            "Benötigte Bretter",
+            "Benötigte Bretter = benötigte Deckfläche / Deckfläche pro Brett, danach auf volle Bretter aufrunden",
+            f"{format_decimal(needed_deck_area, 0)} Quadratmeter / {format_decimal(deck_area_per_board, deck_area_places)} Quadratmeter = "
+            f"{format_decimal(raw_board_count, raw_board_places)} Bretter, aufgerundet = {format_decimal(board_count, 0)} Bretter",
+        ),
+        (
+            "Rohmaßfläche",
+            "Rohmaßfläche = Brettanzahl x Länge x Rohbreite",
+            f"{format_decimal(board_count, 0)} Bretter x {format_m(length_m)} Meter x {format_decimal(raw_width_m, 3)} Meter = "
+            f"{format_decimal(result, result_places)} Quadratmeter",
+        ),
+    )
+
+    return {
+        "prompt": prompt,
+        "expected": result.normalize(),
+        "unit": "m2",
+        "display_places": result_places,
+        "round_for_check": False,
+        "task_type": "profile_board_raw_area",
+        "correction": "Nutze die Deckbreite zuerst nur, um die benötigte Brettanzahl zu bestimmen. Für die berechnete Quadratmeterzahl wird danach mit dem Rohmaß weitergerechnet.",
+        "solution": solution,
+        "perfect_formula": (
+            f"ceil({format_decimal(needed_deck_area, 0)} / ({format_m(length_m)} x {format_decimal(deck_width_m, 3)})) "
+            f"x {format_m(length_m)} x {format_decimal(raw_width_m, 3)}"
+        ),
+        "factor_checks": [
+            factor_check(f"Deckfläche {format_decimal(needed_deck_area, 0)} Quadratmeter", needed_deck_area),
+            factor_check(f"Länge {format_m(length_m)} Meter", length_m),
+            factor_check(f"Deckbreite {deck_width_text} ({format_decimal(deck_width_m, 3)} Meter)", deck_width_m),
+            factor_check(f"Rohmaß {raw_width_text} ({format_decimal(raw_width_m, 3)} Meter)", raw_width_m),
+        ],
+        "wrong_value_checks": [
+            wrong_value_check(
+                needed_deck_area,
+                "Deine Eingabe entspricht der sichtbaren Deckfläche. Verkauft beziehungsweise berechnet wird hier aber die Rohmaßfläche nach der benötigten Brettanzahl.",
+                "m2",
+            ),
+            wrong_value_check(
+                Decimal(board_count),
+                "Deine Eingabe entspricht der benötigten Brettanzahl. Gefragt ist aber die Quadratmeterzahl nach Rohmaß.",
+                "m2",
+            ),
+            wrong_value_check(
+                deck_area_per_board * Decimal(board_count),
+                "Deine Eingabe wirkt so, als hättest du am Ende wieder mit der Deckbreite gerechnet. Für die Abrechnung wird hier aber das Rohmaß verwendet.",
+                "m2",
+            ),
+        ],
+        "guided_steps": [
+            make_guided_step(
+                "Deckfläche pro Brett",
+                deck_area_per_board.normalize(),
+                "m2",
+                deck_area_places,
+                False,
+                "Rechne zuerst mit der Deckbreite, weil nur diese Breite sichtbar Fläche abdeckt.",
+                "Länge x Deckbreite",
+                placeholder="Zum Beispiel 3,60 * 0,111",
+            ),
+            make_guided_step(
+                "Benötigte Bretter",
+                board_count,
+                "Stück",
+                0,
+                False,
+                "Teile die benötigte Deckfläche durch die Deckfläche pro Brett und runde auf volle Bretter auf.",
+                "Benötigte Deckfläche / Deckfläche pro Brett, dann auf volle Bretter aufrunden",
+                placeholder="Zum Beispiel 24 / 0,3996",
+                match_mode="ceil_integer",
+            ),
+            make_guided_step(
+                "Rohmaßfläche",
+                result.normalize(),
+                "m2",
+                result_places,
+                False,
+                "Rechne die benötigten Bretter danach mit Länge und Rohmaßbreite zur berechneten Quadratmeterzahl hoch.",
+                "Brettanzahl x Länge x Rohmaß",
+                placeholder="Zum Beispiel 61 * 3,60 * 0,121",
+            ),
+        ],
+    }
+
+
 def task_panel_count_from_area(level):
     product = generate_panel_product()
     panel_format = panel_format_text(product)
@@ -5232,6 +5522,7 @@ def task_relative_db_from_position(level):
 TASK_GENERATORS = [
     task_unit_conversion,
     task_flooring_packages,
+    task_profile_board_raw_area,
     task_panel_count_from_area,
     task_running_meter_piece_count,
     task_volume_beam,
@@ -5282,6 +5573,7 @@ TASKS_BY_LEVEL = {
     1: [
         task_unit_conversion,
         task_flooring_packages,
+        task_profile_board_raw_area,
         task_panel_count_from_area,
         task_running_meter_piece_count,
         task_volume_beam,
@@ -5320,6 +5612,7 @@ TASKS_BY_LEVEL = {
     2: [
         task_unit_conversion,
         task_flooring_packages,
+        task_profile_board_raw_area,
         task_panel_count_from_area,
         task_running_meter_piece_count,
         task_volume_beam,
@@ -5459,6 +5752,10 @@ def default_step_placeholder(step):
         return "Zum Beispiel 6,20 / 0,00304"
     if "fläche pro stück" in label:
         return "Zum Beispiel 2 * 0,20"
+    if "deckfläche" in label:
+        return "Zum Beispiel 3,60 * 0,111"
+    if "rohmaßfläche" in label:
+        return "Zum Beispiel 61 * 3,60 * 0,121"
     if "rechnerische brettanzahl" in label:
         return "Zum Beispiel 150 / 3,30"
     if "benötigte bretter" in label:
@@ -6087,6 +6384,7 @@ def likely_error_focus(task):
         "panel_package_price": "Achte besonders auf Fläche pro Platte, Paketfläche und Paketpreis über den Quadratmeterpreis.",
         "panel_count_from_area": "Achte besonders darauf, zuerst die Fläche pro Platte zu bilden und die Gesamtfläche dadurch zu teilen.",
         "flooring_packages": "Achte besonders auf Fläche pro Stück, Paketfläche und das Aufrunden auf volle Pakete.",
+        "profile_board_raw_area": "Achte besonders darauf, die Deckbreite für die benötigte Brettanzahl und das Rohmaß für die berechnete Quadratmeterzahl zu verwenden.",
         "running_meter_piece_count": "Achte besonders darauf, den Laufmeterbedarf durch die Stücklänge zu teilen und anschließend auf volle Stück oder volle Bund aufzurunden.",
         "absolute_db_from_ek_vk": "Achte besonders darauf, dass der absolute DB einfach die Differenz zwischen VK und EK ist.",
         "relative_db_from_ek_vk": "Achte besonders darauf, den absoluten DB ins Verhältnis zum VK zu setzen.",
